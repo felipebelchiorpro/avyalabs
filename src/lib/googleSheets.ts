@@ -782,7 +782,6 @@ export async function listarLaudos(
             tem_aslo: Boolean(resAslo),
             resultado_fr: resFr || undefined,
             tem_fr: Boolean(resFr),
-            muco: temUrina ? resMuco || "Ausentes" : resMuco,
             resultado_dengue: resDengue || undefined,
             dengue_ns1: resDengueNs1 || undefined,
             dengue_igg: resDengueIgg || undefined,

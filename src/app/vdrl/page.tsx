@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { ItemRotina, LaudoUrina, formatarProntuario } from "@/lib/googleSheets";
-import { VALORES_PADRAO_NORMAL } from "@/types/urinalise";
+import { ItemRotina, LaudoUrina, VALORES_PADRAO_NORMAL } from "@/types/urinalise";
+import { formatarProntuario } from "@/lib/extratorBancada";
 import {
   Package,
   Printer,

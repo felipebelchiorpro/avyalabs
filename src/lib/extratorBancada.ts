@@ -426,7 +426,6 @@ export function aplicarFlagsExamesNoItem(item: ItemRotina): ItemRotina {
   let tem_fr = Boolean(item.tem_fr);
   let tem_proteinuria_rapida = Boolean(item.tem_proteinuria_rapida);
   let tem_abo_rh = Boolean(item.tem_abo_rh);
-  let tem_dengue = Boolean(item.tem_dengue);
 
   for (const parte of partes) {
     const c = classificarExameBancada(parte, parte);
@@ -498,7 +497,6 @@ export function aplicarFlagsExamesNoItem(item: ItemRotina): ItemRotina {
     tem_fr,
     tem_proteinuria_rapida,
     tem_abo_rh,
-    tem_dengue,
   };
 }
 
@@ -772,7 +770,6 @@ export function extrairExamesBancadaConectaSUS(
           tem_fr: false,
           tem_proteinuria_rapida: false,
           tem_abo_rh: false,
-          tem_dengue: false,
         },
         examesSet: new Set<string>(),
       });

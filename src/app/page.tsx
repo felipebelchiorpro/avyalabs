@@ -803,8 +803,6 @@ export default function BancadaOperacionalPage() {
         tem_vdrl: temVdrl,
         resultado_vdrl: temVdrl ? (vdrlAcumularLote ? "Aguardando lote semanal" : resultadoVdrl) : "",
         vdrl_acumular_lote: Boolean(temVdrl && vdrlAcumularLote),
-        tem_dengue: temDengue,
-        resultado_dengue: temDengue ? resultadoDengue : "",
         tem_pcr: Boolean(pacienteInfo?.tem_pcr || (temProvasInflamatorias && resultadoPcr)),
         resultado_pcr: temProvasInflamatorias ? resultadoPcr : "",
         tem_aslo: Boolean(pacienteInfo?.tem_aslo || (temProvasInflamatorias && resultadoAslo)),
@@ -1207,7 +1205,6 @@ export default function BancadaOperacionalPage() {
       ).length,
       coag: rotinaDoDia.filter((p) => Boolean(p.tem_coagulograma)).length,
       pso: rotinaDoDia.filter((p) => Boolean(p.tem_pso)).length,
-      dengue: rotinaDoDia.filter((p) => Boolean(p.tem_dengue)).length,
       vdrl: rotinaDoDia.filter((p) => Boolean(p.tem_vdrl)).length,
       dengue: rotinaDoDia.filter((p) => Boolean(p.tem_dengue)).length,
       abo: rotinaDoDia.filter((p) => Boolean(p.tem_abo_rh)).length,
@@ -4019,8 +4016,7 @@ export default function BancadaOperacionalPage() {
           {/* OBSERVAÇÕES RÁPIDAS (EXCETO NA ABA DE LOTE) */}
           {bancadaAtiva !== "vdrl_lote" && (
             <section className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3 mb-4">
-          <section className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3 mb-4">
-            <label className="block text-[11px] font-black text-slate-700 uppercase mb-1.5">
+              <label className="block text-[11px] font-black text-slate-700 uppercase mb-1.5">
               Observações / Motivo de Recoleta
             </label>
             <div className="mb-2 flex flex-wrap gap-1">

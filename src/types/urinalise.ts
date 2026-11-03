@@ -49,10 +49,6 @@ export interface LaudoUrina {
   resultado_vdrl?: string; // "Não Reagente" | "Reagente 1/1" | "Reagente 1/2" | "Reagente 1/4" | "Reagente 1/8" | "Reagente 1/16" | "Aguardando lote semanal"
   vdrl_acumular_lote?: boolean; // Marca para realização em lote semanal
 
-  // 3b. Teste Rápido de Dengue
-  tem_dengue?: boolean;
-  resultado_dengue?: string; // "Não Reagente (NS1 / IgG / IgM)" | "NS1 Reagente" | "IgM Reagente" | "IgG Reagente" | "NS1 e IgM Reagentes" | "Reagente" | "Inconclusivo"
-
   // 4. Provas Inflamatórias
   tem_vhs?: boolean;
   resultado_vhs?: string; // ex: "10 mm/1ª hora"
@@ -131,9 +127,10 @@ export interface RotinaItem {
   tem_tap?: boolean;
   tem_ttpa?: boolean;
   tem_abo_rh?: boolean;
-  tem_dengue?: boolean;
   exames_bancada?: string[];
 }
+
+export type ItemRotina = RotinaItem;
 
 export type TipoEdtaDestino = "apenas_hemograma" | "hemograma_glicada" | "apenas_glicada";
 export type StatusTriagemEdta = "pendente" | "pronto_grade" | "retido_bancada";
@@ -232,8 +229,6 @@ export const VALORES_PADRAO_NORMAL: Omit<
   tem_vdrl: false,
   resultado_vdrl: "Não Reagente",
   vdrl_acumular_lote: false,
-  tem_dengue: false,
-  resultado_dengue: "Não Reagente (NS1 / IgG / IgM)",
   tem_vhs: false,
   resultado_vhs: "10 mm/1ª hora",
   tem_pcr: false,

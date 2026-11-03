@@ -249,8 +249,6 @@ export const RelatorioBancadaDiaPrintView: React.FC<RelatorioBancadaDiaPrintView
                         {recInfo.motivo}
                       </div>
                     </div>
-                      </div>
-                    </div>
                   ) : (
                     <>
                       {/* URINA I (OU AVISO DE RECOLETA DE URINA SE ELA FOR O ALVO) */}
