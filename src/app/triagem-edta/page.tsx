@@ -1097,215 +1097,233 @@ export default function TriagemEdtaPage() {
   };
 
   // BLOCO DE CONFERÊNCIA EM DESTAQUE (DATA DE NASCIMENTO MAIORZINHA, MÉDICO SOLICITANTE E TUBOS)
-  const renderBlocoConferenciaPaciente = (tubo: ItemTriagemEdta) => (
-    <div className="space-y-3">
-      {/* IDENTIFICAÇÃO DO PACIENTE (CONFORME FOLHA DE AGENDAMENTO) */}
-      <div className="bg-black/25 border border-white/20 rounded-2xl p-3 sm:p-3.5 space-y-1.5">
+  // CARD SUTIL, ELEGANTE E DIRETO DE CONFERÊNCIA DO PACIENTE
+  const renderCardConferencia = (tubo: ItemTriagemEdta) => (
+    <div className="bg-white text-slate-900 rounded-2xl p-4 sm:p-5 shadow-lg border border-slate-200 animate-in zoom-in-95 duration-150 space-y-3">
+      {/* CABEÇALHO DO CARD COM BADGE SUTIL E BOTÃO FECHAR */}
+      <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+        <div className="flex items-center gap-2">
+          {tubo.status === "retido_envio_posterior" ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300">
+              <Clock className="w-3.5 h-3.5 text-amber-700" />
+              <span>Amostra Retida (Glicada já dosada)</span>
+            </span>
+          ) : tubo.tipo_destino === "hemograma_glicada" || (tubo.tem_hemograma && tubo.tem_glicada) ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-900 border border-purple-200">
+              <AlertTriangle className="w-3.5 h-3.5 text-purple-700" />
+              <span>Tem Glicada (Fracionar 500 µL)</span>
+            </span>
+          ) : tubo.tipo_destino === "apenas_glicada" ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200">
+              <FlaskConical className="w-3.5 h-3.5 text-amber-700" />
+              <span>Apenas Glicada (Bancada Local)</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-900 border border-blue-200">
+              <CheckCircle2 className="w-3.5 h-3.5 text-blue-700" />
+              <span>Apenas Hemograma (Apoio)</span>
+            </span>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={fecharCardConferencia}
+          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+          title="Fechar conferência"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* DADOS DO PACIENTE */}
+      <div className="space-y-1">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-base sm:text-xl font-black text-white uppercase tracking-wide leading-tight">
+          <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight leading-snug">
             {tubo.nome_paciente}
-          </p>
+          </h2>
           {tubo.urgencia && (
-            <span className="bg-rose-600 text-white font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase shrink-0 border border-rose-400 animate-pulse">
+            <span className="bg-rose-100 text-rose-800 border border-rose-300 font-bold text-[10px] px-2 py-0.5 rounded-full uppercase shrink-0">
               🚨 Urgência
             </span>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/90">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
           <span>
-            Prontuário: <strong className="text-amber-300 font-mono font-bold text-sm">#{tubo.prontuario}</strong>
+            Prontuário: <strong className="text-slate-800 font-mono font-bold text-sm">#{tubo.prontuario}</strong>
           </span>
           {cpfDetectadoFolha && (
             <span>
-              CPF: <strong className="text-white font-mono font-bold">{cpfDetectadoFolha}</strong>
+              CPF: <strong className="text-slate-800 font-mono">{cpfDetectadoFolha}</strong>
             </span>
           )}
         </div>
       </div>
 
-      {/* CONFERÊNCIA VISUAL DA DATA DE NASCIMENTO (EM DESTAQUE PARA BATER O OLHO NO CELULAR) */}
-      <div className="bg-black/35 border-2 border-amber-400 rounded-2xl p-3 sm:p-3.5 shadow-md space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
-            <Calendar className="w-4 h-4 text-amber-300 shrink-0" />
-            Data de Nascimento (Identificador Apoio)
+      {/* DATA DE NASCIMENTO (EM DESTAQUE, SUTIL E LEGÍVEL) */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3 flex items-center justify-between">
+        <div className="space-y-0.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+            Data de Nascimento
           </span>
-          <button
-            type="button"
-            onClick={() => setEditandoDataNasc(!editandoDataNasc)}
-            className="text-[10.5px] font-bold text-amber-200 hover:text-white underline cursor-pointer bg-white/10 px-2 py-0.5 rounded"
-          >
-            {editandoDataNasc ? "Cancelar" : "✏️ Ajustar data"}
-          </button>
-        </div>
-
-        {editandoDataNasc ? (
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={10}
-              value={dataNascConferencia}
-              onChange={(e) => setDataNascConferencia(aplicarMascaraData(e.target.value))}
-              placeholder="DD/MM/AAAA"
-              className="flex-1 px-3 py-2 bg-white text-slate-900 rounded-xl text-xl font-mono font-black border-2 border-amber-400 focus:outline-none"
-              autoFocus
-            />
-            <button
-              type="button"
-              onClick={() => setEditandoDataNasc(false)}
-              className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl cursor-pointer"
-            >
-              OK
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between pt-0.5">
-            <span className="text-2xl sm:text-3xl font-black font-mono tracking-wider text-amber-300 drop-shadow">
+          {editandoDataNasc ? (
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={10}
+                value={dataNascConferencia}
+                onChange={(e) => setDataNascConferencia(aplicarMascaraData(e.target.value))}
+                placeholder="DD/MM/AAAA"
+                className="w-36 px-2.5 py-1.5 bg-white text-slate-900 rounded-lg text-lg font-mono font-bold border border-slate-300 focus:outline-purple-600"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setEditandoDataNasc(false)}
+                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg cursor-pointer"
+              >
+                OK
+              </button>
+            </div>
+          ) : (
+            <span className="text-xl sm:text-2xl font-black font-mono tracking-tight text-slate-900">
               {dataNascConferencia || tubo.data_nascimento || "NÃO INFORMADA"}
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-100 bg-amber-500/30 px-2.5 py-1 rounded-md border border-amber-400/40">
-              Confira no Papel
-            </span>
-          </div>
+          )}
+        </div>
+
+        {!editandoDataNasc && (
+          <button
+            type="button"
+            onClick={() => setEditandoDataNasc(true)}
+            className="text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-lg cursor-pointer transition"
+          >
+            ✏️ Ajustar
+          </button>
         )}
       </div>
 
-      {/* PROFISSIONAL SOLICITANTE / MÉDICO (IDENTIFICADO NA FOLHA PELO OCR OU SELECIONADO) */}
-      <div className="bg-black/35 border-2 border-emerald-400/80 rounded-2xl p-3 sm:p-3.5 shadow-md space-y-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
-            <Stethoscope className="w-4 h-4 text-emerald-300 shrink-0" />
-            Profissional Solicitante (Médico)
+      {/* MÉDICO SOLICITANTE */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2">
+        <div className="truncate space-y-0.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+            Médico Solicitante
           </span>
-          <button
-            type="button"
-            onClick={() => setMostrarModalMedicos(true)}
-            className="text-[10.5px] font-bold text-emerald-200 hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-0.5 rounded-lg cursor-pointer transition flex items-center gap-1 border border-emerald-400/30"
-          >
-            <span>🔄 Trocar</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <p className="text-xs sm:text-sm font-bold text-slate-800 uppercase truncate">
+              {medicoSelecionado || tubo.solicitante || "Dr(a). Clínico(a) Geral / UBS"}
+            </p>
+            {medicoDetectadoFolha && (
+              <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.2 rounded shrink-0">
+                Lido da Folha
+              </span>
+            )}
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setMostrarModalMedicos(true)}
+          className="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg cursor-pointer transition shrink-0"
+        >
+          Trocar
+        </button>
+      </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pt-0.5">
-          <p className="text-base sm:text-lg font-black text-white uppercase tracking-wide truncate">
-            {medicoSelecionado || tubo.solicitante || "Dr(a). Clínico(a) Geral / UBS"}
-          </p>
-          {medicoDetectadoFolha && (
-            <span className="self-start sm:self-auto bg-emerald-500/30 text-emerald-200 border border-emerald-400/50 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-tight flex items-center gap-1 shadow-2xs">
-              ✨ Lido da Folha
+      {/* OPÇÃO DE VHS (2 TUBOS) */}
+      <label className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100/70 p-2.5 rounded-xl cursor-pointer select-none transition">
+        <input
+          type="checkbox"
+          checked={coletadoDoisTubos}
+          onChange={(e) => setColetadoDoisTubos(e.target.checked)}
+          className="w-4 h-4 rounded text-purple-600 border-slate-300 focus:ring-purple-500 accent-purple-600 cursor-pointer shrink-0"
+        />
+        <div className="text-xs">
+          <span className="font-bold text-slate-800">
+            {coletadoDoisTubos
+              ? "Coletado 2 tubos EDTA (1 Apoio + 1 VHS Local)"
+              : "Coletado apenas 1 tubo EDTA"}
+          </span>
+          {tubo.tem_vhs && (
+            <span className="ml-1.5 inline-block text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded">
+              VHS Solicitado
             </span>
           )}
         </div>
-      </div>
+      </label>
 
-      {/* ALERTA SE O PACIENTE FOR UM TUBO RETIDO DE DIA ANTERIOR */}
-      {tubo.status === "retido_envio_posterior" && (
-        <div className="bg-amber-400 text-slate-950 rounded-2xl p-3 border-2 border-amber-200 shadow-md">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-xl bg-amber-500 text-slate-950 shrink-0">
-              <Clock className="w-5 h-5 animate-spin" />
-            </span>
-            <div>
-              <p className="font-black text-xs sm:text-sm uppercase tracking-tight">
-                🚨 Tubo Retido de Dia Anterior (Glicada Já Dosada)
-              </p>
-              <p className="text-[11px] font-semibold text-slate-900 leading-tight">
-                Amostra retida na gradinha local pronta para ser despachada para a grade de hoje!
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* VERIFICAÇÃO DE VHS E CAIXINHA DE SELEÇÃO DE TUBOS */}
-      <div
-        className={`rounded-2xl p-3 border transition-colors ${
-          tubo.tem_vhs ? "bg-amber-500/25 border-amber-300" : "bg-white/10 border-white/20"
-        }`}
-      >
-        {tubo.tem_vhs && (
-          <div className="flex items-center gap-1.5 mb-2 text-amber-300 font-black text-xs uppercase tracking-tight">
-            <AlertTriangle className="w-4 h-4 text-amber-300 shrink-0" />
-            <span>⚡ Exame de VHS Solicitado (Bancada Local)</span>
-          </div>
-        )}
-
-        <label className="flex items-start gap-3 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={coletadoDoisTubos}
-            onChange={(e) => setColetadoDoisTubos(e.target.checked)}
-            className="w-5 h-5 mt-0.5 rounded border-2 border-amber-300 text-purple-600 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-amber-400 shrink-0"
-          />
-          <div className="text-xs leading-snug">
-            <span className="font-black text-white block text-xs sm:text-sm">
-              {coletadoDoisTubos
-                ? "✓ Coletado 2 tubos EDTA (1 Apoio + 1 VHS Local)"
-                : "⚠️ Coletado apenas 1 tubo EDTA (Compartilhado por falta de tubos)"}
-            </span>
-            <span className="text-[11px] text-white/80 block mt-0.5 font-medium">
-              {coletadoDoisTubos
-                ? "Rotina padrão: 1 tubo integral para a grade do apoio e 1 tubo secundário para dosagem de VHS."
-                : "Falta de tubos: Coletado tubo único. Alerta registrado para o laboratório."}
-            </span>
-          </div>
-        </label>
-      </div>
-
-      {/* CONTROLE DE ENVIO DO HEMOGRAMA: HOJE vs OUTRO DIA (ALTO VOLUME DE GLICADAS) */}
+      {/* DESTINO / SELEÇÃO DE ENVIO DO HEMOGRAMA (SE TEM GLICADA OU SE ESTAVA RETIDO) */}
       {(tubo.tem_glicada ||
         tubo.tipo_destino === "hemograma_glicada" ||
         tubo.status === "retido_envio_posterior") && (
-        <div
-          className={`rounded-2xl p-3.5 border-2 transition-all shadow-md ${
-            enviarHemogramaHoje
-              ? "bg-emerald-950/40 border-emerald-400/80"
-              : "bg-amber-950/50 border-amber-400"
-          }`}
-        >
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <span
-              className={`text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
-                enviarHemogramaHoje ? "text-emerald-300" : "text-amber-300"
-              }`}
-            >
-              <Clock className="w-4 h-4 shrink-0" />
-              Destino do Tubo Original do Hemograma
-            </span>
-            <span
-              className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
+        <div className="space-y-1.5 pt-0.5">
+          <span className="text-[11px] font-bold text-slate-600 block">
+            {tubo.status === "retido_envio_posterior"
+              ? "Liberar este tubo para envio hoje?"
+              : "Envio do Hemograma:"}
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setEnviarHemogramaHoje(true)}
+              className={`py-2 px-3 text-xs font-bold rounded-xl border transition cursor-pointer flex items-center justify-center gap-1.5 ${
                 enviarHemogramaHoje
-                  ? "bg-emerald-400/20 text-emerald-200 border-emerald-400/40"
-                  : "bg-amber-400/20 text-amber-200 border-amber-400/40"
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
               }`}
             >
-              {enviarHemogramaHoje ? "Grade de Hoje" : "Reter na Gradinha"}
-            </span>
-          </div>
+              <Check className="w-3.5 h-3.5" />
+              <span>{tubo.status === "retido_envio_posterior" ? "Sim, Enviar Hoje" : "Enviar Hoje"}</span>
+            </button>
 
-          <label className="flex items-start gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={enviarHemogramaHoje}
-              onChange={(e) => setEnviarHemogramaHoje(e.target.checked)}
-              className="w-5 h-5 mt-0.5 rounded border-2 border-emerald-300 text-emerald-600 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-emerald-400 shrink-0"
-            />
-            <div className="text-xs leading-snug">
-              <span className="font-black text-white block text-xs sm:text-sm">
-                {enviarHemogramaHoje
-                  ? "✓ Enviar Hemograma HOJE p/ Apoio (Entra no relatório de hoje)"
-                  : "📦 RETER TUBO na gradinha local (Enviar Hemograma no OUTRO DIA)"}
-              </span>
-              <span className="text-[11px] text-white/80 block mt-1 font-medium leading-relaxed">
-                {enviarHemogramaHoje
-                  ? "Rotina regular: Fraciona 500µL para bancada e coloca tubo original na grade do Apoio de hoje."
-                  : "⚠️ Muito volume de glicadas: Faz a HbA1c hoje e guarda o tubo integral na gradinha para enviar amanhã. O paciente NÃO sairá no relatório de remessa de hoje!"}
-              </span>
-            </div>
-          </label>
+            <button
+              type="button"
+              onClick={() => setEnviarHemogramaHoje(false)}
+              className={`py-2 px-3 text-xs font-bold rounded-xl border transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                !enviarHemogramaHoje
+                  ? "bg-amber-500 text-slate-950 border-amber-500 shadow-xs"
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>{tubo.status === "retido_envio_posterior" ? "Manter Retido" : "Reter p/ Outro Dia"}</span>
+            </button>
+          </div>
         </div>
       )}
+
+      {/* BOTÕES DE AÇÃO PRINCIPAIS (SUTIS E DIRETOS) */}
+      <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+        <button
+          type="button"
+          disabled={isSyncing}
+          onClick={confirmarAcaoTubo}
+          className={`flex-1 py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl shadow-xs transition active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer ${
+            !enviarHemogramaHoje
+              ? "bg-amber-500 hover:bg-amber-600 text-slate-950"
+              : "bg-emerald-600 hover:bg-emerald-700 text-white"
+          }`}
+        >
+          <Check className="w-4 h-4 stroke-[2.5]" />
+          <span>
+            {tubo.status === "retido_envio_posterior"
+              ? (enviarHemogramaHoje ? "Liberar Tubo p/ Hoje" : "Confirmar Manter Retido")
+              : (!enviarHemogramaHoje
+                  ? "Reter Tubo na Gradinha"
+                  : tubo.tipo_destino === "apenas_glicada"
+                  ? "Confirmar Bancada Local"
+                  : "Confirmar Tubo na Grade")}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={fecharCardConferencia}
+          className="py-2.5 px-3.5 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
+        >
+          Cancelar
+        </button>
+      </div>
     </div>
   );
 
@@ -1738,363 +1756,121 @@ export default function TriagemEdtaPage() {
           )}
 
           {/* ======================================================================= */}
-          {/* CARDS VIBRANTES DE AÇÃO CONFORME O CASO DO PACIENTE                     */}
+          {/* CARD SUTIL E DIRETO DE CONFERÊNCIA DO PACIENTE                         */}
           {/* ======================================================================= */}
-
-          {/* CASO 1: HEMOGRAMA + GLICADA (HbA1c) — FUNDO ROXO VIBRANTE */}
-          {tuboAtivo &&
-            (tuboAtivo.tipo_destino === "hemograma_glicada" ||
-              (tuboAtivo.tem_hemograma && tuboAtivo.tem_glicada)) && (
-              <div className="bg-purple-700 text-white rounded-3xl p-4 sm:p-5 shadow-2xl border-4 border-purple-400 animate-in zoom-in-95 duration-150 space-y-3.5">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="p-2 rounded-xl bg-purple-900/60 border border-purple-400/50 shrink-0">
-                      <AlertTriangle className="w-6 h-6 sm:w-7 sm:h-7 text-amber-300 animate-bounce" />
-                    </span>
-                    <div>
-                      <h2 className="text-sm sm:text-lg font-black tracking-tight uppercase leading-tight">
-                        ⚠️ TEM GLICADA (HbA1c) — FRACIONAR 500 µL
-                      </h2>
-                      <p className="text-[11px] sm:text-xs text-purple-200 font-semibold">
-                        Dupla destinação: Alíquota local + Tubo integral ao apoio
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={fecharCardConferencia}
-                    className="p-1.5 text-purple-200 hover:text-white bg-purple-900/40 hover:bg-purple-900/70 rounded-xl transition cursor-pointer shrink-0"
-                    title="Fechar sem salvar"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {/* BLOCO DE CONFERÊNCIA: PACIENTE, DATA DE NASCIMENTO, MÉDICO E TUBOS */}
-                {renderBlocoConferenciaPaciente(tuboAtivo)}
-
-                <div
-                  className={`border rounded-xl p-3 text-xs transition-colors ${
-                    !enviarHemogramaHoje
-                      ? "bg-amber-900/60 border-amber-400 text-amber-100"
-                      : "bg-purple-800/80 border-purple-400/40 text-purple-100"
-                  }`}
-                >
-                  <p className="font-bold text-white mb-0.5">
-                    {!enviarHemogramaHoje
-                      ? "⚠️ Ação Operacional (Tubo Retido p/ Amanhã):"
-                      : tuboAtivo.status === "retido_envio_posterior"
-                      ? "✓ Ação Operacional (Liberação de Retido):"
-                      : "Ação Operacional:"}
-                  </p>
-                  <p className="leading-relaxed">
-                    {!enviarHemogramaHoje ? (
-                      <span>
-                        Fazer dosagem de HbA1c hoje na bancada local e <strong>reter o tubo integral na gradinha</strong> para despachar o hemograma na van de amanhã. <em>Este paciente NÃO sairá no relatório impresso de hoje.</em>
-                      </span>
-                    ) : tuboAtivo.status === "retido_envio_posterior" ? (
-                      <span>
-                        Amostra já teve HbA1c dosada anteriormente. Colocar agora o <strong>tubo original na grade do Apoio de hoje</strong> para seguir na van desta tarde.
-                      </span>
-                    ) : (
-                      <span>
-                        Pipetar alíquota de <strong>500 µL</strong> no microtubo local e separar o tubo
-                        original para a grade do Apoio de hoje.
-                      </span>
-                    )}
-                  </p>
-                </div>
-
-                {/* BOTÕES DE CONFIRMAÇÃO E CANCELAMENTO */}
-                <div className="space-y-2 pt-1">
-                  {!enviarHemogramaHoje ? (
-                    <button
-                      type="button"
-                      disabled={isSyncing}
-                      onClick={confirmarAcaoTubo}
-                      className="w-full py-4 px-6 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer border-2 border-amber-300"
-                    >
-                      <Clock className="w-6 h-6 stroke-[2.5]" />
-                      <span>[ 📦 Tubo Retido na Gradinha (Mandar Outro Dia) ]</span>
-                    </button>
-                  ) : tuboAtivo.status === "retido_envio_posterior" ? (
-                    <button
-                      type="button"
-                      disabled={isSyncing}
-                      onClick={confirmarAcaoTubo}
-                      className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Check className="w-6 h-6 stroke-[3]" />
-                      <span>[ 🚀 Liberar Tubo Retido p/ Apoio de Hoje ]</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={isSyncing}
-                      onClick={confirmarAcaoTubo}
-                      className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Check className="w-6 h-6 stroke-[3]" />
-                      <span>[ ✓ Fracionado & Tubo na Grade de Hoje ]</span>
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={fecharCardConferencia}
-                    className="w-full py-2.5 text-purple-200 hover:text-white text-xs font-bold transition text-center cursor-pointer"
-                  >
-                    ✕ Cancelar conferência e voltar à câmera
-                  </button>
-                </div>
-              </div>
-            )}
-
-          {/* CASO 2: APENAS HEMOGRAMA (Sem Glicada) — FUNDO AZUL VIBRANTE */}
-          {tuboAtivo &&
-            (tuboAtivo.tipo_destino === "apenas_hemograma" ||
-              (tuboAtivo.tem_hemograma && !tuboAtivo.tem_glicada)) && (
-              <div className="bg-blue-700 text-white rounded-3xl p-4 sm:p-5 shadow-2xl border-4 border-blue-400 animate-in zoom-in-95 duration-150 space-y-3.5">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="p-2 rounded-xl bg-blue-900/60 border border-blue-400/50 shrink-0">
-                      <CheckCircle2 className="w-6 h-6 sm:w-7 sm:h-7 text-sky-300" />
-                    </span>
-                    <div>
-                      <h2 className="text-sm sm:text-lg font-black tracking-tight uppercase leading-tight">
-                        📦 APENAS HEMOGRAMA — DIRETO PRO APOIO
-                      </h2>
-                      <p className="text-[11px] sm:text-xs text-blue-200 font-semibold">
-                        Não necessita de pipetagem local • Envio integral
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={fecharCardConferencia}
-                    className="p-1.5 text-blue-200 hover:text-white bg-blue-900/40 hover:bg-blue-900/70 rounded-xl transition cursor-pointer shrink-0"
-                    title="Fechar sem salvar"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {/* BLOCO DE CONFERÊNCIA: PACIENTE, DATA DE NASCIMENTO, MÉDICO E TUBOS */}
-                {renderBlocoConferenciaPaciente(tuboAtivo)}
-
-                <div className="bg-blue-800/80 border border-blue-400/40 rounded-xl p-3 text-xs text-blue-100">
-                  <p className="font-bold text-white mb-0.5">Ação Operacional:</p>
-                  <p className="leading-relaxed">Colocar tubo integral na grade do Apoio.</p>
-                </div>
-
-                {/* BOTÕES DE CONFIRMAÇÃO E CANCELAMENTO */}
-                <div className="space-y-2 pt-1">
-                  <button
-                    type="button"
-                    disabled={isSyncing}
-                    onClick={confirmarAcaoTubo}
-                    className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <Check className="w-6 h-6 stroke-[3]" />
-                    <span>[ ✓ Tubo na Grade do Apoio ]</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={fecharCardConferencia}
-                    className="w-full py-2.5 text-blue-200 hover:text-white text-xs font-bold transition text-center cursor-pointer"
-                  >
-                    ✕ Cancelar conferência e voltar à câmera
-                  </button>
-                </div>
-              </div>
-            )}
-
-          {/* CASO EXTRA: APENAS GLICADA (Bancada Local) */}
-          {tuboAtivo && tuboAtivo.tipo_destino === "apenas_glicada" && (
-            <div className="bg-amber-600 text-white rounded-3xl p-4 sm:p-5 shadow-2xl border-4 border-amber-300 animate-in zoom-in-95 duration-150 space-y-3.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="p-2 rounded-xl bg-amber-800/60 border border-amber-300/50 shrink-0">
-                    <FlaskConical className="w-6 h-6 sm:w-7 sm:h-7 text-amber-200" />
-                  </span>
-                  <div>
-                    <h2 className="text-sm sm:text-lg font-black tracking-tight uppercase leading-tight">
-                      🧪 APENAS GLICADA (HbA1c) — BANCADA LOCAL
-                    </h2>
-                    <p className="text-[11px] sm:text-xs text-amber-100 font-semibold">
-                      Tubo não vai ao apoio • Dosagem interna
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={fecharCardConferencia}
-                  className="p-1.5 text-amber-200 hover:text-white bg-amber-900/40 hover:bg-amber-900/70 rounded-xl transition cursor-pointer shrink-0"
-                  title="Fechar sem salvar"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* BLOCO DE CONFERÊNCIA: PACIENTE, DATA DE NASCIMENTO, MÉDICO E TUBOS */}
-              {renderBlocoConferenciaPaciente(tuboAtivo)}
-
-              <div className="bg-amber-700/80 border border-amber-400/40 rounded-xl p-3 text-xs text-amber-100">
-                <p className="font-bold text-white mb-0.5">Ação Operacional:</p>
-                <p className="leading-relaxed">
-                  Manter tubo integral na bancada local para dosagem de HbA1c.
-                </p>
-              </div>
-
-              {/* BOTÕES DE CONFIRMAÇÃO E CANCELAMENTO */}
-              <div className="space-y-2 pt-1">
-                <button
-                  type="button"
-                  disabled={isSyncing}
-                  onClick={confirmarAcaoTubo}
-                  className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Check className="w-6 h-6 stroke-[3]" />
-                  <span>[ ✓ Tubo na Bancada Local ]</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={fecharCardConferencia}
-                  className="w-full py-2.5 text-amber-200 hover:text-white text-xs font-bold transition text-center cursor-pointer"
-                >
-                  ✕ Cancelar conferência e voltar à câmera
-                </button>
-              </div>
-            </div>
-          )}
+          {tuboAtivo && renderCardConferencia(tuboAtivo)}
 
           {/* ======================================================================= */}
-          {/* GAVETA / SEÇÃO: TUBOS RETIDOS NA GRADINHA LOCAL (ENVIO POSTERIOR)      */}
+          {/* GAVETA SUTIL: TUBOS RETIDOS NA GRADINHA LOCAL (ENVIO POSTERIOR)        */}
           {/* ======================================================================= */}
           {itens.some(
             (i) =>
               i.status === "retido_envio_posterior" ||
               (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada")
           ) && (
-            <div ref={gavetaRetidosRef} className="bg-amber-500/10 border-2 border-amber-300 rounded-3xl p-4 shadow-sm space-y-3">
+            <div ref={gavetaRetidosRef} className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-3.5 shadow-xs space-y-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded-xl bg-amber-500 text-slate-950 font-black">
+                  <span className="p-1.5 rounded-lg bg-amber-100 text-amber-800">
                     <Clock className="w-4 h-4" />
                   </span>
                   <div>
-                    <h3 className="font-black text-amber-950 text-xs sm:text-sm uppercase tracking-tight flex items-center gap-1.5">
-                      <span>📦 Tubos Retidos na Gradinha Local</span>
-                      <span className="bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full text-[10px] font-black">
+                    <h3 className="font-bold text-slate-800 text-xs sm:text-sm flex items-center gap-1.5">
+                      <span>Tubos Retidos na Gradinha</span>
+                      <span className="bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.2 rounded-full text-[10px] font-bold">
                         {
                           itens.filter(
                             (i) =>
                               i.status === "retido_envio_posterior" ||
                               (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada")
                           ).length
-                        }{" "}
-                        aguardando
+                        }
                       </span>
                     </h3>
-                    <p className="text-[11px] text-amber-800 font-medium">
-                      HbA1c dosada na bancada hoje • Tubo integral aguardando remessa do apoio
+                    <p className="text-[11px] text-slate-500">
+                      Glicada feita • Aguardando envio do hemograma
                     </p>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setGavetaRetidosAberta(!gavetaRetidosAberta)}
-                  className="text-xs font-bold text-amber-900 bg-amber-200 hover:bg-amber-300 px-2.5 py-1 rounded-xl transition cursor-pointer"
-                >
-                  {gavetaRetidosAberta ? "Recolher" : "Ver Tubos"}
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setGavetaRetidosAberta(!gavetaRetidosAberta)}
+                    className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition cursor-pointer"
+                  >
+                    {gavetaRetidosAberta ? "Recolher" : "Ver lista"}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isSyncing}
+                    onClick={liberarTodosRetidosHoje}
+                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-lg transition cursor-pointer"
+                    title="Liberar todos os retidos para a grade de hoje"
+                  >
+                    Liberar Todos
+                  </button>
+                </div>
               </div>
 
               {gavetaRetidosAberta && (
-                <div className="space-y-2.5 pt-1">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-amber-100/70 p-2.5 rounded-2xl border border-amber-200">
-                    <p className="text-[11px] text-amber-900/90 flex-1">
-                      💡 <strong>Envio no dia seguinte:</strong> Clique em <strong>&quot;Despachar Todos os Retidos&quot;</strong> ou em <strong>&quot;Liberar Hoje&quot;</strong> para que os tubos entrem na relação oficial da van de hoje.
-                    </p>
-                    <button
-                      type="button"
-                      disabled={isSyncing}
-                      onClick={liberarTodosRetidosHoje}
-                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-98"
-                      title="Despachar todos os tubos retidos para a Grade do Apoio de hoje"
-                    >
-                      <Check className="w-4 h-4 stroke-[3]" />
-                      <span>Despachar Todos os Retidos ({itens.filter((i) => i.status === "retido_envio_posterior" || (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada")).length})</span>
-                    </button>
-                  </div>
-
-                  <div className="divide-y divide-amber-200/80 bg-white rounded-2xl border border-amber-200 overflow-hidden shadow-xs">
-                    {itens
-                      .filter(
-                        (i) =>
-                          i.status === "retido_envio_posterior" ||
-                          (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada")
-                      )
-                      .map((item) => (
-                        <div
-                          key={item.id || item.prontuario}
-                          className="p-3 flex items-center justify-between gap-2 hover:bg-amber-50/50 transition"
-                        >
-                          <div className="truncate">
-                            <p className="text-xs font-black text-slate-900 uppercase truncate">
-                              {item.nome_paciente}
-                            </p>
-                            <div className="flex items-center gap-2 text-[10.5px] text-slate-600 mt-0.5">
-                              <span className="font-bold text-purple-900">
-                                DN: {item.data_nascimento || "Não informada"}
+                <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden pt-1">
+                  {itens
+                    .filter(
+                      (i) =>
+                        i.status === "retido_envio_posterior" ||
+                        (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada")
+                    )
+                    .map((item) => (
+                      <div
+                        key={item.id || item.prontuario}
+                        className="p-2.5 flex items-center justify-between gap-2 hover:bg-slate-50 transition"
+                      >
+                        <div className="truncate">
+                          <p className="text-xs font-bold text-slate-900 uppercase truncate">
+                            {item.nome_paciente}
+                          </p>
+                          <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                            <span className="font-mono">#{item.prontuario}</span>
+                            {item.data_nascimento && (
+                              <span>• DN: {item.data_nascimento}</span>
+                            )}
+                            {item.tem_vhs && (
+                              <span className="bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded text-[9px]">
+                                VHS
                               </span>
-                              <span className="font-mono text-slate-500">
-                                (#{item.prontuario})
-                              </span>
-                              {item.tem_vhs && (
-                                <span className="bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded text-[9px]">
-                                  VHS
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setTuboAtivo(item);
-                                const dataNasc = formatarDataNascimento(item.data_nascimento || "");
-                                setDataNascConferencia(dataNasc);
-                                setEditandoDataNasc(false);
-                                setEnviarHemogramaHoje(true);
-                                setScannerPausado(true);
-                              }}
-                              className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold rounded-xl transition cursor-pointer"
-                              title="Abrir card para conferir"
-                            >
-                              Conferir
-                            </button>
-
-                            <button
-                              type="button"
-                              disabled={isSyncing}
-                              onClick={() => liberarTuboRetidoHoje(item)}
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-[11px] font-black rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Liberar Hoje</span>
-                            </button>
+                            )}
                           </div>
                         </div>
-                      ))}
-                  </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTuboAtivo(item);
+                              const dataNasc = formatarDataNascimento(item.data_nascimento || "");
+                              setDataNascConferencia(dataNasc);
+                              setEditandoDataNasc(false);
+                              setEnviarHemogramaHoje(true);
+                              setScannerPausado(true);
+                            }}
+                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition cursor-pointer"
+                          >
+                            Conferir
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isSyncing}
+                            onClick={() => liberarTuboRetidoHoje(item)}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition cursor-pointer"
+                          >
+                            Liberar Hoje
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
