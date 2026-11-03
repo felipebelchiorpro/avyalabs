@@ -1466,7 +1466,9 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
             (idxData >= 0 ? r[idxData] : r[0] || "").toString().trim()
           );
 
-          const dataNasc = idxNasc >= 0 && r[idxNasc] ? formatarDataNascimento(r[idxNasc]) : "";
+          const colNasc = idxNasc >= 0 ? idxNasc : 4;
+          const dataNascRaw = r[colNasc] || (idxNasc >= 0 ? r[idxNasc] : "");
+          const dataNasc = dataNascRaw ? formatarDataNascimento(dataNascRaw) : "";
           const dataNascDigitos = normalizarDigitosData(dataNasc);
           const prontNorm =
             idxProntNorm >= 0 && r[idxProntNorm]
@@ -1565,7 +1567,13 @@ export async function atualizarStatusItemEdta(
       itemProntNorm === prontNorm ||
       (prontDigits && itemProntDigits === prontDigits);
 
-    const matchNome = Boolean(nomeTarget && itemNome && itemNome === nomeTarget);
+    const matchNome = Boolean(
+      nomeTarget && itemNome && (
+        itemNome === nomeTarget ||
+        (nomeTarget.length >= 6 && itemNome.includes(nomeTarget)) ||
+        (itemNome.length >= 6 && nomeTarget.includes(itemNome))
+      )
+    );
 
     return matchPront || matchNome;
   });
@@ -1574,8 +1582,8 @@ export async function atualizarStatusItemEdta(
     return null;
   }
 
-  const dataNascAtualizada = updates.data_nascimento !== undefined
-    ? (updates.data_nascimento ? formatarDataNascimento(updates.data_nascimento) : "")
+  const dataNascAtualizada = updates.data_nascimento !== undefined && updates.data_nascimento !== ""
+    ? formatarDataNascimento(updates.data_nascimento)
     : (lista[index].data_nascimento ? formatarDataNascimento(lista[index].data_nascimento) : "");
 
   const itemAtualizado: ItemTriagemEdta = {
@@ -1648,7 +1656,13 @@ export async function atualizarStatusItemEdta(
               rowProntNormCol === prontDigits
             ));
 
-          const matchNome = Boolean(rowNome && itemNome && rowNome === itemNome);
+          const matchNome = Boolean(
+            rowNome && itemNome && (
+              rowNome === itemNome ||
+              (itemNome.length >= 6 && rowNome.includes(itemNome)) ||
+              (rowNome.length >= 6 && itemNome.includes(rowNome))
+            )
+          );
 
           if (matchPront || matchNome) {
             targetRowIndex = ri;
@@ -1664,8 +1678,9 @@ export async function atualizarStatusItemEdta(
           }
 
           // Preencher campos atualizados
-          if (idxNasc >= 0 && dataNascAtualizada) {
-            updatedRowValues[idxNasc] = dataNascAtualizada;
+          const colNasc = idxNasc >= 0 ? idxNasc : 4;
+          if (dataNascAtualizada) {
+            updatedRowValues[colNasc] = dataNascAtualizada;
           }
           if (idxStatus >= 0 && updates.status) {
             updatedRowValues[idxStatus] = updates.status;

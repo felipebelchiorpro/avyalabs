@@ -188,8 +188,14 @@ export default function TriagemEdtaPage() {
     carregarDadosEdta();
 
     // Polling a cada 3.5s para detectar sinal de impressão disparado do celular para o PC
+    // e sincronizar a lista a cada 7 segundos para que o PC fique sempre com a bancada em tempo real
+    let tickCount = 0;
     const pollInterval = setInterval(() => {
+      tickCount++;
       verificarSinalImpressaoRemota();
+      if (tickCount % 2 === 0) {
+        carregarDadosEdta(true);
+      }
     }, 3500);
 
     return () => {
@@ -233,14 +239,25 @@ export default function TriagemEdtaPage() {
             setTipoGuiaImpressao(data.sinalImpressao.tipoGuia);
           }
 
-          // Resetar sinal no servidor
+          // Resetar sinal no servidor imediatamente
           await fetch("/api/triagem-edta?reset_print=true");
 
-          // Disparar diálogo de impressão formatado A4
+          // RECARREGAR OS ITENS ATUALIZADOS DO SERVIDOR ANTES DE IMPRIMIR
+          try {
+            const resItens = await fetch("/api/triagem-edta");
+            const dataItens = await resItens.json();
+            if (dataItens.ok && Array.isArray(dataItens.itens)) {
+              setItens(dataItens.itens);
+            }
+          } catch (eItens) {
+            console.warn("Erro ao recarregar itens para impressão:", eItens);
+          }
+
+          // Disparar diálogo de impressão formatado A4 após renderização
           tocarSomConfirmado();
           setTimeout(() => {
             window.print();
-          }, 300);
+          }, 450);
         }
       }
     } catch (_) {}
@@ -364,15 +381,33 @@ export default function TriagemEdtaPage() {
         qtd_tubos_coletados: temDoisTubos ? 2 : 1,
       };
 
-      // Atualização otimista no estado local imediata
+      // Atualização otimista no estado local imediata com correspondência flexível
+      const pTargetRaw = String(item.prontuario || "").trim();
+      const pTargetNorm = normalizarProntuario(pTargetRaw);
+      const pTargetDigits = pTargetRaw.replace(/\D/g, "");
+      const nTarget = normalizarTexto(item.nome_paciente || "");
+
       setItens((prev) =>
-        prev.map((i) =>
-          i.prontuario === item.prontuario ||
-          (i.prontuario_normalizado &&
-            i.prontuario_normalizado === item.prontuario_normalizado)
-            ? itemAtualizado
-            : i
-        )
+        prev.map((i) => {
+          const iRaw = String(i.prontuario || "").trim();
+          const iNorm = normalizarProntuario(iRaw);
+          const iDigits = iRaw.replace(/\D/g, "");
+          const iNome = normalizarTexto(i.nome_paciente || "");
+
+          const matchPront =
+            iRaw === pTargetRaw ||
+            (pTargetNorm && iNorm === pTargetNorm) ||
+            (pTargetDigits && iDigits === pTargetDigits);
+          const matchNome = Boolean(
+            nTarget && iNome && (
+              iNome === nTarget ||
+              (nTarget.length >= 6 && iNome.includes(nTarget)) ||
+              (iNome.length >= 6 && nTarget.includes(iNome))
+            )
+          );
+
+          return matchPront || matchNome ? itemAtualizado : i;
+        })
       );
 
       // Notificação flutuante de sucesso
@@ -658,15 +693,33 @@ export default function TriagemEdtaPage() {
       data_liberacao_apoio: dataLiberacao,
     };
 
-    // Atualização otimista no estado local
+    // Atualização otimista no estado local com correspondência flexível
+    const pTargetRaw = String(tuboAtivo.prontuario || "").trim();
+    const pTargetNorm = normalizarProntuario(pTargetRaw);
+    const pTargetDigits = pTargetRaw.replace(/\D/g, "");
+    const nTarget = normalizarTexto(tuboAtivo.nome_paciente || "");
+
     setItens((prev) =>
-      prev.map((i) =>
-        i.prontuario === tuboAtivo.prontuario ||
-        (i.prontuario_normalizado &&
-          i.prontuario_normalizado === tuboAtivo.prontuario_normalizado)
-          ? itemAtualizado
-          : i
-      )
+      prev.map((i) => {
+        const iRaw = String(i.prontuario || "").trim();
+        const iNorm = normalizarProntuario(iRaw);
+        const iDigits = iRaw.replace(/\D/g, "");
+        const iNome = normalizarTexto(i.nome_paciente || "");
+
+        const matchPront =
+          iRaw === pTargetRaw ||
+          (pTargetNorm && iNorm === pTargetNorm) ||
+          (pTargetDigits && iDigits === pTargetDigits);
+        const matchNome = Boolean(
+          nTarget && iNome && (
+            iNome === nTarget ||
+            (nTarget.length >= 6 && iNome.includes(nTarget)) ||
+            (iNome.length >= 6 && nTarget.includes(iNome))
+          )
+        );
+
+        return matchPront || matchNome ? itemAtualizado : i;
+      })
     );
 
     // Persistir no backend
@@ -759,14 +812,32 @@ export default function TriagemEdtaPage() {
       horario_bipado: agora,
     };
 
+    const pTargetRaw = String(itemRetido.prontuario || "").trim();
+    const pTargetNorm = normalizarProntuario(pTargetRaw);
+    const pTargetDigits = pTargetRaw.replace(/\D/g, "");
+    const nTarget = normalizarTexto(itemRetido.nome_paciente || "");
+
     setItens((prev) =>
-      prev.map((i) =>
-        i.prontuario === itemRetido.prontuario ||
-        (i.prontuario_normalizado &&
-          i.prontuario_normalizado === itemRetido.prontuario_normalizado)
-          ? itemAtualizado
-          : i
-      )
+      prev.map((i) => {
+        const iRaw = String(i.prontuario || "").trim();
+        const iNorm = normalizarProntuario(iRaw);
+        const iDigits = iRaw.replace(/\D/g, "");
+        const iNome = normalizarTexto(i.nome_paciente || "");
+
+        const matchPront =
+          iRaw === pTargetRaw ||
+          (pTargetNorm && iNorm === pTargetNorm) ||
+          (pTargetDigits && iDigits === pTargetDigits);
+        const matchNome = Boolean(
+          nTarget && iNome && (
+            iNome === nTarget ||
+            (nTarget.length >= 6 && iNome.includes(nTarget)) ||
+            (iNome.length >= 6 && nTarget.includes(iNome))
+          )
+        );
+
+        return matchPront || matchNome ? itemAtualizado : i;
+      })
     );
 
     try {
@@ -966,6 +1037,15 @@ export default function TriagemEdtaPage() {
     setHoraEncerramento(horaAgora);
     setTipoGuiaImpressao(tipo);
 
+    // Sincronizar dados mais recentes do servidor antes de imprimir para garantir que todas as datas de nascimento estejam presentes
+    try {
+      const resItens = await fetch("/api/triagem-edta");
+      const dataItens = await resItens.json();
+      if (dataItens.ok && Array.isArray(dataItens.itens)) {
+        setItens(dataItens.itens);
+      }
+    } catch (_) {}
+
     try {
       // Disparar sinal para o computador da bancada com o tipo de guia
       await fetch("/api/triagem-edta", {
@@ -989,10 +1069,10 @@ export default function TriagemEdtaPage() {
         subtitulo: `Fechamento às ${horaAgora}. Diálogo A4 aberto para impressão.`,
       });
 
-      // Abre diálogo de impressão no dispositivo atual
+      // Abre diálogo de impressão no dispositivo atual após atualização do estado
       setTimeout(() => {
         window.print();
-      }, 350);
+      }, 450);
     } catch (err) {
       console.error("Erro ao emitir sinal de impressão:", err);
     }

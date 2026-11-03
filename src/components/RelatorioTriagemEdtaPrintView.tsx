@@ -150,9 +150,12 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
             tubosApoio.map((item, index) => {
               const foiFracionado =
                 item.tipo_destino === "hemograma_glicada" || item.fracionado_glicada;
-              const dnFormatada = item.data_nascimento
-                ? formatarDataNascimento(item.data_nascimento)
-                : "—";
+              const rawDn = (item.data_nascimento && item.data_nascimento.trim()) || (
+                item.data_nascimento_digitos && item.data_nascimento_digitos.length === 8
+                  ? `${item.data_nascimento_digitos.slice(0, 2)}/${item.data_nascimento_digitos.slice(2, 4)}/${item.data_nascimento_digitos.slice(4)}`
+                  : ""
+              );
+              const dnFormatada = rawDn ? formatarDataNascimento(rawDn) : "—";
 
               return (
                 <tr
@@ -310,9 +313,12 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
             tubosLaboratorio.map((item, index) => {
               const foiFracionado =
                 item.tipo_destino === "hemograma_glicada" || item.fracionado_glicada;
-              const dnFormatada = item.data_nascimento
-                ? formatarDataNascimento(item.data_nascimento)
-                : "—";
+              const rawDn = (item.data_nascimento && item.data_nascimento.trim()) || (
+                item.data_nascimento_digitos && item.data_nascimento_digitos.length === 8
+                  ? `${item.data_nascimento_digitos.slice(0, 2)}/${item.data_nascimento_digitos.slice(2, 4)}/${item.data_nascimento_digitos.slice(4)}`
+                  : ""
+              );
+              const dnFormatada = rawDn ? formatarDataNascimento(rawDn) : "—";
               const coletouDois = item.coletado_dois_tubos !== false;
 
               return (

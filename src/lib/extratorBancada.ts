@@ -72,23 +72,23 @@ export function normalizarProntuario(valor: any): string {
  */
 export function formatarDataNascimento(valor: any): string {
   if (!valor) return "";
-  const str = String(valor).trim();
+  const str = String(valor).replace(/\u00a0/g, " ").trim();
   if (!str) return "";
 
-  // Se já for DD/MM/AAAA
-  const matchBr = str.match(/^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})$/);
+  // Se já for DD/MM/AAAA (permitindo espaços ao redor de barras, pontos ou hífens)
+  const matchBr = str.match(/^(\d{1,2})\s*[\/\.\-]\s*(\d{1,2})\s*[\/\.\-]\s*(\d{4})$/);
   if (matchBr) {
     return `${matchBr[1].padStart(2, "0")}/${matchBr[2].padStart(2, "0")}/${matchBr[3]}`;
   }
 
   // Se for YYYY-MM-DD
-  const matchIso = str.match(/^(\d{4})[\/\.\-](\d{1,2})[\/\.\-](\d{1,2})/);
+  const matchIso = str.match(/^(\d{4})\s*[\/\.\-]\s*(\d{1,2})\s*[\/\.\-]\s*(\d{1,2})/);
   if (matchIso) {
     return `${matchIso[3].padStart(2, "0")}/${matchIso[2].padStart(2, "0")}/${matchIso[1]}`;
   }
 
   // Se for DD/MM/AA (ano com 2 dígitos)
-  const matchAno2 = str.match(/^(\d{1,2})[\/\.\-](\d{1,2})[\/\-](\d{2})$/);
+  const matchAno2 = str.match(/^(\d{1,2})\s*[\/\.\-]\s*(\d{1,2})\s*[\/\-]\s*(\d{2})$/);
   if (matchAno2) {
     const anoNum = parseInt(matchAno2[3], 10);
     const anoCompleto = anoNum > 26 ? `19${matchAno2[3]}` : `20${matchAno2[3]}`;
