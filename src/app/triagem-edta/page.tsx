@@ -12,6 +12,7 @@ import {
   normalizarProntuario,
   formatarDataNascimento,
   normalizarDigitosData,
+  normalizarTexto,
   processarMatrizLinhasBancada,
 } from "@/lib/extratorBancada";
 import {
@@ -82,6 +83,8 @@ export default function TriagemEdtaPage() {
   // Conferência e Ajuste da Data de Nascimento (Destaque Visual p/ Bater o Olho)
   const [dataNascConferencia, setDataNascConferencia] = useState<string>("");
   const [editandoDataNasc, setEditandoDataNasc] = useState<boolean>(false);
+  const [medicoDetectadoFolha, setMedicoDetectadoFolha] = useState<string>("");
+  const [cpfDetectadoFolha, setCpfDetectadoFolha] = useState<string>("");
 
   // Controle de Coleta de 2 Tubos EDTA (1 Apoio + 1 VHS Local vs Falta de Tubos)
   const [coletadoDoisTubos, setColetadoDoisTubos] = useState<boolean>(true);
@@ -265,24 +268,28 @@ export default function TriagemEdtaPage() {
     return `${apenasDigitos.slice(0, 2)}/${apenasDigitos.slice(2, 4)}/${apenasDigitos.slice(4)}`;
   };
 
-  // BUSCA INTELIGENTE NA BASE DE EDTA DO DIA
+  // BUSCA INTELIGENTE NA BASE DE EDTA DO DIA (POR PRONTUÁRIO, DATA DE NASCIMENTO OU NOME)
   const buscarPacienteNaBase = useCallback(
-    (prontuarioBruto: string, dataNascBruta?: string): ItemTriagemEdta | null => {
+    (prontuarioBruto: string, dataNascBruta?: string, nomeBruto?: string): ItemTriagemEdta | null => {
       const pNorm = normalizarProntuario(prontuarioBruto).toLowerCase();
       const pOriginal = prontuarioBruto.trim().toLowerCase();
+      const pDigits = prontuarioBruto.replace(/\D/g, "");
       const dDigitos = normalizarDigitosData(dataNascBruta || "");
+      const nNorm = nomeBruto ? normalizarTexto(nomeBruto) : "";
 
-      // Procura primeiro pelo casamento exato de Prontuário Normalizado
-      const encontrado = itens.find((item) => {
+      // 1. Procura primeiro pelo casamento de Prontuário
+      let encontrado = itens.find((item) => {
         const itemPNorm = (
           item.prontuario_normalizado || normalizarProntuario(item.prontuario)
         ).toLowerCase();
         const itemPOriginal = (item.prontuario || "").toLowerCase();
+        const itemPDigits = (item.prontuario || "").replace(/\D/g, "");
 
         const matchPront =
           itemPNorm === pNorm ||
           itemPOriginal === pOriginal ||
-          itemPOriginal.replace(/^0+/, "") === pNorm;
+          itemPOriginal.replace(/^0+/, "") === pNorm ||
+          (pDigits && itemPDigits === pDigits);
 
         if (!matchPront) return false;
 
@@ -293,6 +300,19 @@ export default function TriagemEdtaPage() {
 
         return true;
       });
+
+      // 2. Fallback de alta precisão por Nome Completo se o prontuário sofreu distorção no OCR
+      if (!encontrado && nNorm && nNorm.length >= 5) {
+        encontrado = itens.find((item) => {
+          const itemNome = normalizarTexto(item.nome_paciente || "");
+          if (itemNome === nNorm) return true;
+          const partes = nNorm.split(/\s+/).filter((p) => p.length >= 3);
+          if (partes.length >= 2 && partes.every((p) => itemNome.includes(p))) {
+            return true;
+          }
+          return false;
+        });
+      }
 
       return encontrado || null;
     },
@@ -401,7 +421,13 @@ export default function TriagemEdtaPage() {
 
   // PROCESSAR LEITURA CONTÍNUA DA CÂMERA (OCR) OU FALLBACK MANUAL
   const processarIdentificacaoPaciente = useCallback(
-    (prontuarioBruto: string, dataNascBruta?: string) => {
+    (
+      prontuarioBruto: string,
+      dataNascBruta?: string,
+      medicoDetectado?: string,
+      nomeDetectado?: string,
+      cpfDetectado?: string
+    ) => {
       const prontLimpo = prontuarioBruto.trim();
       if (!prontLimpo) return;
 
@@ -419,15 +445,53 @@ export default function TriagemEdtaPage() {
       ultimoProntuarioProcessadoRef.current = prontNorm;
       ultimoHorarioProcessadoRef.current = agora;
 
-      const encontrado = buscarPacienteNaBase(prontLimpo, dataNascBruta);
+      const encontrado = buscarPacienteNaBase(prontLimpo, dataNascBruta, nomeDetectado);
 
       if (encontrado) {
+        if (cpfDetectado) {
+          setCpfDetectadoFolha(cpfDetectado);
+        } else {
+          setCpfDetectadoFolha("");
+        }
+
         const temGlicada =
           encontrado.tipo_destino === "hemograma_glicada" ||
           (encontrado.tem_hemograma && encontrado.tem_glicada);
         const ehApenasHemograma =
           encontrado.tipo_destino === "apenas_hemograma" ||
           (encontrado.tem_hemograma && !encontrado.tem_glicada);
+
+        // Seleção e destaque de médico solicitante (se detectado na folha pelo OCR)
+        let medFinalNome = "";
+        if (medicoDetectado && medicoDetectado.trim().length >= 3) {
+          const limpo = medicoDetectado.trim();
+          medFinalNome = limpo.toUpperCase().startsWith("DR") ? limpo : `Dr(a). ${limpo}`;
+          setMedicoSelecionado(medFinalNome);
+          setMedicoDetectadoFolha(medFinalNome);
+
+          if (!medicosCadastrados.some((m) => m.toLowerCase() === medFinalNome.toLowerCase())) {
+            const nova = [...medicosCadastrados, medFinalNome];
+            setMedicosCadastrados(nova);
+            adicionarMedico(medFinalNome);
+          }
+        } else {
+          setMedicoDetectadoFolha("");
+          const medExistente = encontrado.solicitante;
+          if (
+            medExistente &&
+            !medExistente.includes("Conecta") &&
+            !medExistente.includes("UBS") &&
+            medExistente !== "Dr(a). Clínico(a) Geral / UBS"
+          ) {
+            setMedicoSelecionado(medExistente);
+          } else if (medicoPadrao) {
+            setMedicoSelecionado(medicoPadrao);
+          } else if (medicosCadastrados.length > 0) {
+            setMedicoSelecionado(medicosCadastrados[0]);
+          } else {
+            setMedicoSelecionado("");
+          }
+        }
 
         // CASO A: PACIENTE COM GLICADA NO MODO RETER P/ AMANHÃ (AUTO-CONFIRMAÇÃO DIRETO P/ A GAVETA)
         if (temGlicada && modoGlicadaPlantao === "amanha" && bipagemContinuaAuto) {
@@ -478,23 +542,6 @@ export default function TriagemEdtaPage() {
           setColetadoDoisTubos(Boolean(encontrado.coletado_dois_tubos));
         }
 
-        // Seleção de médico solicitante
-        const medExistente = encontrado.solicitante;
-        if (
-          medExistente &&
-          !medExistente.includes("Conecta") &&
-          !medExistente.includes("UBS") &&
-          medExistente !== "Dr(a). Clínico(a) Geral / UBS"
-        ) {
-          setMedicoSelecionado(medExistente);
-        } else if (medicoPadrao) {
-          setMedicoSelecionado(medicoPadrao);
-        } else if (medicosCadastrados.length > 0) {
-          setMedicoSelecionado(medicosCadastrados[0]);
-        } else {
-          setMedicoSelecionado("");
-        }
-
         // FEEDBACK SONORO IMEDIATO CONFORME O CASO
         if (temGlicada) {
           tocarSomHemogramaGlicada();
@@ -523,7 +570,13 @@ export default function TriagemEdtaPage() {
   // Callback do OCR da Câmera
   const handleOcrDetectado = useCallback(
     (dados: DadosPacienteCapturados) => {
-      processarIdentificacaoPaciente(dados.prontuario, dados.dataNascimento);
+      processarIdentificacaoPaciente(
+        dados.prontuario,
+        dados.dataNascimento,
+        dados.medicoSolicitante,
+        dados.nomePaciente,
+        dados.cpf
+      );
     },
     [processarIdentificacaoPaciente]
   );
@@ -663,6 +716,8 @@ export default function TriagemEdtaPage() {
       // Limpa o card e reativa a câmera instantaneamente
       setTuboAtivo(null);
       setDataNascConferencia("");
+      setMedicoDetectadoFolha("");
+      setCpfDetectadoFolha("");
       setEditandoDataNasc(false);
       setManualProntuario("");
       setManualDataNasc("");
@@ -671,6 +726,16 @@ export default function TriagemEdtaPage() {
         manualProntRef.current.focus();
       }
     }
+  };
+
+  // CANCELAR / FECHAR O CARD DE CONFERÊNCIA SEM SALVAR
+  const fecharCardConferencia = () => {
+    setTuboAtivo(null);
+    setDataNascConferencia("");
+    setMedicoDetectadoFolha("");
+    setCpfDetectadoFolha("");
+    setEditandoDataNasc(false);
+    setScannerPausado(false);
   };
 
   // LIBERAR TUBO RETIDO DIRETAMENTE PARA O APOIO DE HOJE (1 CLIQUE)
@@ -951,37 +1016,44 @@ export default function TriagemEdtaPage() {
     }
   };
 
-  // BLOCO DE CONFERÊNCIA EM DESTAQUE (DATA DE NASCIMENTO MAIORZINHA & SELEÇÃO DE TUBOS VHS)
+  // BLOCO DE CONFERÊNCIA EM DESTAQUE (DATA DE NASCIMENTO MAIORZINHA, MÉDICO SOLICITANTE E TUBOS)
   const renderBlocoConferenciaPaciente = (tubo: ItemTriagemEdta) => (
     <div className="space-y-3">
-      {/* IDENTIFICAÇÃO DO PACIENTE */}
-      <div className="bg-black/25 border border-white/20 rounded-2xl p-3.5 space-y-1">
-        <p className="text-base sm:text-lg font-black text-white uppercase tracking-wide">
-          {tubo.nome_paciente}
-        </p>
-        <div className="flex items-center gap-2 text-xs text-white/80">
-          <span>
-            Prontuário de busca: <strong className="text-white font-mono font-bold">#{tubo.prontuario}</strong>
-          </span>
+      {/* IDENTIFICAÇÃO DO PACIENTE (CONFORME FOLHA DE AGENDAMENTO) */}
+      <div className="bg-black/25 border border-white/20 rounded-2xl p-3 sm:p-3.5 space-y-1.5">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-base sm:text-xl font-black text-white uppercase tracking-wide leading-tight">
+            {tubo.nome_paciente}
+          </p>
           {tubo.urgencia && (
-            <span className="bg-rose-500 text-white font-black text-[10px] px-2 py-0.5 rounded-full uppercase">
-              Urgência
+            <span className="bg-rose-600 text-white font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase shrink-0 border border-rose-400 animate-pulse">
+              🚨 Urgência
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/90">
+          <span>
+            Prontuário: <strong className="text-amber-300 font-mono font-bold text-sm">#{tubo.prontuario}</strong>
+          </span>
+          {cpfDetectadoFolha && (
+            <span>
+              CPF: <strong className="text-white font-mono font-bold">{cpfDetectadoFolha}</strong>
             </span>
           )}
         </div>
       </div>
 
-      {/* CONFERÊNCIA VISUAL DA DATA DE NASCIMENTO (EM DESTAQUE PARA BATER O OLHO) */}
-      <div className="bg-black/35 border-2 border-amber-400 rounded-2xl p-3.5 shadow-md space-y-2">
+      {/* CONFERÊNCIA VISUAL DA DATA DE NASCIMENTO (EM DESTAQUE PARA BATER O OLHO NO CELULAR) */}
+      <div className="bg-black/35 border-2 border-amber-400 rounded-2xl p-3 sm:p-3.5 shadow-md space-y-2">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
-            <Calendar className="w-4 h-4 text-amber-300" />
+            <Calendar className="w-4 h-4 text-amber-300 shrink-0" />
             Data de Nascimento (Identificador Apoio)
           </span>
           <button
             type="button"
             onClick={() => setEditandoDataNasc(!editandoDataNasc)}
-            className="text-[11px] font-bold text-amber-200 hover:text-white underline cursor-pointer bg-white/10 px-2 py-0.5 rounded"
+            className="text-[10.5px] font-bold text-amber-200 hover:text-white underline cursor-pointer bg-white/10 px-2 py-0.5 rounded"
           >
             {editandoDataNasc ? "Cancelar" : "✏️ Ajustar data"}
           </button>
@@ -1017,6 +1089,34 @@ export default function TriagemEdtaPage() {
             </span>
           </div>
         )}
+      </div>
+
+      {/* PROFISSIONAL SOLICITANTE / MÉDICO (IDENTIFICADO NA FOLHA PELO OCR OU SELECIONADO) */}
+      <div className="bg-black/35 border-2 border-emerald-400/80 rounded-2xl p-3 sm:p-3.5 shadow-md space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+            <Stethoscope className="w-4 h-4 text-emerald-300 shrink-0" />
+            Profissional Solicitante (Médico)
+          </span>
+          <button
+            type="button"
+            onClick={() => setMostrarModalMedicos(true)}
+            className="text-[10.5px] font-bold text-emerald-200 hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-0.5 rounded-lg cursor-pointer transition flex items-center gap-1 border border-emerald-400/30"
+          >
+            <span>🔄 Trocar</span>
+          </button>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pt-0.5">
+          <p className="text-base sm:text-lg font-black text-white uppercase tracking-wide truncate">
+            {medicoSelecionado || tubo.solicitante || "Dr(a). Clínico(a) Geral / UBS"}
+          </p>
+          {medicoDetectadoFolha && (
+            <span className="self-start sm:self-auto bg-emerald-500/30 text-emerald-200 border border-emerald-400/50 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-tight flex items-center gap-1 shadow-2xs">
+              ✨ Lido da Folha
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ALERTA SE O PACIENTE FOR UM TUBO RETIDO DE DIA ANTERIOR */}
@@ -1565,22 +1665,33 @@ export default function TriagemEdtaPage() {
           {tuboAtivo &&
             (tuboAtivo.tipo_destino === "hemograma_glicada" ||
               (tuboAtivo.tem_hemograma && tuboAtivo.tem_glicada)) && (
-              <div className="bg-purple-700 text-white rounded-3xl p-5 shadow-2xl border-4 border-purple-400 animate-in zoom-in-95 duration-150 space-y-4">
-                <div className="flex items-center gap-2">
-                  <span className="p-2 rounded-xl bg-purple-900/60 border border-purple-400/50">
-                    <AlertTriangle className="w-7 h-7 text-amber-300 animate-bounce" />
-                  </span>
-                  <div>
-                    <h2 className="text-base sm:text-lg font-black tracking-tight uppercase leading-tight">
-                      ⚠️ TEM GLICADA (HbA1c) — FRACIONAR 500 µL
-                    </h2>
-                    <p className="text-xs text-purple-200 font-semibold">
-                      Amostra com dupla destinação: Alíquota local + Tubo integral ao apoio
-                    </p>
+              <div className="bg-purple-700 text-white rounded-3xl p-4 sm:p-5 shadow-2xl border-4 border-purple-400 animate-in zoom-in-95 duration-150 space-y-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 rounded-xl bg-purple-900/60 border border-purple-400/50 shrink-0">
+                      <AlertTriangle className="w-6 h-6 sm:w-7 sm:h-7 text-amber-300 animate-bounce" />
+                    </span>
+                    <div>
+                      <h2 className="text-sm sm:text-lg font-black tracking-tight uppercase leading-tight">
+                        ⚠️ TEM GLICADA (HbA1c) — FRACIONAR 500 µL
+                      </h2>
+                      <p className="text-[11px] sm:text-xs text-purple-200 font-semibold">
+                        Dupla destinação: Alíquota local + Tubo integral ao apoio
+                      </p>
+                    </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={fecharCardConferencia}
+                    className="p-1.5 text-purple-200 hover:text-white bg-purple-900/40 hover:bg-purple-900/70 rounded-xl transition cursor-pointer shrink-0"
+                    title="Fechar sem salvar"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
 
-                {/* BLOCO DE CONFERÊNCIA: DATA DE NASCIMENTO EM DESTAQUE E MARCAÇÃO DE 2 TUBOS */}
+                {/* BLOCO DE CONFERÊNCIA: PACIENTE, DATA DE NASCIMENTO, MÉDICO E TUBOS */}
                 {renderBlocoConferenciaPaciente(tuboAtivo)}
 
                 <div
@@ -1615,53 +1726,48 @@ export default function TriagemEdtaPage() {
                   </p>
                 </div>
 
-                {/* SELEÇÃO DO MÉDICO SOLICITANTE */}
-                <div className="bg-purple-900/60 p-2.5 rounded-xl border border-purple-500/40 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 text-xs text-purple-200 truncate">
-                    <Stethoscope className="w-3.5 h-3.5 text-purple-300 shrink-0" />
-                    <span className="truncate">Médico: {medicoSelecionado || "Não selecionado"}</span>
-                  </div>
+                {/* BOTÕES DE CONFIRMAÇÃO E CANCELAMENTO */}
+                <div className="space-y-2 pt-1">
+                  {!enviarHemogramaHoje ? (
+                    <button
+                      type="button"
+                      disabled={isSyncing}
+                      onClick={confirmarAcaoTubo}
+                      className="w-full py-4 px-6 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer border-2 border-amber-300"
+                    >
+                      <Clock className="w-6 h-6 stroke-[2.5]" />
+                      <span>[ 📦 Tubo Retido na Gradinha (Mandar Outro Dia) ]</span>
+                    </button>
+                  ) : tuboAtivo.status === "retido_envio_posterior" ? (
+                    <button
+                      type="button"
+                      disabled={isSyncing}
+                      onClick={confirmarAcaoTubo}
+                      className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Check className="w-6 h-6 stroke-[3]" />
+                      <span>[ 🚀 Liberar Tubo Retido p/ Apoio de Hoje ]</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={isSyncing}
+                      onClick={confirmarAcaoTubo}
+                      className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Check className="w-6 h-6 stroke-[3]" />
+                      <span>[ ✓ Fracionado & Tubo na Grade de Hoje ]</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
-                    onClick={() => setMostrarModalMedicos(true)}
-                    className="text-[11px] font-bold bg-white text-purple-900 px-2 py-0.5 rounded-md shrink-0 shadow-2xs hover:bg-purple-50"
+                    onClick={fecharCardConferencia}
+                    className="w-full py-2.5 text-purple-200 hover:text-white text-xs font-bold transition text-center cursor-pointer"
                   >
-                    Alterar
+                    ✕ Cancelar conferência e voltar à câmera
                   </button>
                 </div>
-
-                {/* BOTÃO DE CONFIRMAÇÃO DINÂMICO CONFORME A ESCOLHA DE ENVIO */}
-                {!enviarHemogramaHoje ? (
-                  <button
-                    type="button"
-                    disabled={isSyncing}
-                    onClick={confirmarAcaoTubo}
-                    className="w-full py-4 px-6 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer border-2 border-amber-300"
-                  >
-                    <Clock className="w-6 h-6 stroke-[2.5]" />
-                    <span>[ 📦 Tubo Retido na Gradinha (Mandar Outro Dia) ]</span>
-                  </button>
-                ) : tuboAtivo.status === "retido_envio_posterior" ? (
-                  <button
-                    type="button"
-                    disabled={isSyncing}
-                    onClick={confirmarAcaoTubo}
-                    className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <Check className="w-6 h-6 stroke-[3]" />
-                    <span>[ 🚀 Liberar Tubo Retido p/ Apoio de Hoje ]</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={isSyncing}
-                    onClick={confirmarAcaoTubo}
-                    className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <Check className="w-6 h-6 stroke-[3]" />
-                    <span>[ ✓ Fracionado & Tubo na Grade de Hoje ]</span>
-                  </button>
-                )}
               </div>
             )}
 
@@ -1669,22 +1775,33 @@ export default function TriagemEdtaPage() {
           {tuboAtivo &&
             (tuboAtivo.tipo_destino === "apenas_hemograma" ||
               (tuboAtivo.tem_hemograma && !tuboAtivo.tem_glicada)) && (
-              <div className="bg-blue-700 text-white rounded-3xl p-5 shadow-2xl border-4 border-blue-400 animate-in zoom-in-95 duration-150 space-y-4">
-                <div className="flex items-center gap-2">
-                  <span className="p-2 rounded-xl bg-blue-900/60 border border-blue-400/50">
-                    <CheckCircle2 className="w-7 h-7 text-sky-300" />
-                  </span>
-                  <div>
-                    <h2 className="text-base sm:text-lg font-black tracking-tight uppercase leading-tight">
-                      📦 APENAS HEMOGRAMA — DIRETO PRO APOIO
-                    </h2>
-                    <p className="text-xs text-blue-200 font-semibold">
-                      Não necessita de pipetagem local • Envio integral
-                    </p>
+              <div className="bg-blue-700 text-white rounded-3xl p-4 sm:p-5 shadow-2xl border-4 border-blue-400 animate-in zoom-in-95 duration-150 space-y-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 rounded-xl bg-blue-900/60 border border-blue-400/50 shrink-0">
+                      <CheckCircle2 className="w-6 h-6 sm:w-7 sm:h-7 text-sky-300" />
+                    </span>
+                    <div>
+                      <h2 className="text-sm sm:text-lg font-black tracking-tight uppercase leading-tight">
+                        📦 APENAS HEMOGRAMA — DIRETO PRO APOIO
+                      </h2>
+                      <p className="text-[11px] sm:text-xs text-blue-200 font-semibold">
+                        Não necessita de pipetagem local • Envio integral
+                      </p>
+                    </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={fecharCardConferencia}
+                    className="p-1.5 text-blue-200 hover:text-white bg-blue-900/40 hover:bg-blue-900/70 rounded-xl transition cursor-pointer shrink-0"
+                    title="Fechar sem salvar"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
 
-                {/* BLOCO DE CONFERÊNCIA: DATA DE NASCIMENTO EM DESTAQUE E MARCAÇÃO DE 2 TUBOS */}
+                {/* BLOCO DE CONFERÊNCIA: PACIENTE, DATA DE NASCIMENTO, MÉDICO E TUBOS */}
                 {renderBlocoConferenciaPaciente(tuboAtivo)}
 
                 <div className="bg-blue-800/80 border border-blue-400/40 rounded-xl p-3 text-xs text-blue-100">
@@ -1692,52 +1809,58 @@ export default function TriagemEdtaPage() {
                   <p className="leading-relaxed">Colocar tubo integral na grade do Apoio.</p>
                 </div>
 
-                {/* SELEÇÃO DO MÉDICO SOLICITANTE */}
-                <div className="bg-blue-900/60 p-2.5 rounded-xl border border-blue-500/40 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 text-xs text-blue-200 truncate">
-                    <Stethoscope className="w-3.5 h-3.5 text-blue-300 shrink-0" />
-                    <span className="truncate">Médico: {medicoSelecionado || "Não selecionado"}</span>
-                  </div>
+                {/* BOTÕES DE CONFIRMAÇÃO E CANCELAMENTO */}
+                <div className="space-y-2 pt-1">
                   <button
                     type="button"
-                    onClick={() => setMostrarModalMedicos(true)}
-                    className="text-[11px] font-bold bg-white text-blue-900 px-2 py-0.5 rounded-md shrink-0 shadow-2xs hover:bg-blue-50"
+                    disabled={isSyncing}
+                    onClick={confirmarAcaoTubo}
+                    className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    Alterar
+                    <Check className="w-6 h-6 stroke-[3]" />
+                    <span>[ ✓ Tubo na Grade do Apoio ]</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={fecharCardConferencia}
+                    className="w-full py-2.5 text-blue-200 hover:text-white text-xs font-bold transition text-center cursor-pointer"
+                  >
+                    ✕ Cancelar conferência e voltar à câmera
                   </button>
                 </div>
-
-                {/* BOTÃO VERDE GRANDE: [ ✓ Tubo na Grade do Apoio ] */}
-                <button
-                  type="button"
-                  disabled={isSyncing}
-                  onClick={confirmarAcaoTubo}
-                  className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Check className="w-6 h-6 stroke-[3]" />
-                  <span>[ ✓ Tubo na Grade do Apoio ]</span>
-                </button>
               </div>
             )}
 
           {/* CASO EXTRA: APENAS GLICADA (Bancada Local) */}
           {tuboAtivo && tuboAtivo.tipo_destino === "apenas_glicada" && (
-            <div className="bg-amber-600 text-white rounded-3xl p-5 shadow-2xl border-4 border-amber-300 animate-in zoom-in-95 duration-150 space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="p-2 rounded-xl bg-amber-800/60 border border-amber-300/50">
-                  <FlaskConical className="w-7 h-7 text-amber-200" />
-                </span>
-                <div>
-                  <h2 className="text-base sm:text-lg font-black tracking-tight uppercase leading-tight">
-                    🧪 APENAS GLICADA (HbA1c) — BANCADA LOCAL
-                  </h2>
-                  <p className="text-xs text-amber-100 font-semibold">
-                    Tubo não vai ao apoio • Dosagem interna
-                  </p>
+            <div className="bg-amber-600 text-white rounded-3xl p-4 sm:p-5 shadow-2xl border-4 border-amber-300 animate-in zoom-in-95 duration-150 space-y-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="p-2 rounded-xl bg-amber-800/60 border border-amber-300/50 shrink-0">
+                    <FlaskConical className="w-6 h-6 sm:w-7 sm:h-7 text-amber-200" />
+                  </span>
+                  <div>
+                    <h2 className="text-sm sm:text-lg font-black tracking-tight uppercase leading-tight">
+                      🧪 APENAS GLICADA (HbA1c) — BANCADA LOCAL
+                    </h2>
+                    <p className="text-[11px] sm:text-xs text-amber-100 font-semibold">
+                      Tubo não vai ao apoio • Dosagem interna
+                    </p>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={fecharCardConferencia}
+                  className="p-1.5 text-amber-200 hover:text-white bg-amber-900/40 hover:bg-amber-900/70 rounded-xl transition cursor-pointer shrink-0"
+                  title="Fechar sem salvar"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* BLOCO DE CONFERÊNCIA: DATA DE NASCIMENTO EM DESTAQUE E MARCAÇÃO DE 2 TUBOS */}
+              {/* BLOCO DE CONFERÊNCIA: PACIENTE, DATA DE NASCIMENTO, MÉDICO E TUBOS */}
               {renderBlocoConferenciaPaciente(tuboAtivo)}
 
               <div className="bg-amber-700/80 border border-amber-400/40 rounded-xl p-3 text-xs text-amber-100">
@@ -1747,15 +1870,26 @@ export default function TriagemEdtaPage() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                disabled={isSyncing}
-                onClick={confirmarAcaoTubo}
-                className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Check className="w-6 h-6 stroke-[3]" />
-                <span>[ ✓ Tubo na Bancada Local ]</span>
-              </button>
+              {/* BOTÕES DE CONFIRMAÇÃO E CANCELAMENTO */}
+              <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  disabled={isSyncing}
+                  onClick={confirmarAcaoTubo}
+                  className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Check className="w-6 h-6 stroke-[3]" />
+                  <span>[ ✓ Tubo na Bancada Local ]</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={fecharCardConferencia}
+                  className="w-full py-2.5 text-amber-200 hover:text-white text-xs font-bold transition text-center cursor-pointer"
+                >
+                  ✕ Cancelar conferência e voltar à câmera
+                </button>
+              </div>
             </div>
           )}
 

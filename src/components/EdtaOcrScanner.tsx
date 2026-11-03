@@ -9,6 +9,9 @@ export interface DadosPacienteCapturados {
   prontuarioOriginal: string; // com zeros ou como veio (ex: "0024087")
   dataNascimento: string; // DD/MM/AAAA
   dataNascimentoDigitos: string; // 8 dígitos (ex: "23122025")
+  medicoSolicitante?: string; // Nome do médico capturado na folha
+  nomePaciente?: string; // Nome do paciente capturado na folha
+  cpf?: string; // CPF capturado na folha
   textoCompleto: string;
 }
 
@@ -59,7 +62,7 @@ export const EdtaOcrScanner: React.FC<EdtaOcrScannerProps> = ({
 
         // Parâmetros para velocidade máxima focando em documentos laboratoriais
         await worker.setParameters({
-          tessedit_char_whitelist: "0123456789/.-:ABCDEFGHIJLKMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ",
+          tessedit_char_whitelist: "0123456789/.-:(),#ABCDEFGHIJLKMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÀÃÂÉÊÍÓÔÕÚÇáàãâéêíóôõúç ",
         });
 
         tesseractWorkerRef.current = worker;
@@ -71,7 +74,7 @@ export const EdtaOcrScanner: React.FC<EdtaOcrScannerProps> = ({
           const { createWorker } = await import("tesseract.js");
           const worker = await createWorker("eng");
           await worker.setParameters({
-            tessedit_char_whitelist: "0123456789/.-:ABCDEFGHIJLKMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ",
+            tessedit_char_whitelist: "0123456789/.-:(),#ABCDEFGHIJLKMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÀÃÂÉÊÍÓÔÕÚÇáàãâéêíóôõúç ",
           });
           if (montado) {
             tesseractWorkerRef.current = worker;
@@ -237,11 +240,58 @@ export const EdtaOcrScanner: React.FC<EdtaOcrScannerProps> = ({
         }
       }
 
+      // 3. EXTRAÇÃO DO PROFISSIONAL SOLICITANTE / MÉDICO
+      let medicoSolicitante = "";
+      const matchMedico = texto.match(
+        /(?:profissional\s*solicitante|solicitante|m[eé]dico(?:\(a\))?|dr[a]?\.?)\s*[:\.\s#]*([A-Za-zÀ-ÿ\.\s]{3,50})/i
+      );
+      if (matchMedico && matchMedico[1]) {
+        const linha = matchMedico[1].split(/[\r\n]/)[0].trim();
+        const limpo = linha
+          .replace(/(?:c[oó]digo|crm|data|procedimento|exame|obs|pedido|dados).*$/i, "")
+          .replace(/^[:\.\s-]+/, "")
+          .trim();
+        if (
+          limpo.length >= 3 &&
+          !limpo.toLowerCase().includes("dados do pedido") &&
+          !limpo.toLowerCase().includes("dados do agendamento")
+        ) {
+          medicoSolicitante = limpo.toUpperCase();
+        }
+      }
+
+      // 4. EXTRAÇÃO DO NOME DO PACIENTE
+      let nomePaciente = "";
+      const matchPaciente = texto.match(
+        /(?:paciente|nome(?:\s*do\s*paciente)?)\s*[:\.\s#]*([A-Za-zÀ-ÿ\s]{4,50})/i
+      );
+      if (matchPaciente && matchPaciente[1]) {
+        const linha = matchPaciente[1].split(/[\r\n]/)[0].trim();
+        const limpo = linha
+          .replace(/(?:prontu[aá]rio|cpf|nasc|data|sexo|m[aã]e|dados).*$/i, "")
+          .trim();
+        if (limpo.length >= 4 && !limpo.toLowerCase().includes("dados do")) {
+          nomePaciente = limpo.toUpperCase();
+        }
+      }
+
+      // 5. EXTRAÇÃO DE CPF
+      let cpfDetectado = "";
+      const matchCpf = texto.match(
+        /(?:cpf)\s*[:\.\s#]*([0-9]{3}[\.\s]?[0-9]{3}[\.\s]?[0-9]{3}[-\s]?[0-9]{2})/i
+      );
+      if (matchCpf && matchCpf[1]) {
+        cpfDetectado = matchCpf[1].trim();
+      }
+
       return {
         prontuario: prontuarioNorm,
         prontuarioOriginal,
         dataNascimento: dataNascFormatada,
         dataNascimentoDigitos: dataNascDigitos,
+        medicoSolicitante,
+        nomePaciente,
+        cpf: cpfDetectado,
         textoCompleto: texto,
       };
     },
