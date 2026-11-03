@@ -86,7 +86,8 @@ export async function POST(request: NextRequest) {
 
     if (acao === "solicitar_impressao") {
       const horaEncerramento = body.horaEncerramento;
-      const sinal = emitirSinalImpressaoEdta(horaEncerramento);
+      const tipoGuia = body.tipoGuia || "ambas";
+      const sinal = emitirSinalImpressaoEdta(horaEncerramento, tipoGuia);
       return NextResponse.json({
         ok: true,
         message: "Sinal de impressão enviado para a tela do PC!",

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { ModalSelecionarOperador } from "@/components/ModalSelecionarOperador";
-import { ModalControleEstoque } from "@/components/ModalControleEstoque";
 import {
   obterOperadorAtivo,
   sincronizarOperadoresComServidor,
@@ -58,7 +57,6 @@ export const Navbar: React.FC = () => {
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [operadorAtivo, setOperadorAtivo] = useState<string>("");
   const [modalOperadorAberto, setModalOperadorAberto] = useState<boolean>(false);
-  const [modalEstoqueAberto, setModalEstoqueAberto] = useState<boolean>(false);
   const [drawerMobileAberto, setDrawerMobileAberto] = useState<boolean>(false);
   const [sidebarCompacta, setSidebarCompacta] = useState<boolean>(false);
 
@@ -198,21 +196,6 @@ export const Navbar: React.FC = () => {
       ],
     },
     {
-      titulo: "Materiais & Estoque",
-      itens: [
-        {
-          id: "estoque",
-          onClick: () => setModalEstoqueAberto(true),
-          label: "Controle de Insumos",
-          sublabel: "Tubos EDTA, Tiras & Frascos",
-          icon: Boxes,
-          badge: "Bancada",
-          color: "text-amber-700",
-          activeBg: "bg-amber-50 text-amber-950 border-amber-300 font-black",
-        },
-      ],
-    },
-    {
       titulo: "Sistema & Nuvem",
       itens: [
         {
@@ -252,11 +235,6 @@ export const Navbar: React.FC = () => {
       <ModalSelecionarOperador
         aberto={modalOperadorAberto}
         onFechar={() => setModalOperadorAberto(false)}
-      />
-
-      <ModalControleEstoque
-        aberto={modalEstoqueAberto}
-        onFechar={() => setModalEstoqueAberto(false)}
       />
 
       {/* ========================================================================= */}

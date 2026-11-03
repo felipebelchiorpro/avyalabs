@@ -89,6 +89,13 @@ export default function TriagemEdtaPage() {
   // Controle de Envio de Hemograma: HOJE vs OUTRO DIA (Retido por alto volume de glicadas)
   const [enviarHemogramaHoje, setEnviarHemogramaHoje] = useState<boolean>(true);
   const [gavetaRetidosAberta, setGavetaRetidosAberta] = useState<boolean>(true);
+  const gavetaRetidosRef = useRef<HTMLDivElement>(null);
+
+  // BOTÕES GLOBAIS DE MODO DO PLANTÃO (Evita clicar na tela a cada folha)
+  const [modoGlicadaPlantao, setModoGlicadaPlantao] = useState<"hoje" | "amanha">("amanha");
+  const [modoVhsPlantao, setModoVhsPlantao] = useState<"dois_tubos" | "tubo_unico">("dois_tubos");
+  const [bipagemContinuaAuto, setBipagemContinuaAuto] = useState<boolean>(true);
+  const [tipoGuiaImpressao, setTipoGuiaImpressao] = useState<"apoio" | "laboratorio" | "ambas">("ambas");
 
   // CASO 3: Toast rápido e discreto (1.5 segundos) para folhas sem EDTA
   const [toastSemEdta, setToastSemEdta] = useState<string | null>(null);
@@ -134,6 +141,20 @@ export default function TriagemEdtaPage() {
       } catch (e) {
         console.error(e);
       }
+    }
+
+    // Carregar modo do plantão pré-configurado da bancada
+    const modoGlicadaSalvo = localStorage.getItem("edta_modo_glicada");
+    if (modoGlicadaSalvo === "hoje" || modoGlicadaSalvo === "amanha") {
+      setModoGlicadaPlantao(modoGlicadaSalvo);
+    }
+    const modoVhsSalvo = localStorage.getItem("edta_modo_vhs");
+    if (modoVhsSalvo === "dois_tubos" || modoVhsSalvo === "tubo_unico") {
+      setModoVhsPlantao(modoVhsSalvo);
+    }
+    const bipagemContinuaSalva = localStorage.getItem("edta_bipagem_continua_auto");
+    if (bipagemContinuaSalva !== null) {
+      setBipagemContinuaAuto(bipagemContinuaSalva === "true");
     }
 
     // Carregar Médicos e Operadores
@@ -204,6 +225,9 @@ export default function TriagemEdtaPage() {
           lastSignalTimeRef.current = timestamp;
           if (data.sinalImpressao.horaEncerramento) {
             setHoraEncerramento(data.sinalImpressao.horaEncerramento);
+          }
+          if (data.sinalImpressao.tipoGuia) {
+            setTipoGuiaImpressao(data.sinalImpressao.tipoGuia);
           }
 
           // Resetar sinal no servidor
@@ -287,6 +311,94 @@ export default function TriagemEdtaPage() {
     }, 1500);
   }, []);
 
+  // SALVAR ITEM AUTOMATICAMENTE NO MODO DE BIPAGEM CONTÍNUA SEM TRAVAR A TELA
+  const salvarItemEdtaAutomatico = useCallback(
+    async (
+      item: ItemTriagemEdta,
+      statusNovo: "pronto_grade" | "retido_envio_posterior",
+      vaiEnviarHoje: boolean,
+      dataNascDetectada?: string
+    ) => {
+      const agora = new Date().toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      const hojeIso = new Date().toISOString().split("T")[0];
+      const dnFinal = formatarDataNascimento((dataNascDetectada || item.data_nascimento || "").trim());
+      const dnDigitos = normalizarDigitosData(dnFinal);
+      const temDoisTubos =
+        modoVhsPlantao === "dois_tubos" || Boolean(item.coletado_dois_tubos);
+
+      const itemAtualizado: ItemTriagemEdta = {
+        ...item,
+        data_nascimento: dnFinal,
+        data_nascimento_digitos: dnDigitos,
+        status: statusNovo,
+        fracionado_glicada: statusNovo === "pronto_grade",
+        colocado_grade: vaiEnviarHoje,
+        enviar_hemograma_hoje: vaiEnviarHoje,
+        data_liberacao_apoio: vaiEnviarHoje ? hojeIso : undefined,
+        horario_bipado: agora,
+        coletado_dois_tubos: temDoisTubos,
+        qtd_tubos_coletados: temDoisTubos ? 2 : 1,
+      };
+
+      // Atualização otimista no estado local imediata
+      setItens((prev) =>
+        prev.map((i) =>
+          i.prontuario === item.prontuario ||
+          (i.prontuario_normalizado &&
+            i.prontuario_normalizado === item.prontuario_normalizado)
+            ? itemAtualizado
+            : i
+        )
+      );
+
+      // Notificação flutuante de sucesso
+      if (statusNovo === "retido_envio_posterior") {
+        setMensagemSucesso({
+          titulo: `📦 ${item.nome_paciente} (#${item.prontuario})`,
+          subtitulo: `HbA1c enviada automaticamente para a Gaveta de Retidos (Envio amanhã)`,
+        });
+      } else {
+        setMensagemSucesso({
+          titulo: `✓ ${item.nome_paciente} (#${item.prontuario})`,
+          subtitulo: `Hemograma confirmado na Grade do Apoio de hoje!`,
+        });
+      }
+      setTimeout(() => setMensagemSucesso(null), 2500);
+
+      // Persistência assíncrona no backend
+      try {
+        await fetch("/api/triagem-edta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            acao: "atualizar_item",
+            prontuario: item.prontuario,
+            updates: {
+              nome_paciente: item.nome_paciente,
+              data_nascimento: dnFinal,
+              data_nascimento_digitos: dnDigitos,
+              status: statusNovo,
+              fracionado_glicada: statusNovo === "pronto_grade",
+              colocado_grade: vaiEnviarHoje,
+              enviar_hemograma_hoje: vaiEnviarHoje,
+              data_liberacao_apoio: vaiEnviarHoje ? hojeIso : undefined,
+              horario_bipado: agora,
+              coletado_dois_tubos: temDoisTubos,
+              qtd_tubos_coletados: temDoisTubos ? 2 : 1,
+            },
+          }),
+        });
+      } catch (e) {
+        console.warn("Aviso ao auto-salvar item EDTA:", e);
+      }
+    },
+    [modoVhsPlantao]
+  );
+
   // PROCESSAR LEITURA CONTÍNUA DA CÂMERA (OCR) OU FALLBACK MANUAL
   const processarIdentificacaoPaciente = useCallback(
     (prontuarioBruto: string, dataNascBruta?: string) => {
@@ -310,7 +422,32 @@ export default function TriagemEdtaPage() {
       const encontrado = buscarPacienteNaBase(prontLimpo, dataNascBruta);
 
       if (encontrado) {
-        // Pausa momentânea na câmera para foco na ação do tubo
+        const temGlicada =
+          encontrado.tipo_destino === "hemograma_glicada" ||
+          (encontrado.tem_hemograma && encontrado.tem_glicada);
+        const ehApenasHemograma =
+          encontrado.tipo_destino === "apenas_hemograma" ||
+          (encontrado.tem_hemograma && !encontrado.tem_glicada);
+
+        // CASO A: PACIENTE COM GLICADA NO MODO RETER P/ AMANHÃ (AUTO-CONFIRMAÇÃO DIRETO P/ A GAVETA)
+        if (temGlicada && modoGlicadaPlantao === "amanha" && bipagemContinuaAuto) {
+          tocarSomHemogramaGlicada();
+          salvarItemEdtaAutomatico(encontrado, "retido_envio_posterior", false, dataNascBruta);
+          setManualProntuario("");
+          setManualDataNasc("");
+          return;
+        }
+
+        // CASO B: PACIENTE COM APENAS HEMOGRAMA NO MODO CONTÍNUO (AUTO-CONFIRMAÇÃO DIRETO P/ O APOIO)
+        if (ehApenasHemograma && bipagemContinuaAuto) {
+          tocarSomApenasHemograma();
+          salvarItemEdtaAutomatico(encontrado, "pronto_grade", true, dataNascBruta);
+          setManualProntuario("");
+          setManualDataNasc("");
+          return;
+        }
+
+        // CASO C: ABERTURA DO CARD DE AÇÃO PARA CONFERÊNCIA MANUAL
         setScannerPausado(true);
         setTuboAtivo(encontrado);
         setIsUrgente(Boolean(encontrado.urgencia));
@@ -320,7 +457,11 @@ export default function TriagemEdtaPage() {
         if (encontrado.status === "retido_envio_posterior") {
           setEnviarHemogramaHoje(true);
         } else {
-          setEnviarHemogramaHoje(encontrado.enviar_hemograma_hoje !== false);
+          setEnviarHemogramaHoje(
+            modoGlicadaPlantao === "amanha" && temGlicada
+              ? false
+              : encontrado.enviar_hemograma_hoje !== false
+          );
         }
 
         // Data de nascimento capturada via OCR/manual ou já existente na planilha
@@ -332,7 +473,7 @@ export default function TriagemEdtaPage() {
 
         // Se o paciente tem VHS ou se já foi registrado status de 2 tubos
         if (encontrado.tem_vhs) {
-          setColetadoDoisTubos(encontrado.coletado_dois_tubos !== false);
+          setColetadoDoisTubos(modoVhsPlantao === "dois_tubos");
         } else {
           setColetadoDoisTubos(Boolean(encontrado.coletado_dois_tubos));
         }
@@ -355,29 +496,28 @@ export default function TriagemEdtaPage() {
         }
 
         // FEEDBACK SONORO IMEDIATO CONFORME O CASO
-        if (
-          encontrado.tipo_destino === "hemograma_glicada" ||
-          (encontrado.tem_hemograma && encontrado.tem_glicada)
-        ) {
-          // CASO 1: Beep sonoro duplo (agudo)
+        if (temGlicada) {
           tocarSomHemogramaGlicada();
-        } else if (
-          encontrado.tipo_destino === "apenas_hemograma" ||
-          (encontrado.tem_hemograma && !encontrado.tem_glicada)
-        ) {
-          // CASO 2: Beep sonoro simples
+        } else if (ehApenasHemograma) {
           tocarSomApenasHemograma();
         } else if (encontrado.tipo_destino === "apenas_glicada") {
           tocarSomApenasGlicada();
         }
       } else {
         // CASO 3: FOLHA SEM EDTA / NÃO LOCALIZADA (Urina, Fezes, Bioquímica)
-        // NÃO exibir alert(), NÃO abrir pop-up e NÃO travar o scanner.
-        // O scanner CONTINUA rodando sem parar para a próxima folha da pilha!
         exibirToastSemEdta("ℹ️ Sem exames de EDTA (Avançar folha)");
       }
     },
-    [buscarPacienteNaBase, exibirToastSemEdta, medicoPadrao, medicosCadastrados]
+    [
+      buscarPacienteNaBase,
+      exibirToastSemEdta,
+      medicoPadrao,
+      medicosCadastrados,
+      modoGlicadaPlantao,
+      modoVhsPlantao,
+      bipagemContinuaAuto,
+      salvarItemEdtaAutomatico,
+    ]
   );
 
   // Callback do OCR da Câmera
@@ -446,7 +586,7 @@ export default function TriagemEdtaPage() {
     const medicoFinal =
       medicoSelecionado.trim() || tuboAtivo.solicitante || "Dr(a). Clínico(a) Geral / UBS";
 
-    const dataNascFinal = (dataNascConferencia || tuboAtivo.data_nascimento || "").trim();
+    const dataNascFinal = formatarDataNascimento((dataNascConferencia || tuboAtivo.data_nascimento || "").trim());
     const dataNascDigitos = normalizarDigitosData(dataNascFinal);
 
     const itemAtualizado: ItemTriagemEdta = {
@@ -485,6 +625,7 @@ export default function TriagemEdtaPage() {
           acao: "atualizar_item",
           prontuario: tuboAtivo.prontuario,
           updates: {
+            nome_paciente: tuboAtivo.nome_paciente,
             data_nascimento: dataNascFinal,
             data_nascimento_digitos: dataNascDigitos,
             status: novoStatus,
@@ -571,6 +712,8 @@ export default function TriagemEdtaPage() {
           acao: "atualizar_item",
           prontuario: itemRetido.prontuario,
           updates: {
+            nome_paciente: itemRetido.nome_paciente,
+            data_nascimento: itemRetido.data_nascimento,
             status: "pronto_grade",
             colocado_grade: true,
             enviar_hemograma_hoje: true,
@@ -587,6 +730,79 @@ export default function TriagemEdtaPage() {
       setTimeout(() => setMensagemSucesso(null), 3000);
     } catch (e) {
       console.warn("Aviso ao liberar tubo retido:", e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // DESPACHAR TODOS OS TUBOS RETIDOS EM LOTE PARA O APOIO DE HOJE
+  const liberarTodosRetidosHoje = async () => {
+    const retidos = itens.filter(
+      (i) =>
+        i.status === "retido_envio_posterior" ||
+        (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada")
+    );
+    if (retidos.length === 0) return;
+
+    tocarSomConfirmado();
+    setIsSyncing(true);
+
+    const agora = new Date().toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    const hojeIso = new Date().toISOString().split("T")[0];
+
+    const prontuariosRetidos = new Set(
+      retidos.map((r) => (r.prontuario_normalizado || normalizarProntuario(r.prontuario)).toLowerCase())
+    );
+
+    setItens((prev) =>
+      prev.map((i) => {
+        const chave = (i.prontuario_normalizado || normalizarProntuario(i.prontuario)).toLowerCase();
+        if (prontuariosRetidos.has(chave)) {
+          return {
+            ...i,
+            status: "pronto_grade" as const,
+            colocado_grade: true,
+            enviar_hemograma_hoje: true,
+            data_liberacao_apoio: hojeIso,
+            horario_bipado: agora,
+          };
+        }
+        return i;
+      })
+    );
+
+    try {
+      for (const r of retidos) {
+        await fetch("/api/triagem-edta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            acao: "atualizar_item",
+            prontuario: r.prontuario,
+            updates: {
+              nome_paciente: r.nome_paciente,
+              data_nascimento: r.data_nascimento,
+              status: "pronto_grade",
+              colocado_grade: true,
+              enviar_hemograma_hoje: true,
+              data_liberacao_apoio: hojeIso,
+              horario_bipado: agora,
+            },
+          }),
+        });
+      }
+
+      setMensagemSucesso({
+        titulo: `🚀 ${retidos.length} tubos retidos despachados para a Grade do Apoio de Hoje!`,
+        subtitulo: "Todos os tubos entraram imediatamente na relação oficial para a remessa da tarde.",
+      });
+      setTimeout(() => setMensagemSucesso(null), 4000);
+    } catch (e) {
+      console.warn("Aviso ao liberar retidos em lote:", e);
     } finally {
       setIsSyncing(false);
     }
@@ -676,32 +892,39 @@ export default function TriagemEdtaPage() {
     e.target.value = "";
   };
 
-  // FINALIZAÇÃO E IMPRESSÃO PARA O FATURAMENTO DA TARDE (Requisito 5)
-  const handleFinalizarEEnviarImpressao = async () => {
+  // FINALIZAÇÃO E IMPRESSÃO (GUIA DO APOIO, GUIA DO LABORATÓRIO OU AMBAS)
+  const dispararImpressao = async (tipo: "apoio" | "laboratorio" | "ambas") => {
     const horaAgora = new Date().toLocaleTimeString("pt-BR", {
       hour: "2-digit",
       minute: "2-digit",
     });
     setHoraEncerramento(horaAgora);
+    setTipoGuiaImpressao(tipo);
 
     try {
-      // Disparar sinal para o computador da bancada
+      // Disparar sinal para o computador da bancada com o tipo de guia
       await fetch("/api/triagem-edta", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           acao: "solicitar_impressao",
           horaEncerramento: horaAgora,
+          tipoGuia: tipo,
         }),
       });
 
       tocarSomConfirmado();
+      const titulos = {
+        apoio: "📦 Guia do Apoio enviada para impressão!",
+        laboratorio: "🔬 Guia do Laboratório enviada para impressão!",
+        ambas: "🖨️ Ambas as Guias (Apoio + Lab) enviadas para impressão!",
+      };
       setMensagemSucesso({
-        titulo: `🏁 Triagem finalizada às ${horaAgora}!`,
-        subtitulo: "Sinal transmitido para a tela do computador abrir a impressão A4.",
+        titulo: titulos[tipo],
+        subtitulo: `Fechamento às ${horaAgora}. Diálogo A4 aberto para impressão.`,
       });
 
-      // Abre diálogo de impressão no dispositivo atual se acionado nele
+      // Abre diálogo de impressão no dispositivo atual
       setTimeout(() => {
         window.print();
       }, 350);
@@ -917,6 +1140,7 @@ export default function TriagemEdtaPage() {
         horaEncerramento={horaEncerramento}
         labConfig={labConfig}
         responsavelNome={operadorAtivo}
+        tipoGuia={tipoGuiaImpressao}
       />
 
       {/* ========================================================================= */}
@@ -1092,11 +1316,16 @@ export default function TriagemEdtaPage() {
             </div>
 
             <div
-              className={`rounded-2xl p-2.5 sm:p-3 border shadow-2xs text-center transition-all ${
+              onClick={() => {
+                gavetaRetidosRef.current?.scrollIntoView({ behavior: "smooth" });
+                setGavetaRetidosAberta(true);
+              }}
+              className={`rounded-2xl p-2.5 sm:p-3 border shadow-2xs text-center transition-all cursor-pointer hover:scale-102 ${
                 tubosRetidosLocal > 0
                   ? "bg-amber-50 border-amber-300 ring-2 ring-amber-400/40"
                   : "bg-slate-50 border-slate-200 opacity-75"
               }`}
+              title="Clique para rolar até a gaveta de tubos retidos"
             >
               <span className="text-[10px] sm:text-[11px] font-black text-amber-800 uppercase tracking-tight block">
                 Retidos Gradinha
@@ -1108,6 +1337,103 @@ export default function TriagemEdtaPage() {
               >
                 {tubosRetidosLocal}
               </span>
+            </div>
+          </div>
+
+          {/* BARRA DE ATALHOS / CONFIGURAÇÃO DO MODO DO PLANTÃO */}
+          <div className="bg-white rounded-2xl p-2.5 sm:p-3 border border-slate-200 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {/* Modo Glicada */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black uppercase text-slate-500">HbA1c:</span>
+                <div className="inline-flex rounded-xl p-0.5 bg-slate-100 border border-slate-200 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModoGlicadaPlantao("amanha");
+                      localStorage.setItem("edta_modo_glicada", "amanha");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-black text-[10.5px] transition cursor-pointer flex items-center gap-1 ${
+                      modoGlicadaPlantao === "amanha"
+                        ? "bg-amber-500 text-white shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                    title="Muitas glicadas: reter tubo integral para enviar amanhã e dosar hoje (não sai no relatório de hoje)"
+                  >
+                    <span>📦 Reter p/ Amanhã</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModoGlicadaPlantao("hoje");
+                      localStorage.setItem("edta_modo_glicada", "hoje");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-black text-[10.5px] transition cursor-pointer flex items-center gap-1 ${
+                      modoGlicadaPlantao === "hoje"
+                        ? "bg-purple-700 text-white shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                    title="Fracionar 500 µL hoje e enviar hemograma hoje ao apoio"
+                  >
+                    <span>⚡ Fracionar Hoje</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Modo VHS */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black uppercase text-slate-500">VHS:</span>
+                <div className="inline-flex rounded-xl p-0.5 bg-slate-100 border border-slate-200 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModoVhsPlantao("dois_tubos");
+                      localStorage.setItem("edta_modo_vhs", "dois_tubos");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-black text-[10.5px] transition cursor-pointer flex items-center gap-1 ${
+                      modoVhsPlantao === "dois_tubos"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                    title="VHS: Coletados 2 tubos EDTA (1 Apoio + 1 VHS Bancada)"
+                  >
+                    <span>✓ Coleta 2 Tubos</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModoVhsPlantao("tubo_unico");
+                      localStorage.setItem("edta_modo_vhs", "tubo_unico");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-black text-[10.5px] transition cursor-pointer flex items-center gap-1 ${
+                      modoVhsPlantao === "tubo_unico"
+                        ? "bg-rose-600 text-white shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                    title="Falta de tubos: coletado 1 tubo EDTA"
+                  >
+                    <span>⚠️ 1 Tubo</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Toggle de Bipagem Contínua */}
+              <button
+                type="button"
+                onClick={() => {
+                  const novo = !bipagemContinuaAuto;
+                  setBipagemContinuaAuto(novo);
+                  localStorage.setItem("edta_bipagem_continua_auto", String(novo));
+                }}
+                className={`px-2.5 py-1 rounded-xl border text-[10.5px] font-black transition cursor-pointer flex items-center gap-1 ${
+                  bipagemContinuaAuto
+                    ? "bg-indigo-600 text-white border-indigo-700 shadow-xs"
+                    : "bg-slate-100 text-slate-600 border-slate-300"
+                }`}
+                title="Bipagem Contínua: auto-confirma sem travar a tela em cada leitura"
+              >
+                <span>{bipagemContinuaAuto ? "⚡ Bipagem Contínua: ON" : "⏸ Bipagem: Manual"}</span>
+              </button>
             </div>
           </div>
 
@@ -1441,7 +1767,7 @@ export default function TriagemEdtaPage() {
               i.status === "retido_envio_posterior" ||
               (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada")
           ) && (
-            <div className="bg-amber-500/10 border-2 border-amber-300 rounded-3xl p-4 shadow-sm space-y-3">
+            <div ref={gavetaRetidosRef} className="bg-amber-500/10 border-2 border-amber-300 rounded-3xl p-4 shadow-sm space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="p-1.5 rounded-xl bg-amber-500 text-slate-950 font-black">
@@ -1477,10 +1803,22 @@ export default function TriagemEdtaPage() {
               </div>
 
               {gavetaRetidosAberta && (
-                <div className="space-y-2 pt-1">
-                  <p className="text-[11px] text-amber-900/80 bg-amber-100/60 p-2.5 rounded-xl border border-amber-200">
-                    💡 <strong>Como funciona o envio no dia seguinte:</strong> Ao chegar o dia do envio dos tubos guardados, clique em <strong>&quot;Liberar Hoje&quot;</strong> ou simplesmente <strong>digite o prontuário no topo</strong> para que ele entre automaticamente no relatório de faturamento da van de hoje.
-                  </p>
+                <div className="space-y-2.5 pt-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-amber-100/70 p-2.5 rounded-2xl border border-amber-200">
+                    <p className="text-[11px] text-amber-900/90 flex-1">
+                      💡 <strong>Envio no dia seguinte:</strong> Clique em <strong>&quot;Despachar Todos os Retidos&quot;</strong> ou em <strong>&quot;Liberar Hoje&quot;</strong> para que os tubos entrem na relação oficial da van de hoje.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={isSyncing}
+                      onClick={liberarTodosRetidosHoje}
+                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-98"
+                      title="Despachar todos os tubos retidos para a Grade do Apoio de hoje"
+                    >
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>Despachar Todos os Retidos ({itens.filter((i) => i.status === "retido_envio_posterior" || (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada")).length})</span>
+                    </button>
+                  </div>
 
                   <div className="divide-y divide-amber-200/80 bg-white rounded-2xl border border-amber-200 overflow-hidden shadow-xs">
                     {itens
@@ -1686,17 +2024,39 @@ export default function TriagemEdtaPage() {
         </main>
 
         {/* ======================================================================= */}
-        {/* BOTÃO FIXO NO RODAPÉ: FINALIZAR TRIAGEM & ENVIAR PARA IMPRESSÃO (Req. 5) */}
+        {/* BOTÕES FIXOS NO RODAPÉ: IMPRESSÃO DA GUIA DO APOIO, DO LAB OU AMBAS      */}
         {/* ======================================================================= */}
-        <div className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 shadow-lg">
+        <div className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 p-2.5 sm:p-3 shadow-lg">
           <div className="max-w-3xl mx-auto flex items-center gap-2">
             <button
               type="button"
-              onClick={handleFinalizarEEnviarImpressao}
-              className="flex-1 py-3.5 px-4 bg-slate-950 hover:bg-slate-900 active:bg-black text-white font-black text-xs sm:text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+              onClick={() => dispararImpressao("apoio")}
+              className="flex-1 py-3 px-2 sm:px-3 bg-purple-700 hover:bg-purple-800 active:bg-purple-900 text-white font-black text-xs sm:text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+              title="Imprimir somente a Guia de Remessa e Faturamento do Apoio"
             >
-              <Printer className="w-4 h-4 text-purple-400" />
-              <span>🏁 Finalizar Triagem & Enviar para Impressão</span>
+              <Printer className="w-4 h-4 text-purple-200 shrink-0" />
+              <span className="truncate">📦 Guia do Apoio</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => dispararImpressao("laboratorio")}
+              className="flex-1 py-3 px-2 sm:px-3 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-black text-xs sm:text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+              title="Imprimir somente a Guia Interna de Bancada (com prontuário, VHS, 2 tubos e vistos)"
+            >
+              <Printer className="w-4 h-4 text-emerald-200 shrink-0" />
+              <span className="truncate">🔬 Guia do Laboratório</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => dispararImpressao("ambas")}
+              className="py-3 px-3 sm:px-4 bg-slate-950 hover:bg-slate-900 active:bg-black text-white font-black text-xs sm:text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 shrink-0"
+              title="Imprimir ambas as guias em lote (Apoio + Bancada do Lab)"
+            >
+              <Printer className="w-4 h-4 text-amber-300 shrink-0" />
+              <span className="hidden sm:inline">🖨️ Ambas as Guias</span>
+              <span className="sm:hidden">Ambas</span>
             </button>
           </div>
         </div>
