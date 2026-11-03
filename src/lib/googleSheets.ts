@@ -1466,8 +1466,9 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
             (idxData >= 0 ? r[idxData] : r[0] || "").toString().trim()
           );
 
-          const colNasc = idxNasc >= 0 ? idxNasc : 4;
-          const dataNascRaw = r[colNasc] || (idxNasc >= 0 ? r[idxNasc] : "");
+          const temColNasc = idxNasc >= 0 || (headerRow[4] && (headerRow[4].includes("nasc") || headerRow[4].includes("dn")));
+          const colNasc = idxNasc >= 0 ? idxNasc : (temColNasc ? 4 : -1);
+          const dataNascRaw = colNasc >= 0 && r[colNasc] ? r[colNasc] : "";
           const dataNasc = dataNascRaw ? formatarDataNascimento(dataNascRaw) : "";
           const dataNascDigitos = normalizarDigitosData(dataNasc);
           const prontNorm =
@@ -1537,6 +1538,15 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
     const filtrada = itens.filter((r) => normalizarDataIso(r.data) === alvo);
     if (filtrada.length > 0) {
       itens = filtrada;
+    }
+  }
+
+  // Sanitização de segurança: garante que qualquer valor não-data (ex: "HEMOGLOBINA GLICADA") seja expurgado
+  for (const item of itens) {
+    if (item.data_nascimento) {
+      const dnLimpa = formatarDataNascimento(item.data_nascimento);
+      item.data_nascimento = dnLimpa;
+      item.data_nascimento_digitos = normalizarDigitosData(dnLimpa);
     }
   }
 
@@ -1678,8 +1688,9 @@ export async function atualizarStatusItemEdta(
           }
 
           // Preencher campos atualizados
-          const colNasc = idxNasc >= 0 ? idxNasc : 4;
-          if (dataNascAtualizada) {
+          const temColNasc = idxNasc >= 0 || (headerRow[4] && (headerRow[4].includes("nasc") || headerRow[4].includes("dn")));
+          const colNasc = idxNasc >= 0 ? idxNasc : (temColNasc ? 4 : -1);
+          if (colNasc >= 0 && dataNascAtualizada) {
             updatedRowValues[colNasc] = dataNascAtualizada;
           }
           if (idxStatus >= 0 && updates.status) {

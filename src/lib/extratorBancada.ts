@@ -78,24 +78,46 @@ export function formatarDataNascimento(valor: any): string {
   // Se já for DD/MM/AAAA (permitindo espaços ao redor de barras, pontos ou hífens)
   const matchBr = str.match(/^(\d{1,2})\s*[\/\.\-]\s*(\d{1,2})\s*[\/\.\-]\s*(\d{4})$/);
   if (matchBr) {
-    return `${matchBr[1].padStart(2, "0")}/${matchBr[2].padStart(2, "0")}/${matchBr[3]}`;
+    const d = parseInt(matchBr[1], 10);
+    const m = parseInt(matchBr[2], 10);
+    if (d >= 1 && d <= 31 && m >= 1 && m <= 12) {
+      return `${matchBr[1].padStart(2, "0")}/${matchBr[2].padStart(2, "0")}/${matchBr[3]}`;
+    }
   }
 
   // Se for YYYY-MM-DD
   const matchIso = str.match(/^(\d{4})\s*[\/\.\-]\s*(\d{1,2})\s*[\/\.\-]\s*(\d{1,2})/);
   if (matchIso) {
-    return `${matchIso[3].padStart(2, "0")}/${matchIso[2].padStart(2, "0")}/${matchIso[1]}`;
+    const d = parseInt(matchIso[3], 10);
+    const m = parseInt(matchIso[2], 10);
+    if (d >= 1 && d <= 31 && m >= 1 && m <= 12) {
+      return `${matchIso[3].padStart(2, "0")}/${matchIso[2].padStart(2, "0")}/${matchIso[1]}`;
+    }
   }
 
   // Se for DD/MM/AA (ano com 2 dígitos)
   const matchAno2 = str.match(/^(\d{1,2})\s*[\/\.\-]\s*(\d{1,2})\s*[\/\-]\s*(\d{2})$/);
   if (matchAno2) {
-    const anoNum = parseInt(matchAno2[3], 10);
-    const anoCompleto = anoNum > 26 ? `19${matchAno2[3]}` : `20${matchAno2[3]}`;
-    return `${matchAno2[1].padStart(2, "0")}/${matchAno2[2].padStart(2, "0")}/${anoCompleto}`;
+    const d = parseInt(matchAno2[1], 10);
+    const m = parseInt(matchAno2[2], 10);
+    if (d >= 1 && d <= 31 && m >= 1 && m <= 12) {
+      const anoNum = parseInt(matchAno2[3], 10);
+      const anoCompleto = anoNum > 26 ? `19${matchAno2[3]}` : `20${matchAno2[3]}`;
+      return `${matchAno2[1].padStart(2, "0")}/${matchAno2[2].padStart(2, "0")}/${anoCompleto}`;
+    }
   }
 
-  // Se for número serial de data do Excel
+  // Se for 8 dígitos corridos DDMMYYYY (ex: "21062019")
+  const match8Dig = str.match(/^(\d{2})(\d{2})(\d{4})$/);
+  if (match8Dig) {
+    const d = parseInt(match8Dig[1], 10);
+    const m = parseInt(match8Dig[2], 10);
+    if (d >= 1 && d <= 31 && m >= 1 && m <= 12) {
+      return `${match8Dig[1]}/${match8Dig[2]}/${match8Dig[3]}`;
+    }
+  }
+
+  // Se for número serial de data do Excel (ex: 44123)
   if (/^\d{5}$/.test(str)) {
     const serial = parseInt(str, 10);
     const date = new Date((serial - 25569) * 86400 * 1000);
@@ -107,7 +129,8 @@ export function formatarDataNascimento(valor: any): string {
     }
   }
 
-  return str;
+  // Rejeita qualquer texto que não seja uma data válida (ex: "HEMOGLOBINA GLICADA", "HEMOGRAMA")
+  return "";
 }
 
 /**

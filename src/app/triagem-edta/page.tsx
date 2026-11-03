@@ -1188,7 +1188,7 @@ export default function TriagemEdtaPage() {
             </div>
           ) : (
             <span className="text-xl sm:text-2xl font-black font-mono tracking-tight text-slate-900">
-              {dataNascConferencia || tubo.data_nascimento || "NÃO INFORMADA"}
+              {formatarDataNascimento(dataNascConferencia || tubo.data_nascimento || "") || "NÃO INFORMADA"}
             </span>
           )}
         </div>
