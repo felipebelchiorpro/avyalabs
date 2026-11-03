@@ -49,7 +49,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-slate-100 text-slate-900">
         <Navbar />
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 md:pl-64 min-w-0">{children}</main>
       </body>
     </html>
   );

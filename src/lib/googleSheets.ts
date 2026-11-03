@@ -20,6 +20,8 @@ const globalForStore = global as unknown as {
   localMemoryLaudos: LaudoUrina[];
   localMemoryRotina: RotinaItem[];
   localMemoryTriagemEdta: ItemTriagemEdta[];
+  localMemoryMedicos: { medicos: string[]; padrao: string };
+  localMemoryOperadores: { operadores: string[]; ativo: string };
   sinalImpressaoEdta: {
     solicitado: boolean;
     timestamp: number;
@@ -36,6 +38,12 @@ if (!globalForStore.localMemoryRotina) {
 if (!globalForStore.localMemoryTriagemEdta) {
   globalForStore.localMemoryTriagemEdta = [];
 }
+if (!globalForStore.localMemoryMedicos) {
+  globalForStore.localMemoryMedicos = { medicos: [], padrao: "" };
+}
+if (!globalForStore.localMemoryOperadores) {
+  globalForStore.localMemoryOperadores = { operadores: [], ativo: "" };
+}
 if (!globalForStore.sinalImpressaoEdta) {
   globalForStore.sinalImpressaoEdta = null;
 }
@@ -43,6 +51,11 @@ if (!globalForStore.sinalImpressaoEdta) {
 export const SHEET_NAME_LAUDOS = "Laudos_Urina";
 export const SHEET_NAME_ROTINA = "Rotina_Dia";
 export const SHEET_NAME_TRIAGEM_EDTA = "Triagem_EDTA";
+export const SHEET_NAME_MEDICOS = "Medicos_Caconde";
+export const SHEET_NAME_OPERADORES = "Operadores_Caconde";
+
+export const CABECALHO_MEDICOS = ["nome_medico", "padrao"];
+export const CABECALHO_OPERADORES = ["nome_operador", "ativo"];
 
 export const CABECALHO_TRIAGEM_EDTA = [
   "id",
@@ -358,6 +371,22 @@ export async function ensureSheetsExist(): Promise<{ ok: boolean; message: strin
       });
     }
 
+    if (!existingTitles.includes(SHEET_NAME_MEDICOS)) {
+      requests.push({
+        addSheet: {
+          properties: { title: SHEET_NAME_MEDICOS },
+        },
+      });
+    }
+
+    if (!existingTitles.includes(SHEET_NAME_OPERADORES)) {
+      requests.push({
+        addSheet: {
+          properties: { title: SHEET_NAME_OPERADORES },
+        },
+      });
+    }
+
     if (requests.length > 0) {
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId: sheetId,
@@ -389,6 +418,24 @@ export async function ensureSheetsExist(): Promise<{ ok: boolean; message: strin
         range: `${SHEET_NAME_TRIAGEM_EDTA}!A1:L1`,
         valueInputOption: "RAW",
         requestBody: { values: [CABECALHO_TRIAGEM_EDTA] },
+      });
+    }
+
+    if (!existingTitles.includes(SHEET_NAME_MEDICOS)) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: `${SHEET_NAME_MEDICOS}!A1:B1`,
+        valueInputOption: "RAW",
+        requestBody: { values: [CABECALHO_MEDICOS] },
+      });
+    }
+
+    if (!existingTitles.includes(SHEET_NAME_OPERADORES)) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: `${SHEET_NAME_OPERADORES}!A1:B1`,
+        valueInputOption: "RAW",
+        requestBody: { values: [CABECALHO_OPERADORES] },
       });
     }
 
@@ -1420,4 +1467,153 @@ export function consumirSinalImpressaoEdta() {
   if (globalForStore.sinalImpressaoEdta) {
     globalForStore.sinalImpressaoEdta.solicitado = false;
   }
+}
+
+/**
+ * =========================================================================
+ * GESTÃO PERMANENTE DE MÉDICOS SOLICITANTES (GOOGLE SHEETS: Medicos_Caconde)
+ * Salva 1 vez e fica permanente para todos os dias e dispositivos (PC e PWA)
+ * =========================================================================
+ */
+export async function listarMedicosGoogleSheets(): Promise<{ medicos: string[]; padrao: string }> {
+  const gClient = getGoogleSheetsClient();
+  if (!gClient) {
+    return globalForStore.localMemoryMedicos || { medicos: [], padrao: "" };
+  }
+  const { sheets, sheetId } = gClient;
+  try {
+    await ensureSheetsExist();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `${SHEET_NAME_MEDICOS}!A:B`,
+    });
+    const rows = res.data.values || [];
+    const lista: string[] = [];
+    let padrao = "";
+    if (rows.length > 1) {
+      for (let i = 1; i < rows.length; i++) {
+        const nome = (rows[i][0] || "").toString().trim();
+        const ehPadrao = (rows[i][1] || "").toString().trim().toUpperCase() === "SIM";
+        if (nome && !lista.includes(nome)) {
+          lista.push(nome);
+          if (ehPadrao) padrao = nome;
+        }
+      }
+    }
+    lista.sort((a, b) => a.localeCompare(b, "pt-BR"));
+    globalForStore.localMemoryMedicos = { medicos: lista, padrao };
+    return { medicos: lista, padrao };
+  } catch (err) {
+    console.warn("Aviso ao listar médicos no Google Sheets:", err);
+    return globalForStore.localMemoryMedicos || { medicos: [], padrao: "" };
+  }
+}
+
+export async function salvarMedicosGoogleSheets(
+  medicos: string[],
+  padrao?: string
+): Promise<{ ok: boolean; count: number; medicos: string[]; padrao: string }> {
+  const unicos = Array.from(new Set(medicos.map((m) => m.trim()))).filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const padraoFinal = padrao !== undefined ? padrao.trim() : (globalForStore.localMemoryMedicos?.padrao || "");
+
+  globalForStore.localMemoryMedicos = { medicos: unicos, padrao: padraoFinal };
+
+  const gClient = getGoogleSheetsClient();
+  if (gClient) {
+    try {
+      const { sheets, sheetId } = gClient;
+      await ensureSheetsExist();
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId: sheetId,
+        range: `${SHEET_NAME_MEDICOS}!A:B`,
+      });
+      const values = [
+        CABECALHO_MEDICOS,
+        ...unicos.map((m) => [m, m === padraoFinal ? "SIM" : "NAO"]),
+      ];
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: `${SHEET_NAME_MEDICOS}!A1`,
+        valueInputOption: "RAW",
+        requestBody: { values },
+      });
+    } catch (err) {
+      console.warn("Aviso ao salvar médicos no Google Sheets:", err);
+    }
+  }
+
+  return { ok: true, count: unicos.length, medicos: unicos, padrao: padraoFinal };
+}
+
+export async function listarOperadoresGoogleSheets(): Promise<{ operadores: string[]; ativo: string }> {
+  const gClient = getGoogleSheetsClient();
+  if (!gClient) {
+    return globalForStore.localMemoryOperadores || { operadores: [], ativo: "" };
+  }
+
+  const { sheets, sheetId } = gClient;
+  try {
+    await ensureSheetsExist();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `${SHEET_NAME_OPERADORES}!A:B`,
+    });
+    const rows = res.data.values || [];
+    const lista: string[] = [];
+    let ativo = "";
+    if (rows.length > 1) {
+      for (let i = 1; i < rows.length; i++) {
+        const nome = (rows[i][0] || "").toString().trim();
+        const ehAtivo = (rows[i][1] || "").toString().trim().toUpperCase() === "SIM";
+        if (nome && !lista.includes(nome)) {
+          lista.push(nome);
+          if (ehAtivo) ativo = nome;
+        }
+      }
+    }
+    lista.sort((a, b) => a.localeCompare(b, "pt-BR"));
+    globalForStore.localMemoryOperadores = { operadores: lista, ativo };
+    return { operadores: lista, ativo };
+  } catch (err) {
+    console.warn("Aviso ao listar operadores no Google Sheets:", err);
+    return globalForStore.localMemoryOperadores || { operadores: [], ativo: "" };
+  }
+}
+
+export async function salvarOperadoresGoogleSheets(
+  operadores: string[],
+  ativo?: string
+): Promise<{ ok: boolean; count: number; operadores: string[]; ativo: string }> {
+  const unicos = Array.from(new Set(operadores.map((o) => o.trim())))
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const ativoFinal = ativo !== undefined ? ativo.trim() : (globalForStore.localMemoryOperadores?.ativo || "");
+
+  globalForStore.localMemoryOperadores = { operadores: unicos, ativo: ativoFinal };
+
+  const gClient = getGoogleSheetsClient();
+  if (gClient) {
+    try {
+      const { sheets, sheetId } = gClient;
+      await ensureSheetsExist();
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId: sheetId,
+        range: `${SHEET_NAME_OPERADORES}!A:B`,
+      });
+      const values = [
+        CABECALHO_OPERADORES,
+        ...unicos.map((o) => [o, o === ativoFinal ? "SIM" : "NAO"]),
+      ];
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: `${SHEET_NAME_OPERADORES}!A1`,
+        valueInputOption: "RAW",
+        requestBody: { values },
+      });
+    } catch (err) {
+      console.warn("Aviso ao salvar operadores no Google Sheets:", err);
+    }
+  }
+
+  return { ok: true, count: unicos.length, operadores: unicos, ativo: ativoFinal };
 }

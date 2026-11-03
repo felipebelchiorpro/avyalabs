@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import { EdtaBarcodeScanner } from "@/components/EdtaBarcodeScanner";
 import { RelatorioTriagemEdtaPrintView } from "@/components/RelatorioTriagemEdtaPrintView";
+import { ModalSelecionarOperador } from "@/components/ModalSelecionarOperador";
 import { ItemTriagemEdta, LabConfig, DEFAULT_LAB_CONFIG } from "@/types/urinalise";
 import { formatarProntuario } from "@/lib/extratorBancada";
 import {
@@ -11,7 +12,13 @@ import {
   removerMedico,
   obterMedicoPadrao,
   definirMedicoPadrao,
+  sincronizarMedicosComServidor,
 } from "@/lib/medicosStore";
+import {
+  obterOperadorAtivo,
+  definirOperadorAtivo,
+  sincronizarOperadoresComServidor,
+} from "@/lib/operadoresStore";
 import {
   tocarSomHemogramaGlicada,
   tocarSomApenasHemograma,
@@ -63,6 +70,10 @@ export default function TriagemEdtaPage() {
   const [medicoPadrao, setMedicoPadraoState] = useState<string>("");
   const [mostrarModalMedicos, setMostrarModalMedicos] = useState<boolean>(false);
 
+  // Responsável do Procedimento (Triagem e Pipetagem)
+  const [operadorAtivo, setOperadorAtivo] = useState<string>("");
+  const [mostrarModalOperadores, setMostrarModalOperadores] = useState<boolean>(false);
+
   // Modo de Impressão: Ambos (2 Folhas) vs Controle Interno vs Guia Apoio
   const [modoImpressao, setModoImpressao] = useState<"ambos" | "interno" | "apoio">("ambos");
 
@@ -84,11 +95,38 @@ export default function TriagemEdtaPage() {
     document.title = "Triagem EDTA • Hemograma & Glicada • Caconde";
     setDataReferencia(new Date().toISOString().split("T")[0]);
 
-    // Carregar Médicos Cadastrados
+    // Carregar Médicos Cadastrados localmente e sincronizar com Google Sheets
     const listaMedicos = obterMedicosCadastrados();
     setMedicosCadastrados(listaMedicos);
     const padrao = obterMedicoPadrao();
     setMedicoPadraoState(padrao);
+
+    sincronizarMedicosComServidor().then((dados) => {
+      if (dados && Array.isArray(dados.medicos)) {
+        setMedicosCadastrados(dados.medicos);
+        if (dados.padrao) setMedicoPadraoState(dados.padrao);
+      }
+    });
+
+    const handleMedicosUpdate = (e: any) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setMedicosCadastrados(e.detail);
+      }
+    };
+    window.addEventListener("medicos-atualizados", handleMedicosUpdate);
+
+    // Carregar Responsável do Procedimento ativo
+    setOperadorAtivo(obterOperadorAtivo());
+    sincronizarOperadoresComServidor().then((dados) => {
+      if (dados?.ativo) setOperadorAtivo(dados.ativo);
+    });
+
+    const handleOperadorUpdate = (e: any) => {
+      if (e.detail?.ativo !== undefined) {
+        setOperadorAtivo(e.detail.ativo);
+      }
+    };
+    window.addEventListener("operador-atualizado", handleOperadorUpdate);
 
     const savedConfig = localStorage.getItem("urinalise_lab_config");
     if (savedConfig) {
@@ -106,7 +144,11 @@ export default function TriagemEdtaPage() {
       verificarSinalImpressaoRemota();
     }, 3500);
 
-    return () => clearInterval(pollInterval);
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener("medicos-atualizados", handleMedicosUpdate);
+      window.removeEventListener("operador-atualizado", handleOperadorUpdate);
+    };
   }, []);
 
   // Foco no campo quando modo manual estiver ativo
@@ -198,14 +240,19 @@ export default function TriagemEdtaPage() {
 
       // Pré-selecionar médico: se o paciente já tem, usa o dele; se não, usa o médico padrão cadastrado
       const medExistente = encontrado.solicitante;
-      if (medExistente && !medExistente.includes("Conecta") && !medExistente.includes("UBS")) {
+      if (
+        medExistente &&
+        !medExistente.includes("Conecta") &&
+        !medExistente.includes("UBS") &&
+        medExistente !== "Dr(a). Clínico(a) Geral / UBS"
+      ) {
         setMedicoSelecionado(medExistente);
       } else if (medicoPadrao) {
         setMedicoSelecionado(medicoPadrao);
       } else if (medicosCadastrados.length > 0) {
         setMedicoSelecionado(medicosCadastrados[0]);
       } else {
-        setMedicoSelecionado("Dr(a). Clínico(a) Geral / UBS");
+        setMedicoSelecionado("");
       }
 
       // Retorno Sonoro Imediato conforme o tipo do exame
@@ -426,6 +473,7 @@ export default function TriagemEdtaPage() {
         dataReferencia={dataReferencia}
         horaEncerramento={horaEncerramento}
         labConfig={labConfig}
+        responsavelNome={operadorAtivo}
         modoImpressao={modoImpressao}
       />
 
@@ -450,6 +498,20 @@ export default function TriagemEdtaPage() {
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Botão Responsável pela Triagem e Pipetagem */}
+              <button
+                type="button"
+                onClick={() => setMostrarModalOperadores(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-700/70 rounded-xl text-xs font-bold transition shadow-sm"
+                title="Definir responsável pela triagem e pipetagem hoje"
+              >
+                <UserCheck className="w-4 h-4 text-purple-400 shrink-0" />
+                <span className="text-slate-400 font-medium hidden sm:inline">Resp:</span>
+                <span className="font-black text-white truncate max-w-[130px]">
+                  {operadorAtivo || "Selecionar"}
+                </span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setMostrarModalMedicos(true)}
@@ -1241,6 +1303,12 @@ export default function TriagemEdtaPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL DE SELEÇÃO DE OPERADOR / RESPONSÁVEL DO PROCEDIMENTO */}
+      <ModalSelecionarOperador
+        aberto={mostrarModalOperadores}
+        onFechar={() => setMostrarModalOperadores(false)}
+      />
     </>
   );
 }

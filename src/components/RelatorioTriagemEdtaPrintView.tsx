@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { ItemTriagemEdta, LabConfig, DEFAULT_LAB_CONFIG } from "@/types/urinalise";
@@ -208,10 +208,10 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
             <div className="flex justify-between items-center text-[9.5px]">
               <div>
                 <p className="font-bold text-slate-800">
-                  Responsável Técnico pela Triagem e Pipetagem:
+                  Responsável pela Triagem e Pipetagem:
                 </p>
                 <p className="font-black text-slate-950 uppercase mt-0.5">
-                  {responsavelNome || labConfig.responsavelTecnico || "Dra. Mariana S. Rezende - CRF-SP 48.912"}
+                  {responsavelNome || "Não informado (Procedimento de Bancada)"}
                 </p>
               </div>
               <div className="text-right">
@@ -325,8 +325,8 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
                 <p className="font-black uppercase text-[10px] text-slate-900">
                   Entregue por (Laboratório de Caconde)
                 </p>
-                <p className="text-[9px] text-slate-600">
-                  {responsavelNome || labConfig.responsavelTecnico || "Responsável Técnico pela Triagem"}
+                <p className="text-[9px] text-slate-600 font-bold uppercase">
+                  {responsavelNome || "Responsável pela Triagem e Envio"}
                 </p>
                 <p className="text-[8.5px] text-slate-500 mt-1">
                   Data: {formatarData(dataReferencia)} às {horaFinal}
