@@ -42,35 +42,34 @@ export const LaudoPrintView: React.FC<LaudoPrintViewProps> = ({
       } print:border-none print:shadow-none print:p-0 print:m-0 print:max-w-none print:w-full print-page-break`}
       style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
     >
-      {/* CABEÇALHO INSTITUCIONAL SUS / MUNICIPAL */}
+      {/* CABEÇALHO INSTITUCIONAL COM LOGO CENTRALIZADA */}
       <div className="border-b-2 border-slate-900 pb-3 mb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* Emblema SUS estilizado */}
-            <div className="w-12 h-12 bg-sky-700 text-white font-black rounded-lg flex flex-col items-center justify-center leading-none text-center shadow-xs print:border print:border-black print:bg-white print:text-black">
-              <span className="text-[14px]">SUS</span>
-              <span className="text-[8px] font-normal tracking-tighter">BRASIL</span>
-            </div>
-            <div>
-              <h1 className="text-sm sm:text-base font-black tracking-tight text-slate-950 uppercase">
-                {labConfig.nomeInstituicao}
-              </h1>
-              <p className="text-[11px] font-semibold text-slate-700 uppercase">
-                {labConfig.subtitulo}
-              </p>
-              <p className="text-[11px] font-bold text-sky-900 print:text-black">
-                {labConfig.nomeLaboratorio}
-              </p>
-            </div>
-          </div>
-          <div className="text-right text-[10px] text-slate-600 print:text-black">
-            <p className="font-semibold">{labConfig.cidadeUf}</p>
-            <p className="font-bold text-slate-900 uppercase">Relatório de Bancada (Anexo de Arquivo)</p>
-            <p className="text-[9px] text-slate-500">Para conferência e digitação de resultados no sistema</p>
-            <p className="font-mono text-[9px] text-slate-500">
-              ID: {laudo.prontuario}-{laudo.data_hora.slice(0, 10).replace(/-/g, "")}
-            </p>
-          </div>
+        {/* LOGO PREFEITURA DE CACONDE CENTRALIZADA */}
+        <div className="flex flex-col items-center justify-center text-center mb-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo-caconde.jpg"
+            alt="Prefeitura Municipal da Estância Climática de Caconde"
+            className="h-20 w-auto object-contain mx-auto mb-1"
+          />
+          <h1 className="text-sm sm:text-base font-black tracking-tight text-slate-950 uppercase leading-tight">
+            {labConfig.nomeInstituicao || "PREFEITURA MUNICIPAL DE CACONDE"}
+          </h1>
+          <p className="text-[10.5px] font-bold text-slate-700 uppercase">
+            {labConfig.subtitulo || "ESTÂNCIA CLIMÁTICA DE CACONDE • DEPARTAMENTO MUNICIPAL DE SAÚDE"}
+          </p>
+          <p className="text-[10.5px] font-bold text-sky-950 print:text-black">
+            {labConfig.nomeLaboratorio || "LABORATÓRIO MUNICIPAL DE ANÁLISES CLÍNICAS"}
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-slate-200 pt-1.5 text-[9.5px] text-slate-600 print:text-black">
+          <p className="font-bold uppercase tracking-wider text-slate-900">
+            Relatório de Bancada • SUS Caconde
+          </p>
+          <p className="font-mono">
+            ID: {laudo.prontuario}-{laudo.data_hora.slice(0, 10).replace(/-/g, "")} • Emissão: {dataImpressao || dataFormatada}
+          </p>
         </div>
       </div>
 
@@ -105,20 +104,60 @@ export const LaudoPrintView: React.FC<LaudoPrintViewProps> = ({
       </div>
 
       {/* TÍTULO DO EXAME */}
-      <div className={`text-white font-bold py-1 px-3 text-center rounded-t text-xs uppercase tracking-wider mb-2 print:border print:border-black ${
-        laudo.status === "recoleta"
-          ? "bg-rose-700 print:bg-slate-200 print:text-black"
-          : "bg-slate-800 print:bg-slate-200 print:text-black"
-      }`}>
-        {laudo.status === "recoleta"
-          ? "LAUDO LABORATORIAL — SOLICITAÇÃO DE RECOLETA"
-          : laudo.tem_urina !== false && Boolean(laudo.cor || laudo.aspecto || laudo.densidade)
-          ? "URINA TIPO I - ELEMENTOS ANORMAIS E SEDIMENTO (EAS / SUMÁRIO DE URINA)"
-          : "EXAMES DE BANCADA & TESTES RÁPIDOS LABORATORIAIS"}
-      </div>
+      {(() => {
+        const examesRec = laudo.recoleta_exames || [];
+        const temOutros = Boolean(
+          laudo.resultado_pso ||
+            laudo.resultado_vdrl ||
+            laudo.resultado_beta_hcg ||
+            laudo.resultado_proteinuria_rapida ||
+            laudo.resultado_abo_rh ||
+            laudo.tp_tempo ||
+            laudo.resultado_vhs ||
+            laudo.resultado_pcr ||
+            laudo.dengue_ns1
+        );
+        const ehRecoletaTotal =
+          laudo.status === "recoleta" && (examesRec.includes("todos") || (!examesRec.length && !temOutros));
+        const ehRecoletaParcial = laudo.status === "recoleta" && !ehRecoletaTotal;
 
-      {/* SE FOR RECOLETA: EXIBE PAINEL EXCLUSIVO E DESTACADO DE RECOLETA */}
-      {laudo.status === "recoleta" ? (
+        return (
+          <div
+            className={`text-white font-bold py-1 px-3 text-center rounded-t text-xs uppercase tracking-wider mb-2 print:border print:border-black ${
+              ehRecoletaTotal
+                ? "bg-rose-700 print:bg-slate-200 print:text-black"
+                : ehRecoletaParcial
+                ? "bg-slate-900 border-b-2 border-rose-500 print:bg-slate-200 print:text-black"
+                : laudo.tem_urina !== false && Boolean(laudo.cor || laudo.aspecto || laudo.densidade)
+                ? "bg-slate-800 print:bg-slate-200 print:text-black"
+                : "bg-slate-800 print:bg-slate-200 print:text-black"
+            }`}
+          >
+            {ehRecoletaTotal
+              ? "LAUDO LABORATORIAL — SOLICITAÇÃO DE RECOLETA DE AMOSTRA"
+              : ehRecoletaParcial
+              ? "LAUDO LABORATORIAL — BANCADA MANUAL (COM RECOLETA ESPECÍFICA)"
+              : laudo.tem_urina !== false && Boolean(laudo.cor || laudo.aspecto || laudo.densidade)
+              ? "URINA TIPO I - ELEMENTOS ANORMAIS E SEDIMENTO (EAS / SUMÁRIO DE URINA)"
+              : "EXAMES DE BANCADA & TESTES RÁPIDOS LABORATORIAIS"}
+          </div>
+        );
+      })()}
+
+      {/* SE FOR RECOLETA TOTAL DE TODOS OS EXAMES: EXIBE PAINEL EXCLUSIVO */}
+      {laudo.status === "recoleta" &&
+      (!laudo.recoleta_exames?.length || laudo.recoleta_exames?.includes("todos")) &&
+      !Boolean(
+        laudo.resultado_pso ||
+          laudo.resultado_vdrl ||
+          laudo.resultado_beta_hcg ||
+          laudo.resultado_proteinuria_rapida ||
+          laudo.resultado_abo_rh ||
+          laudo.tp_tempo ||
+          laudo.resultado_vhs ||
+          laudo.resultado_pcr ||
+          laudo.dengue_ns1
+      ) ? (
         <div className="border-2 border-rose-600 bg-rose-50/40 rounded-xl p-6 mb-6 text-center space-y-4 avoid-break print:border-black print:bg-slate-50">
           <div className="inline-block bg-rose-600 text-white font-black text-sm px-4 py-1.5 rounded uppercase tracking-wider print:bg-black">
             ⚠️ SOLICITAÇÃO DE RECOLETA DE AMOSTRA
@@ -143,8 +182,25 @@ export const LaudoPrintView: React.FC<LaudoPrintViewProps> = ({
         </div>
       ) : (
         <>
-          {/* TABELAS DO EXAME FÍSICO-QUÍMICO E SEDIMENTOSCOPIA (SOMENTE SE URINA ESTIVER SOLICITADA) */}
-          {laudo.tem_urina !== false && Boolean(laudo.cor || laudo.aspecto || laudo.densidade) && (
+          {/* SE A URINA FOR O EXAME MARCADO PARA RECOLETA */}
+          {laudo.status === "recoleta" && (laudo.recoleta_exames?.includes("urina") || (!laudo.recoleta_exames?.length && laudo.tem_urina)) ? (
+            <div className="border-2 border-rose-600 bg-rose-50/50 rounded-xl p-4 mb-4 text-center space-y-2 avoid-break print:border-black print:bg-slate-50">
+              <div className="inline-block bg-rose-600 text-white font-black text-xs px-3 py-1 rounded uppercase tracking-wider print:bg-black">
+                ⚠️ RECOLETA SOLICITADA — URINA TIPO I (EAS)
+              </div>
+              <div className="text-slate-900 font-bold text-[11px] max-w-lg mx-auto">
+                A amostra de urina deste paciente necessita de nova coleta. Os demais exames do paciente foram analisados e constam abaixo.
+              </div>
+              <div className="bg-white border border-rose-300 rounded-lg p-2.5 text-left max-w-md mx-auto text-xs">
+                <span className="font-bold text-rose-900 block text-[10px] uppercase">Motivo / Justificativa da Recoleta de Urina:</span>
+                <span className="font-bold text-slate-900">{laudo.observacoes?.trim() || "Amostra insuficiente ou presença de muco excessivo."}</span>
+              </div>
+            </div>
+          ) : null}
+          {/* TABELAS DO EXAME FÍSICO-QUÍMICO E SEDIMENTOSCOPIA (SE URINA NÃO FOR RECOLETA) */}
+          {laudo.tem_urina !== false &&
+            !(laudo.status === "recoleta" && (laudo.recoleta_exames?.includes("urina") || (!laudo.recoleta_exames?.length && laudo.tem_urina))) &&
+            Boolean(laudo.cor || laudo.aspecto || laudo.densidade) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 avoid-break">
         {/* PARTE 1: EXAME FÍSICO-QUÍMICO */}
         <div className="border border-slate-300 rounded overflow-hidden print:border-slate-800">
@@ -266,7 +322,7 @@ export const LaudoPrintView: React.FC<LaudoPrintViewProps> = ({
               <tr>
                 <td className="py-1.5 px-2 font-medium">Filamentos de Muco</td>
                 <td className="py-1.5 px-2 font-bold text-slate-900">{laudo.muco || "Ausentes"}</td>
-                <td className="py-1.5 px-2 text-right text-slate-500">Ausentes</td>
+                <td className="py-1.5 px-2 text-right text-slate-500">Ausentes / Raros</td>
               </tr>
               <tr>
                 <td className="py-1.5 px-2 font-medium">Cristais</td>
@@ -296,28 +352,42 @@ export const LaudoPrintView: React.FC<LaudoPrintViewProps> = ({
             <span>3. Pesquisa de Sangue Oculto (PSO - Fezes)</span>
             <span className="text-[9.5px] font-normal">Método: Teste Imunocromatográfico de Alta Sensibilidade</span>
           </div>
-          <table className="w-full text-[10.5px]">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 text-[9px] uppercase">
-                <th className="py-1 px-2 text-left font-semibold">Exame</th>
-                <th className="py-1 px-2 text-left font-semibold">Resultado</th>
-                <th className="py-1 px-2 text-right font-semibold">Valor de Referência</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="py-1.5 px-2 font-medium">Pesquisa de Sangue Oculto nas Fezes</td>
-                <td className="py-1.5 px-2 font-black text-slate-950 text-xs">
-                  {laudo.resultado_pso || "Negativo"}
-                </td>
-                <td className="py-1.5 px-2 text-right text-slate-500">Negativo (Ausência de hemoglobina humana)</td>
-              </tr>
-            </tbody>
-          </table>
-          {laudo.obs_pso && (
-            <div className="p-1.5 px-2 bg-slate-50 border-t border-slate-200 text-[9.5px] text-slate-700 italic">
-              Nota técnica PSO: {laudo.obs_pso}
+          {laudo.resultado_pso?.toLowerCase().includes("recoleta") ||
+          (laudo.status === "recoleta" && laudo.recoleta_exames?.includes("pso")) ? (
+            <div className="p-3 bg-rose-50 text-center space-y-1">
+              <span className="text-xs font-black text-rose-700 uppercase block">
+                ⚠️ RECOLETA SOLICITADA — SANGUE OCULTO NAS FEZES (PSO)
+              </span>
+              <span className="text-[11px] font-bold text-slate-900 block">
+                {laudo.obs_pso || laudo.observacoes || "Amostra fecal inadequada para análise técnica. Solicitar nova coleta ao paciente."}
+              </span>
             </div>
+          ) : (
+            <>
+              <table className="w-full text-[10.5px]">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 text-[9px] uppercase">
+                    <th className="py-1 px-2 text-left font-semibold">Exame</th>
+                    <th className="py-1 px-2 text-left font-semibold">Resultado</th>
+                    <th className="py-1 px-2 text-right font-semibold">Valor de Referência</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="py-1.5 px-2 font-medium">Pesquisa de Sangue Oculto nas Fezes</td>
+                    <td className="py-1.5 px-2 font-black text-slate-950 text-xs">
+                      {laudo.resultado_pso || "Negativo"}
+                    </td>
+                    <td className="py-1.5 px-2 text-right text-slate-500">Negativo (Ausência de hemoglobina humana)</td>
+                  </tr>
+                </tbody>
+              </table>
+              {laudo.obs_pso && (
+                <div className="p-1.5 px-2 bg-slate-50 border-t border-slate-200 text-[9.5px] text-slate-700 italic">
+                  Nota técnica PSO: {laudo.obs_pso}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -363,6 +433,48 @@ export const LaudoPrintView: React.FC<LaudoPrintViewProps> = ({
                   <td className="py-1.5 px-2 text-right text-slate-500">Não Reagente</td>
                 </tr>
               )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* SEÇÃO 4.1: TESTE RÁPIDO DE DENGUE (NS1, IgG e IgM) */}
+      {(laudo.tem_dengue || laudo.resultado_dengue || laudo.dengue_ns1) && (
+        <div className="border border-slate-300 rounded overflow-hidden mb-4 avoid-break print:border-slate-800">
+          <div className="bg-slate-200 px-2.5 py-1 font-bold text-[11px] text-slate-800 border-b border-slate-300 uppercase print:bg-slate-100 flex items-center justify-between">
+            <span>Dengue — Teste Rápido Imunocromatográfico (NS1 / IgG / IgM)</span>
+            <span className="text-[9.5px] font-normal">Método: Imunocromatografia de Fluxo Lateral</span>
+          </div>
+          <table className="w-full text-[10.5px]">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 text-[9px] uppercase">
+                <th className="py-1 px-2 text-left font-semibold">Marcador Sorológico</th>
+                <th className="py-1 px-2 text-left font-semibold">Resultado</th>
+                <th className="py-1 px-2 text-right font-semibold">Valor de Referência</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              <tr>
+                <td className="py-1.5 px-2 font-medium">Antígeno NS1 da Dengue (Infecção Aguda)</td>
+                <td className={`py-1.5 px-2 font-black ${laudo.dengue_ns1?.toLowerCase().includes("reagente") && !laudo.dengue_ns1?.toLowerCase().includes("não") ? "text-rose-700" : "text-slate-950"}`}>
+                  {laudo.dengue_ns1 || "Não Reagente"}
+                </td>
+                <td className="py-1.5 px-2 text-right text-slate-500">Não Reagente</td>
+              </tr>
+              <tr>
+                <td className="py-1.5 px-2 font-medium">Anticorpos IgM Anti-Dengue (Fase Convalescente / Recente)</td>
+                <td className={`py-1.5 px-2 font-black ${laudo.dengue_igm?.toLowerCase().includes("reagente") && !laudo.dengue_igm?.toLowerCase().includes("não") ? "text-rose-700" : "text-slate-950"}`}>
+                  {laudo.dengue_igm || "Não Reagente"}
+                </td>
+                <td className="py-1.5 px-2 text-right text-slate-500">Não Reagente</td>
+              </tr>
+              <tr>
+                <td className="py-1.5 px-2 font-medium">Anticorpos IgG Anti-Dengue (Memória Imunológica)</td>
+                <td className={`py-1.5 px-2 font-black ${laudo.dengue_igg?.toLowerCase().includes("reagente") && !laudo.dengue_igg?.toLowerCase().includes("não") ? "text-rose-700" : "text-slate-950"}`}>
+                  {laudo.dengue_igg || "Não Reagente"}
+                </td>
+                <td className="py-1.5 px-2 text-right text-slate-500">Não Reagente</td>
+              </tr>
             </tbody>
           </table>
         </div>

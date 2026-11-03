@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { ensureSheetsExist, getGoogleSheetsCredentials, isGoogleSheetsConfigured } from "@/lib/googleSheets";
 
 export const dynamic = "force-dynamic";

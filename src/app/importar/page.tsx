@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
@@ -127,8 +127,19 @@ export default function ImportarRotinaPage() {
             const res = processarMatrizLinhasBancada(rows, filtrarApenasRealizado);
             setPacientes(res.pacientesUnificados);
             setTotalLinhasArquivo(res.totalLidos);
+
+            // Sincronizar partição Triagem EDTA
+            if (res.pacientesEdta && res.pacientesEdta.length > 0) {
+              fetch("/api/triagem-edta", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ itens: res.pacientesEdta, substituir: true }),
+              }).catch((e) => console.warn("Erro ao sincronizar EDTA:", e));
+            }
+
+            const edtaMsg = res.totalEdta ? ` | 🟣 ${res.totalEdta} tubos EDTA na Triagem` : "";
             setFeedback({
-              message: `📊 Planilha "${file.name}" processada! ${res.totalAproveitados} pacientes de bancada identificados (${res.totalDescartadosAutomatizados} exames de bioquímica/hemograma descartados).`,
+              message: `📊 Planilha "${file.name}" processada! ${res.totalAproveitados} pacientes de bancada identificados${edtaMsg} (${res.totalDescartadosAutomatizados} descartados).`,
               type: "success",
             });
           } catch (err: any) {
@@ -162,8 +173,19 @@ export default function ImportarRotinaPage() {
     const res = processarMatrizLinhasBancada(matrix, filtrarApenasRealizado);
     setPacientes(res.pacientesUnificados);
     setTotalLinhasArquivo(res.totalLidos);
+
+    // Sincronizar partição Triagem EDTA
+    if (res.pacientesEdta && res.pacientesEdta.length > 0) {
+      fetch("/api/triagem-edta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itens: res.pacientesEdta, substituir: true }),
+      }).catch((e) => console.warn("Erro ao sincronizar EDTA:", e));
+    }
+
+    const edtaMsg = res.totalEdta ? ` | 🟣 ${res.totalEdta} tubos EDTA na Triagem` : "";
     setFeedback({
-      message: `📋 Texto colado processado com sucesso! ${res.totalAproveitados} pacientes de bancada identificados (${res.totalDescartadosAutomatizados} exames de bioquímica/hemograma descartados).`,
+      message: `📋 Texto colado processado com sucesso! ${res.totalAproveitados} pacientes de bancada identificados${edtaMsg} (${res.totalDescartadosAutomatizados} descartados).`,
       type: "success",
     });
   };

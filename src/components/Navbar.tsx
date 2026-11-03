@@ -56,6 +56,7 @@ export const Navbar: React.FC = () => {
 
   const navLinks = [
     { href: "/", label: "Tiragem do Dia", icon: Printer },
+    { href: "/triagem-edta", label: "Triagem EDTA", icon: Sparkles },
     { href: "/importar", label: "Importar Conecta SUS", icon: FileSpreadsheet },
     { href: "/vdrl", label: "Lote VDRL", icon: Package },
     { href: "/laudos", label: "Relatórios & Canhotos", icon: FlaskConical },
@@ -66,10 +67,10 @@ export const Navbar: React.FC = () => {
   // Bancadas exclusivas para o celular (somente contagem no telefone)
   const mobileBancadas = [
     { id: "urina", href: "/?bancada=urina", label: "Urina I", icon: FlaskConical },
-    { id: "imuno", href: "/?bancada=imuno", label: "Rápidos/Imuno", icon: Sparkles },
-    { id: "vdrl", href: "/vdrl", label: "Lote VDRL", icon: Package },
+    { id: "imuno", href: "/?bancada=imuno", label: "Rápidos", icon: Sparkles },
     { id: "coag", href: "/?bancada=coag", label: "Coag/TAP", icon: History },
-    { id: "pso", href: "/?bancada=pso", label: "Sangue Oculto", icon: FileSpreadsheet },
+    { id: "pso", href: "/?bancada=pso", label: "S. Oculto", icon: FileSpreadsheet },
+    { id: "edta", href: "/triagem-edta", label: "EDTA", icon: Sparkles, isDirectRoute: true },
   ];
 
   const [bancadaAtual, setBancadaAtual] = useState<string>("urina");
@@ -153,28 +154,43 @@ export const Navbar: React.FC = () => {
       </header>
 
       {/* Bottom Nav Mobile (Exclusivo para Contagem no Telefone) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 md:hidden print:hidden px-1.5 py-1 shadow-lg">
-        <div className="grid grid-cols-5 gap-1">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 md:hidden print:hidden px-1 py-1 shadow-lg">
+        <div className="grid grid-cols-5 gap-0.5">
           {mobileBancadas.map((b) => {
             const Icon = b.icon;
-            const isSelected = pathname === "/" && bancadaAtual === b.id;
+            const isSelected =
+              b.id === "edta"
+                ? pathname === "/triagem-edta"
+                : pathname === "/" && bancadaAtual === b.id;
 
             return (
               <Link
                 key={b.id}
                 href={b.href}
                 onClick={() => {
-                  setBancadaAtual(b.id);
-                  window.dispatchEvent(new CustomEvent("trocar-bancada", { detail: b.id }));
+                  if (b.id !== "edta") {
+                    setBancadaAtual(b.id);
+                    window.dispatchEvent(new CustomEvent("trocar-bancada", { detail: b.id }));
+                  }
                 }}
-                className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl text-center transition-all active:scale-95 ${
+                className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-center transition-all active:scale-95 ${
                   isSelected
-                    ? "text-sky-700 bg-sky-50 font-black shadow-2xs border border-sky-200"
+                    ? b.id === "edta"
+                      ? "text-purple-700 bg-purple-50 font-black shadow-2xs border border-purple-200"
+                      : "text-sky-700 bg-sky-50 font-black shadow-2xs border border-sky-200"
                     : "text-slate-500 hover:text-slate-800"
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isSelected ? "text-sky-600" : "text-slate-400"}`} />
-                <span className="text-[10px] mt-0.5 leading-tight tracking-tight truncate max-w-full font-bold">
+                <Icon
+                  className={`w-4 h-4 ${
+                    isSelected
+                      ? b.id === "edta"
+                        ? "text-purple-600"
+                        : "text-sky-600"
+                      : "text-slate-400"
+                  }`}
+                />
+                <span className="text-[9.5px] mt-0.5 leading-tight tracking-tight truncate max-w-full font-bold">
                   {b.label}
                 </span>
               </Link>

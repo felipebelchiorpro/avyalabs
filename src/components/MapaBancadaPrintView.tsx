@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import { ItemRotina, LaudoUrina } from "@/lib/googleSheets";
@@ -52,18 +52,53 @@ export const MapaBancadaPrintView: React.FC<MapaBancadaPrintViewProps> = ({
     const l = mapaLaudos.get(formatarProntuario(prontuario));
     if (!l) return "";
 
-    // SE O LAUDO FOR MARCADO COMO RECOLETA, EXIBE O ALERTA CLARO
-    if (l.status === "recoleta") {
-      return `⚠️ RECOLETA SOLICITADA (${l.observacoes || "Amostra inadequada"})`;
+    const isRecoletaGeral = l.status === "recoleta";
+    const exRec = (l.recoleta_exames || []).map((x) => x.toLowerCase());
+    const motivo = l.recoleta_motivo || l.observacoes || "Amostra inadequada";
+
+    const ehUrina = exameUpper.includes("URINA") || exameUpper.includes("EAS");
+    const ehPso = exameUpper.includes("SANGUE OCULTO") || exameUpper.includes("PSO");
+    const ehDengue = exameUpper.includes("DENGUE") || exameUpper.includes("NS1");
+
+    // SE O LAUDO FOR MARCADO COMO RECOLETA, AVALIA SE AFETA ESTE EXAME ESPECÍFICO
+    if (isRecoletaGeral) {
+      const recUrina = exRec.includes("urina") || (!exRec.length && ehUrina);
+      const recPso = exRec.includes("pso") || (!exRec.length && ehPso);
+      const recDengue = exRec.includes("dengue") || (!exRec.length && ehDengue);
+      const recTodos = exRec.includes("todos");
+
+      if (recTodos) {
+        return `⚠️ RECOLETA (${motivo})`;
+      }
+      if (ehUrina && recUrina) {
+        return `⚠️ RECOLETA URINA (${motivo})`;
+      }
+      if (ehPso && recPso) {
+        return `⚠️ RECOLETA PSO (${motivo})`;
+      }
+      if (ehDengue && recDengue) {
+        return `⚠️ RECOLETA DENGUE (${motivo})`;
+      }
+      if (!ehUrina && !ehPso && !ehDengue && exRec.some((ex) => exameUpper.toLowerCase().includes(ex))) {
+        return `⚠️ RECOLETA (${motivo})`;
+      }
+    }
+
+    if (ehDengue) {
+      if (l.dengue_ns1 || l.dengue_igg || l.dengue_igm) {
+        return `NS1: ${l.dengue_ns1 || "-"} | IgG: ${l.dengue_igg || "-"} | IgM: ${l.dengue_igm || "-"}`;
+      }
+      return l.resultado_dengue || "";
     }
 
     if (exameUpper.includes("PROTEINÚRIA") || exameUpper.includes("PROTEINURIA")) {
       return l.resultado_proteinuria_rapida || l.proteina || "";
     }
-    if (exameUpper.includes("URINA") || exameUpper.includes("EAS")) {
-      return `VOL:${l.volume || "60mL"} D:${l.densidade} pH:${l.ph} Leu:${l.leucocitos_campo} Hem:${l.hemacias_campo}`;
+    if (ehUrina) {
+      const mucoTxt = l.muco && l.muco !== "Ausentes" ? ` M:${l.muco}` : "";
+      return `VOL:${l.volume || "60mL"} D:${l.densidade} pH:${l.ph} Leu:${l.leucocitos_campo} Hem:${l.hemacias_campo}${mucoTxt}`;
     }
-    if (exameUpper.includes("SANGUE OCULTO") || exameUpper.includes("PSO")) {
+    if (ehPso) {
       if (l.resultado_pso && l.resultado_pso.toLowerCase().includes("recoleta")) {
         return `⚠️ RECOLETA: ${l.resultado_pso}`;
       }
@@ -161,21 +196,41 @@ export const MapaBancadaPrintView: React.FC<MapaBancadaPrintViewProps> = ({
 
   return (
     <div className="print:block bg-white text-black font-sans w-full max-w-[210mm] mx-auto p-2 print:p-0">
-      {/* CABEÇALHO SIMPLES E DIRETO (PADRÃO TIRAGEM DE BANCADA) */}
-      <div className="flex items-center justify-between border-b-2 border-black pb-2 mb-3">
-        <div>
-          <h1 className="text-base font-black uppercase tracking-tight">
-            TIRAGEM DE BANCADA — RELAÇÃO DE EXAMES DO DIA ({dataFormatada})
-          </h1>
-          <p className="text-[10.5px] font-medium text-neutral-700">
-            Ordem alfabética por Exame e Paciente (numeração #1, #2, #3... idêntica à fila do celular)
+      {/* CABEÇALHO OFICIAL COM LOGO CENTRALIZADA DA PREFEITURA DE CACONDE */}
+      <div className="border-b-2 border-black pb-2 mb-3">
+        <div className="flex flex-col items-center justify-center text-center mb-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo-caconde.jpg"
+            alt="Prefeitura Municipal da Estância Climática de Caconde"
+            className="h-20 w-auto object-contain mx-auto mb-1"
+          />
+          <h2 className="text-[12px] font-black uppercase tracking-tight text-slate-900 leading-tight">
+            PREFEITURA MUNICIPAL DE CACONDE
+          </h2>
+          <p className="text-[10px] uppercase font-bold text-slate-700">
+            ESTÂNCIA CLIMÁTICA DE CACONDE • DEPARTAMENTO MUNICIPAL DE SAÚDE
+          </p>
+          <p className="text-[9.5px] text-slate-600 font-semibold">
+            LABORATÓRIO MUNICIPAL DE ANÁLISES CLÍNICAS
           </p>
         </div>
-        <div className="text-right text-xs font-bold">
-          <span>Total de Exames: {itensPorExame.length}</span>
-          <span className="block text-[10px] font-normal text-neutral-600">
-            Pacientes: {pacientesFiltrados.length}
-          </span>
+
+        <div className="flex items-center justify-between border-t border-slate-300 pt-2">
+          <div>
+            <h1 className="text-base font-black uppercase tracking-tight">
+              TIRAGEM DE BANCADA — RELAÇÃO DE EXAMES DO DIA ({dataFormatada})
+            </h1>
+            <p className="text-[10px] font-medium text-neutral-700">
+              Ordem alfabética por Exame e Paciente (numeração #1, #2, #3... idêntica à fila do celular)
+            </p>
+          </div>
+          <div className="text-right text-xs font-bold shrink-0 pl-2">
+            <span>Total de Exames: {itensPorExame.length}</span>
+            <span className="block text-[10px] font-normal text-neutral-600">
+              Pacientes: {pacientesFiltrados.length}
+            </span>
+          </div>
         </div>
       </div>
 

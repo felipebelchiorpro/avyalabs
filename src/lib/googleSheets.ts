@@ -2,16 +2,29 @@ export const DEFAULT_SHEET_ID = "1BLgTktM_WrcM_bt2jLVsVxjFLmt-uqukm1NqkJ4ebWQ";
 export const DEFAULT_CLIENT_EMAIL = "laboratorio-caconde@citric-inkwell-471303-m8.iam.gserviceaccount.com";
 
 import { google } from "googleapis";
-import { LaudoUrina, RotinaItem, StatusLaudo } from "@/types/urinalise";
+import {
+  LaudoUrina,
+  RotinaItem,
+  StatusLaudo,
+  ItemTriagemEdta,
+  TipoEdtaDestino,
+  StatusTriagemEdta,
+} from "@/types/urinalise";
 import { aplicarFlagsExamesNoItem, formatarProntuario } from "./extratorBancada";
 
-export type { LaudoUrina, RotinaItem, StatusLaudo };
+export type { LaudoUrina, RotinaItem, StatusLaudo, ItemTriagemEdta, TipoEdtaDestino, StatusTriagemEdta };
 export type ItemRotina = RotinaItem;
 
 // Armazenamento em memória global para persistir durante a instância e servir de fallback imediato
 const globalForStore = global as unknown as {
   localMemoryLaudos: LaudoUrina[];
   localMemoryRotina: RotinaItem[];
+  localMemoryTriagemEdta: ItemTriagemEdta[];
+  sinalImpressaoEdta: {
+    solicitado: boolean;
+    timestamp: number;
+    horaEncerramento?: string;
+  } | null;
 };
 
 if (!globalForStore.localMemoryLaudos) {
@@ -20,9 +33,31 @@ if (!globalForStore.localMemoryLaudos) {
 if (!globalForStore.localMemoryRotina) {
   globalForStore.localMemoryRotina = [];
 }
+if (!globalForStore.localMemoryTriagemEdta) {
+  globalForStore.localMemoryTriagemEdta = [];
+}
+if (!globalForStore.sinalImpressaoEdta) {
+  globalForStore.sinalImpressaoEdta = null;
+}
 
 export const SHEET_NAME_LAUDOS = "Laudos_Urina";
 export const SHEET_NAME_ROTINA = "Rotina_Dia";
+export const SHEET_NAME_TRIAGEM_EDTA = "Triagem_EDTA";
+
+export const CABECALHO_TRIAGEM_EDTA = [
+  "id",
+  "data",
+  "prontuario",
+  "nome_paciente",
+  "tipo_destino",
+  "status",
+  "fracionado_glicada",
+  "colocado_grade",
+  "horario_bipado",
+  "exames",
+  "solicitante",
+  "urgencia",
+];
 
 export const CABECALHO_LAUDOS = [
   "id",
@@ -63,7 +98,12 @@ export const CABECALHO_LAUDOS = [
   "resultado_fr",
   "muco",
   "resultado_dengue",
+  "dengue_ns1",
+  "dengue_igg",
+  "dengue_igm",
   "vdrl_acumular_lote",
+  "recoleta_exames",
+  "recoleta_motivo",
 ];
 
 export const CABECALHO_ROTINA = [
@@ -310,6 +350,14 @@ export async function ensureSheetsExist(): Promise<{ ok: boolean; message: strin
       });
     }
 
+    if (!existingTitles.includes(SHEET_NAME_TRIAGEM_EDTA)) {
+      requests.push({
+        addSheet: {
+          properties: { title: SHEET_NAME_TRIAGEM_EDTA },
+        },
+      });
+    }
+
     if (requests.length > 0) {
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId: sheetId,
@@ -332,6 +380,15 @@ export async function ensureSheetsExist(): Promise<{ ok: boolean; message: strin
         range: `${SHEET_NAME_ROTINA}!A1:H1`,
         valueInputOption: "RAW",
         requestBody: { values: [CABECALHO_ROTINA] },
+      });
+    }
+
+    if (!existingTitles.includes(SHEET_NAME_TRIAGEM_EDTA)) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: `${SHEET_NAME_TRIAGEM_EDTA}!A1:L1`,
+        valueInputOption: "RAW",
+        requestBody: { values: [CABECALHO_TRIAGEM_EDTA] },
       });
     }
 
@@ -424,7 +481,7 @@ export async function salvarOuAtualizarLaudo(
 
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: `${SHEET_NAME_LAUDOS}!A:AM`,
+      range: `${SHEET_NAME_LAUDOS}!A:AZ`,
     });
 
     const rows = res.data.values || [];
@@ -504,12 +561,19 @@ export async function salvarOuAtualizarLaudo(
       laudo.volume || "60 mL",
       laudo.resultado_aslo || "",
       laudo.resultado_fr || "",
-      laudo.muco || "Ausentes",
+      laudo.muco || (laudo.tem_urina ? "Ausentes" : ""),
       laudo.resultado_dengue || "",
+      laudo.dengue_ns1 || "",
+      laudo.dengue_igg || "",
+      laudo.dengue_igm || "",
       laudo.vdrl_acumular_lote ? "SIM" : "NAO",
+      Array.isArray(laudo.recoleta_exames)
+        ? laudo.recoleta_exames.join(",")
+        : laudo.recoleta_exames || "",
+      laudo.recoleta_motivo || "",
     ];
     const rowData = temId ? [laudoId, ...rowValoresBase] : rowValoresBase;
-    const finalCol = temId ? "AM" : "AL";
+    const finalCol = temId ? "AS" : "AR";
 
     const rowNumberToWrite =
       targetRowIndex > 0
@@ -603,7 +667,7 @@ export async function listarLaudos(
     try {
       const res = await sheets.spreadsheets.values.get({
         spreadsheetId: sheetId,
-        range: `${SHEET_NAME_LAUDOS}!A:AM`,
+        range: `${SHEET_NAME_LAUDOS}!A:AZ`,
       });
 
       const rows = res.data.values || [];
@@ -638,15 +702,36 @@ export async function listarLaudos(
           const resFr = (r[offset + 34] || "").toString().trim();
           const resMuco = (r[offset + 35] || "").toString().trim();
           const resDengue = (r[offset + 36] || "").toString().trim();
-          const resVdrlLote = (r[offset + 37] || "").toString().trim().toUpperCase();
+          const resDengueNs1 = (r[offset + 37] || "").toString().trim();
+          const resDengueIgg = (r[offset + 38] || "").toString().trim();
+          const resDengueIgm = (r[offset + 39] || "").toString().trim();
+          const resVdrlLote = (r[offset + 40] || "").toString().trim().toUpperCase();
+          const rawRecoletaExames = (r[offset + 41] || "").toString().trim();
+          const rawRecoletaMotivo = (r[offset + 42] || "").toString().trim();
 
           const temOutroExame = Boolean(
-            resProt || resVdrl || resAbo || resPso || resBeta || resVhs || resPcr || resTp || resTtpa || resAslo || resFr || resDengue
+            resProt ||
+              resVdrl ||
+              resAbo ||
+              resPso ||
+              resBeta ||
+              resVhs ||
+              resPcr ||
+              resTp ||
+              resTtpa ||
+              resAslo ||
+              resFr ||
+              resDengue ||
+              resDengueNs1
           );
 
           // Se tiver qualquer outro exame de bancada (VDRL, Proteinúria rápida, ABO/Rh, etc.)
           // e os campos físicos da urina estiverem em branco na planilha, tem_urina é false.
           const temUrina = !temOutroExame || (rawCor !== "" && rawAsp !== "");
+
+          const recoletaLista = rawRecoletaExames
+            ? (rawRecoletaExames as string).split(",").map((s: string) => s.trim().toLowerCase()).filter(Boolean)
+            : undefined;
 
           laudos.push({
             id: temId ? r[0] : `laudo-row-${i}`,
@@ -670,6 +755,7 @@ export async function listarLaudos(
             leucocitos_campo: temUrina ? (r[offset + 16] || "4.000 /mL").toString().trim() : (r[offset + 16] || "").toString().trim(),
             hemacias_campo: temUrina ? (r[offset + 17] || "1.000 /mL").toString().trim() : (r[offset + 17] || "").toString().trim(),
             bacterias: temUrina ? (r[offset + 18] || "fb").toString().trim() : (r[offset + 18] || "").toString().trim(),
+            muco: temUrina ? (resMuco || "Ausentes") : resMuco,
             cristais: temUrina ? (r[offset + 19] || "Ausentes").toString().trim() : (r[offset + 19] || "").toString().trim(),
             cilindros: temUrina ? (r[offset + 20] || "Ausentes").toString().trim() : (r[offset + 20] || "").toString().trim(),
             observacoes: r[offset + 21] || "",
@@ -698,8 +784,13 @@ export async function listarLaudos(
             tem_fr: Boolean(resFr),
             muco: temUrina ? resMuco || "Ausentes" : resMuco,
             resultado_dengue: resDengue || undefined,
-            tem_dengue: Boolean(resDengue),
+            dengue_ns1: resDengueNs1 || undefined,
+            dengue_igg: resDengueIgg || undefined,
+            dengue_igm: resDengueIgm || undefined,
+            tem_dengue: Boolean(resDengue || resDengueNs1 || resDengueIgg || resDengueIgm),
             vdrl_acumular_lote: resVdrlLote === "SIM" || resVdrl === "Aguardando lote semanal",
+            recoleta_exames: recoletaLista,
+            recoleta_motivo: rawRecoletaMotivo || undefined,
           });
         }
         laudos = laudos.reverse();
@@ -972,4 +1063,362 @@ export async function buscarPacientePorProntuario(
   const ultimoLaudo = laudos.length > 0 ? laudos[0] : null;
 
   return { paciente: daRotina, ultimoLaudo };
+}
+
+/**
+ * =========================================================================
+ * PARTIÇÃO EXCLUSIVA: TRIAGEM EDTA (TUBOS DE TAMPA ROXA)
+ * =========================================================================
+ */
+
+export async function salvarTriagemEdta(
+  itens: ItemTriagemEdta[],
+  substituirExistente = true
+): Promise<{ ok: boolean; count: number; total: number; message: string }> {
+  const hojeIso = new Date().toISOString().split("T")[0];
+
+  const itensNormalizados: ItemTriagemEdta[] = itens
+    .map((item) => ({
+      ...item,
+      id: item.id || `edta-${normalizarDataIso(item.data) || hojeIso}-${formatarProntuario(item.prontuario)}`,
+      data: normalizarDataIso(item.data) || hojeIso,
+      prontuario: formatarProntuario(item.prontuario),
+      nome_paciente: (item.nome_paciente || "").trim().toUpperCase(),
+      tipo_destino: item.tipo_destino || "apenas_hemograma",
+      status: item.status || "pendente",
+      fracionado_glicada: Boolean(item.fracionado_glicada),
+      colocado_grade: Boolean(item.colocado_grade),
+      horario_bipado: item.horario_bipado || "",
+      solicitante: item.solicitante || "Dr(a). Clínico(a) Geral / UBS",
+      urgencia: Boolean(item.urgencia),
+      exames_originais: item.exames_originais || [],
+    }))
+    .sort((a, b) => a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR"));
+
+  if (substituirExistente) {
+    globalForStore.localMemoryTriagemEdta = [...itensNormalizados];
+  } else {
+    const mapa = new Map<string, ItemTriagemEdta>();
+    for (const r of globalForStore.localMemoryTriagemEdta) {
+      mapa.set(`${formatarProntuario(r.prontuario)}_${r.nome_paciente}`, r);
+    }
+    for (const novo of itensNormalizados) {
+      mapa.set(`${novo.prontuario}_${novo.nome_paciente}`, novo);
+    }
+    globalForStore.localMemoryTriagemEdta = Array.from(mapa.values()).sort((a, b) =>
+      a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR")
+    );
+  }
+
+  const gClient = getGoogleSheetsClient();
+  if (!gClient) {
+    return {
+      ok: true,
+      count: globalForStore.localMemoryTriagemEdta.length,
+      total: globalForStore.localMemoryTriagemEdta.length,
+      message: `${globalForStore.localMemoryTriagemEdta.length} tubos EDTA sincronizados em memória.`,
+    };
+  }
+
+  const { sheets, sheetId } = gClient;
+
+  try {
+    await ensureSheetsExist();
+
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: sheetId,
+      range: `${SHEET_NAME_TRIAGEM_EDTA}!A:L`,
+    });
+
+    const values = [
+      CABECALHO_TRIAGEM_EDTA,
+      ...globalForStore.localMemoryTriagemEdta.map((item, idx) => {
+        const itemData = item.data || hojeIso;
+        const itemId = item.id || `EDTA-${itemData}-${item.prontuario || idx + 1}`;
+        return [
+          itemId,
+          itemData,
+          item.prontuario,
+          item.nome_paciente,
+          item.tipo_destino,
+          item.status,
+          item.fracionado_glicada ? "SIM" : "NAO",
+          item.colocado_grade ? "SIM" : "NAO",
+          item.horario_bipado || "",
+          (item.exames_originais || []).join(" + "),
+          item.solicitante || "Dr(a). Clínico(a) Geral / UBS",
+          item.urgencia ? "SIM" : "NAO",
+        ];
+      }),
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: sheetId,
+      range: `${SHEET_NAME_TRIAGEM_EDTA}!A1`,
+      valueInputOption: "RAW",
+      requestBody: { values },
+    });
+
+    return {
+      ok: true,
+      count: globalForStore.localMemoryTriagemEdta.length,
+      total: globalForStore.localMemoryTriagemEdta.length,
+      message: `${globalForStore.localMemoryTriagemEdta.length} tubos EDTA sincronizados com sucesso na aba Triagem_EDTA!`,
+    };
+  } catch (err: any) {
+    console.error("Erro ao salvar Triagem EDTA no Google Sheets:", err);
+    return {
+      ok: true,
+      count: globalForStore.localMemoryTriagemEdta.length,
+      total: globalForStore.localMemoryTriagemEdta.length,
+      message: `Triagem EDTA salva na memória do servidor (${err.message}).`,
+    };
+  }
+}
+
+export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriagemEdta[]> {
+  const gClient = getGoogleSheetsClient();
+  let itens: ItemTriagemEdta[] = [];
+
+  if (!gClient) {
+    itens = [...globalForStore.localMemoryTriagemEdta];
+  } else {
+    const { sheets, sheetId } = gClient;
+    try {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: sheetId,
+        range: `${SHEET_NAME_TRIAGEM_EDTA}!A:L`,
+      });
+
+      const rows = res.data.values || [];
+      if (rows.length > 1) {
+        const headerRow = (rows[0] || []).map((h: any) =>
+          (h || "").toString().toLowerCase().trim()
+        );
+        const idxId = headerRow.indexOf("id");
+        const idxData = headerRow.findIndex((h: string) => h.includes("data"));
+        const idxPront = headerRow.findIndex((h: string) => h.includes("pront"));
+        const idxNome = headerRow.findIndex(
+          (h: string) => h.includes("nome") || h.includes("paciente")
+        );
+        const idxTipo = headerRow.findIndex((h: string) => h.includes("tipo"));
+        const idxStatus = headerRow.findIndex((h: string) => h.includes("status"));
+        const idxFrac = headerRow.findIndex((h: string) => h.includes("frac"));
+        const idxGrade = headerRow.findIndex((h: string) => h.includes("grade"));
+        const idxHora = headerRow.findIndex((h: string) => h.includes("hora"));
+        const idxExames = headerRow.findIndex((h: string) => h.includes("exame"));
+        const idxSolicitante = headerRow.findIndex(
+          (h: string) => h.includes("solicit") || h.includes("medico")
+        );
+        const idxUrgencia = headerRow.findIndex(
+          (h: string) => h.includes("urgenc") || h.includes("prioridade")
+        );
+
+        itens = [];
+        for (let i = 1; i < rows.length; i++) {
+          const r = rows[i];
+          if (!r || r.length === 0) continue;
+          const prontuario = formatarProntuario(
+            idxPront >= 0 ? r[idxPront] : r[1] || ""
+          );
+          if (!prontuario && (!r[idxNome] || r[idxNome].length < 2)) continue;
+
+          const rowDate = normalizarDataIso(
+            (idxData >= 0 ? r[idxData] : r[0] || "").toString().trim()
+          );
+
+          const tipoRaw = (idxTipo >= 0 ? r[idxTipo] : "").toString().trim() as TipoEdtaDestino;
+          const statusRaw = (idxStatus >= 0 ? r[idxStatus] : "pendente").toString().trim() as StatusTriagemEdta;
+          const fracRaw = (idxFrac >= 0 ? r[idxFrac] : "").toString().trim().toUpperCase();
+          const gradeRaw = (idxGrade >= 0 ? r[idxGrade] : "").toString().trim().toUpperCase();
+          const solicitanteRaw = (idxSolicitante >= 0 ? r[idxSolicitante] : "").toString().trim();
+          const urgenciaRaw = (idxUrgencia >= 0 ? r[idxUrgencia] : "").toString().trim().toUpperCase();
+
+          const temHemograma =
+            tipoRaw === "apenas_hemograma" ||
+            tipoRaw === "hemograma_glicada" ||
+            !tipoRaw;
+          const temGlicada =
+            tipoRaw === "apenas_glicada" || tipoRaw === "hemograma_glicada";
+
+          itens.push({
+            id: idxId >= 0 ? r[idxId] : `edta-row-${i}`,
+            data: rowDate || new Date().toISOString().split("T")[0],
+            prontuario,
+            nome_paciente: (idxNome >= 0 ? r[idxNome] : r[2] || "").toString().trim().toUpperCase(),
+            tipo_destino: tipoRaw || "apenas_hemograma",
+            status: statusRaw || "pendente",
+            fracionado_glicada: fracRaw === "SIM" || fracRaw === "TRUE",
+            colocado_grade: gradeRaw === "SIM" || gradeRaw === "TRUE",
+            horario_bipado: idxHora >= 0 ? r[idxHora] : "",
+            solicitante: solicitanteRaw || "Dr(a). Clínico(a) Geral / UBS",
+            urgencia: urgenciaRaw === "SIM" || urgenciaRaw === "TRUE",
+            tem_hemograma: temHemograma,
+            tem_glicada: temGlicada,
+            exames_originais: idxExames >= 0 && r[idxExames] ? r[idxExames].split(" + ") : [],
+          });
+        }
+        globalForStore.localMemoryTriagemEdta = itens;
+      } else if (globalForStore.localMemoryTriagemEdta.length > 0) {
+        itens = [...globalForStore.localMemoryTriagemEdta];
+      }
+    } catch (err) {
+      console.error("Erro ao ler Triagem EDTA do Google Sheets:", err);
+      itens = [...globalForStore.localMemoryTriagemEdta];
+    }
+  }
+
+  if (dataFiltro) {
+    const alvo = normalizarDataIso(dataFiltro);
+    const filtrada = itens.filter((r) => normalizarDataIso(r.data) === alvo);
+    if (filtrada.length > 0) {
+      itens = filtrada;
+    }
+  }
+
+  return itens.sort((a, b) => a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR"));
+}
+
+export async function atualizarStatusItemEdta(
+  prontuario: string,
+  updates: Partial<ItemTriagemEdta>
+): Promise<ItemTriagemEdta | null> {
+  const prontFormatado = formatarProntuario(prontuario).toLowerCase();
+  const lista = await listarTriagemEdta();
+  const index = lista.findIndex(
+    (item) =>
+      formatarProntuario(item.prontuario).toLowerCase() === prontFormatado ||
+      item.prontuario.toLowerCase() === prontFormatado
+  );
+
+  if (index === -1) {
+    return null;
+  }
+
+  const itemAtualizado: ItemTriagemEdta = {
+    ...lista[index],
+    ...updates,
+    horario_bipado: updates.horario_bipado || new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+  };
+
+  lista[index] = itemAtualizado;
+  globalForStore.localMemoryTriagemEdta = lista;
+
+  // Persistir assincronamente no Google Sheets
+  const gClient = getGoogleSheetsClient();
+  if (gClient) {
+    try {
+      const { sheets, sheetId } = gClient;
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: sheetId,
+        range: `${SHEET_NAME_TRIAGEM_EDTA}!A:L`,
+      });
+      const rows = res.data.values || [];
+      if (rows.length > 1) {
+        const headerRow = (rows[0] || []).map((h: any) =>
+          (h || "").toString().toLowerCase().trim()
+        );
+        const idxPront = headerRow.findIndex((h) => h.includes("pront"));
+        const idxStatus = headerRow.findIndex((h) => h.includes("status"));
+        const idxFrac = headerRow.findIndex((h) => h.includes("frac"));
+        const idxGrade = headerRow.findIndex((h) => h.includes("grade"));
+        const idxHora = headerRow.findIndex((h) => h.includes("hora"));
+        const idxSolic = headerRow.findIndex(
+          (h) => h.includes("solicit") || h.includes("medico")
+        );
+        const idxUrg = headerRow.findIndex(
+          (h) => h.includes("urg") || h.includes("prioridade")
+        );
+
+        if (idxPront >= 0) {
+          for (let ri = 1; ri < rows.length; ri++) {
+            const rowPront = formatarProntuario(rows[ri][idxPront] || "").toLowerCase();
+            if (rowPront === prontFormatado) {
+              const rowNum = ri + 1;
+              if (idxStatus >= 0 && updates.status) {
+                const colLetter = String.fromCharCode(65 + idxStatus);
+                await sheets.spreadsheets.values.update({
+                  spreadsheetId: sheetId,
+                  range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}${rowNum}`,
+                  valueInputOption: "RAW",
+                  requestBody: { values: [[updates.status]] },
+                });
+              }
+              if (idxFrac >= 0 && updates.fracionado_glicada !== undefined) {
+                const colLetter = String.fromCharCode(65 + idxFrac);
+                await sheets.spreadsheets.values.update({
+                  spreadsheetId: sheetId,
+                  range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}${rowNum}`,
+                  valueInputOption: "RAW",
+                  requestBody: { values: [[updates.fracionado_glicada ? "SIM" : "NAO"]] },
+                });
+              }
+              if (idxGrade >= 0 && updates.colocado_grade !== undefined) {
+                const colLetter = String.fromCharCode(65 + idxGrade);
+                await sheets.spreadsheets.values.update({
+                  spreadsheetId: sheetId,
+                  range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}${rowNum}`,
+                  valueInputOption: "RAW",
+                  requestBody: { values: [[updates.colocado_grade ? "SIM" : "NAO"]] },
+                });
+              }
+              if (idxHora >= 0) {
+                const colLetter = String.fromCharCode(65 + idxHora);
+                await sheets.spreadsheets.values.update({
+                  spreadsheetId: sheetId,
+                  range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}${rowNum}`,
+                  valueInputOption: "RAW",
+                  requestBody: { values: [[itemAtualizado.horario_bipado]] },
+                });
+              }
+              if (idxSolic >= 0 && updates.solicitante !== undefined) {
+                const colLetter = String.fromCharCode(65 + idxSolic);
+                await sheets.spreadsheets.values.update({
+                  spreadsheetId: sheetId,
+                  range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}${rowNum}`,
+                  valueInputOption: "RAW",
+                  requestBody: { values: [[updates.solicitante || ""]] },
+                });
+              }
+              if (idxUrg >= 0 && updates.urgencia !== undefined) {
+                const colLetter = String.fromCharCode(65 + idxUrg);
+                await sheets.spreadsheets.values.update({
+                  spreadsheetId: sheetId,
+                  range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}${rowNum}`,
+                  valueInputOption: "RAW",
+                  requestBody: { values: [[updates.urgencia ? "SIM" : "NAO"]] },
+                });
+              }
+              break;
+            }
+          }
+        }
+      }
+    } catch (syncErr) {
+      console.warn("Aviso ao atualizar item na aba Triagem_EDTA:", syncErr);
+    }
+  }
+
+  return itemAtualizado;
+}
+
+export function emitirSinalImpressaoEdta(horaEncerramento?: string) {
+  const agora = Date.now();
+  const hora = horaEncerramento || new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  globalForStore.sinalImpressaoEdta = {
+    solicitado: true,
+    timestamp: agora,
+    horaEncerramento: hora,
+  };
+  return globalForStore.sinalImpressaoEdta;
+}
+
+export function obterSinalImpressaoEdta() {
+  return globalForStore.sinalImpressaoEdta;
+}
+
+export function consumirSinalImpressaoEdta() {
+  if (globalForStore.sinalImpressaoEdta) {
+    globalForStore.sinalImpressaoEdta.solicitado = false;
+  }
 }

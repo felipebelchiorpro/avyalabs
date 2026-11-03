@@ -1,5 +1,4 @@
-import { RotinaItem } from "@/types/urinalise";
-
+import { RotinaItem, ItemTriagemEdta, TipoEdtaDestino, StatusTriagemEdta } from "@/types/urinalise";
 export type ItemRotina = RotinaItem;
 
 export interface LinhaColetaBruta {
@@ -28,6 +27,11 @@ export interface ResultadoExtracaoBancada {
   totalDescartadosAutomatizados: number;
   linhasRelatorioBancada: LinhaRelatorioBancada[];
   pacientesUnificados: ItemRotina[];
+  pacientesEdta?: ItemTriagemEdta[];
+  totalEdta?: number;
+  totalFracionarGlicada?: number;
+  totalApenasHemograma?: number;
+  totalApenasGlicada?: number;
 }
 
 /**
@@ -51,6 +55,64 @@ export function formatarProntuario(valor: any): string {
     return limpo.padStart(7, "0");
   }
   return limpo;
+}
+
+/**
+ * Identifica se um procedimento/exame do Conecta SUS pertence à TRIAGEM EDTA (Tubo Tampa Roxa)
+ * Filtra UNICAMENTE exames contendo: HEMOGRAMA, HEMO, ERITRO, GLICADA, HBA1C, A1C.
+ */
+export function identificarExameEdta(
+  procedimentoRaw: string,
+  exameRaw: string
+): {
+  ehEdta: boolean;
+  temHemograma: boolean;
+  temGlicada: boolean;
+  nomeExame: string;
+} {
+  const proc = normalizarTexto(procedimentoRaw);
+  const ex = normalizarTexto(exameRaw);
+  const combinado = `${proc} | ${ex}`;
+
+  // Glicada: GLICADA, HBA1C, A1C, HEMOGLOBINA GLICADA
+  const temGlicada =
+    combinado.includes("GLICADA") ||
+    combinado.includes("HBA1C") ||
+    /\bA1C\b/.test(combinado) ||
+    combinado.includes("HEMOGLOBINA GLICO");
+
+  // Hemograma: HEMOGRAMA, HEMO, ERITRO
+  // Isolamos termos que não sejam hemograma (evita VHS - HEMOSSEDIMENTAÇÃO, e evita o "HEMO" dentro de HEMOGLOBINA GLICADA)
+  const textoLimpoHemograma = combinado
+    .replace(/HEMOSSEDIMENTA[CÇ][AÃ]O/g, "")
+    .replace(/HEMOGLOBINA\s+GLIC[AÁ]DA/g, "")
+    .replace(/GLICADA/g, "")
+    .replace(/HBA1C/g, "");
+
+  const temHemograma =
+    textoLimpoHemograma.includes("HEMOGRAMA") ||
+    textoLimpoHemograma.includes("ERITROGRAMA") ||
+    textoLimpoHemograma.includes("ERITRO") ||
+    /\bHEMO\b/.test(textoLimpoHemograma) ||
+    /\bHEMOG\b/.test(textoLimpoHemograma);
+
+  const ehEdta = temHemograma || temGlicada;
+
+  let nomeExame = "";
+  if (temHemograma && temGlicada) {
+    nomeExame = "HEMOGRAMA + GLICADA";
+  } else if (temHemograma) {
+    nomeExame = "HEMOGRAMA";
+  } else if (temGlicada) {
+    nomeExame = "GLICADA (HBA1C)";
+  }
+
+  return {
+    ehEdta,
+    temHemograma,
+    temGlicada,
+    nomeExame,
+  };
 }
 
 /**
@@ -322,7 +384,9 @@ export function classificarExameBancada(
     combinado.includes("DENGUE") ||
     combinado.includes("NS1") ||
     combinado.includes("TESTE RAPIDO DENGUE") ||
-    combinado.includes("SOROLOGIA DENGUE")
+    combinado.includes("SOROLOGIA DENGUE") ||
+    ex === "DENGUE" ||
+    ex.includes("DENGUE")
   ) {
     return {
       ehBancada: true,
@@ -362,6 +426,7 @@ export function aplicarFlagsExamesNoItem(item: ItemRotina): ItemRotina {
   let tem_fr = Boolean(item.tem_fr);
   let tem_proteinuria_rapida = Boolean(item.tem_proteinuria_rapida);
   let tem_abo_rh = Boolean(item.tem_abo_rh);
+  let tem_dengue = Boolean(item.tem_dengue);
 
   for (const parte of partes) {
     const c = classificarExameBancada(parte, parte);
@@ -385,6 +450,7 @@ export function aplicarFlagsExamesNoItem(item: ItemRotina): ItemRotina {
     if (c.categoria === "aslo") tem_aslo = true;
     if (c.categoria === "fr") tem_fr = true;
     if (c.categoria === "abo_rh") tem_abo_rh = true;
+    if (c.categoria === "dengue") tem_dengue = true;
   }
 
   // Se tem_coagulograma mas nenhum subtipo foi registrado, assume ambos
@@ -405,7 +471,8 @@ export function aplicarFlagsExamesNoItem(item: ItemRotina): ItemRotina {
     tem_aslo ||
     tem_fr ||
     tem_proteinuria_rapida ||
-    tem_abo_rh;
+    tem_abo_rh ||
+    tem_dengue;
 
   if (!tem_urina && !temAlgumOutro && !exameTexto) {
     tem_urina = true;
@@ -431,6 +498,7 @@ export function aplicarFlagsExamesNoItem(item: ItemRotina): ItemRotina {
     tem_fr,
     tem_proteinuria_rapida,
     tem_abo_rh,
+    tem_dengue,
   };
 }
 
@@ -465,6 +533,7 @@ export function extrairExamesBancadaConectaSUS(
   let idxProcedimento = -1;
   let idxExame = -1;
   let idxStatus = -1;
+  let idxSolicitante = -1;
   let linhaCabecalho = -1;
 
   for (let r = 0; r < Math.min(10, rows.length); r++) {
@@ -502,6 +571,15 @@ export function extrairExamesBancadaConectaSUS(
       idxStatus = normCells.findIndex(
         (h) => (h.includes("STATUS") || h.includes("SITUACAO")) && !h.includes("DATA")
       );
+      idxSolicitante = normCells.findIndex(
+        (h) =>
+          (h.includes("MEDICO") ||
+            h.includes("SOLICITANTE") ||
+            h.includes("PROFISSIONAL") ||
+            h.includes("PRESCRITOR") ||
+            h.includes("REQUISITANTE")) &&
+          !h.endsWith(":")
+      );
       break;
     }
   }
@@ -525,6 +603,15 @@ export function extrairExamesBancadaConectaSUS(
     {
       item: ItemRotina;
       examesSet: Set<string>;
+    }
+  >();
+
+  // Partição da Triagem EDTA (Tubos de Tampa Roxa)
+  const mapaEdta = new Map<
+    string,
+    {
+      item: ItemTriagemEdta;
+      examesOriginais: Set<string>;
     }
   >();
 
@@ -590,6 +677,47 @@ export function extrairExamesBancadaConectaSUS(
 
     totalLinhasBrutas++;
 
+    const prontuarioFinal = prontRaw || `S/P-${totalLinhasBrutas}`;
+    const nomePacienteLimpo = nomeRaw.toUpperCase().trim();
+    const solicitanteRaw =
+      idxSolicitante !== -1 && row[idxSolicitante] && String(row[idxSolicitante]).trim() !== ""
+        ? String(row[idxSolicitante]).trim()
+        : "Dr(a). Clínico(a) Geral / UBS";
+
+    // 1. Processar Partição Triagem EDTA (Hemograma e/ou Hemoglobina Glicada)
+    const edtaInfo = identificarExameEdta(procRaw, exameRaw);
+    if (edtaInfo.ehEdta) {
+      const chaveEdta = `${prontuarioFinal}_${nomePacienteLimpo}`;
+      if (!mapaEdta.has(chaveEdta)) {
+        mapaEdta.set(chaveEdta, {
+          item: {
+            id: `edta-${dataLinha}-${prontuarioFinal}`,
+            data: dataLinha,
+            prontuario: prontuarioFinal,
+            nome_paciente: nomePacienteLimpo,
+            idade_sexo: "SUS",
+            posto_unidade: "Conecta SUS",
+            solicitante: solicitanteRaw,
+            tem_hemograma: false,
+            tem_glicada: false,
+            tipo_destino: "apenas_hemograma",
+            status: "pendente",
+            fracionado_glicada: false,
+            colocado_grade: false,
+          },
+          examesOriginais: new Set<string>(),
+        });
+      }
+      const regEdta = mapaEdta.get(chaveEdta)!;
+      if (edtaInfo.temHemograma) regEdta.item.tem_hemograma = true;
+      if (edtaInfo.temGlicada) regEdta.item.tem_glicada = true;
+      if (solicitanteRaw && regEdta.item.solicitante === "Dr(a). Clínico(a) Geral / UBS") {
+        regEdta.item.solicitante = solicitanteRaw;
+      }
+      regEdta.examesOriginais.add(exameRaw.trim() || procRaw.trim());
+    }
+
+    // 2. Processar Bancada Manual (Urina, PSO, Coagulação, Rápidos)
     const classificacao = classificarExameBancada(procRaw, exameRaw);
     if (!classificacao.ehBancada) {
       totalDescartadosBioquimica++;
@@ -597,8 +725,6 @@ export function extrairExamesBancadaConectaSUS(
     }
 
     totalExamesBancada++;
-    const prontuarioFinal = prontRaw || `S/P-${totalExamesBancada}`;
-    const nomePacienteLimpo = nomeRaw.toUpperCase().trim();
 
     // Adicionar linha para a Tiragem (estilo Bancada 15/10), evitando duplicar o mesmo exame para o mesmo paciente
     const jaTemLinhaExame = linhasRelatorioBancada.some(
@@ -629,7 +755,7 @@ export function extrairExamesBancadaConectaSUS(
           nome_paciente: nomePacienteLimpo,
           idade_sexo: "SUS",
           posto_unidade: "Conecta SUS",
-          solicitante: "Conecta SUS",
+          solicitante: solicitanteRaw,
           exame: classificacao.nomeExamePadronizado,
           tem_laudo: false,
           tem_urina: false,
@@ -646,6 +772,7 @@ export function extrairExamesBancadaConectaSUS(
           tem_fr: false,
           tem_proteinuria_rapida: false,
           tem_abo_rh: false,
+          tem_dengue: false,
         },
         examesSet: new Set<string>(),
       });
@@ -675,6 +802,7 @@ export function extrairExamesBancadaConectaSUS(
     if (classificacao.categoria === "vhs") registro.item.tem_vhs = true;
     if (classificacao.categoria === "beta_hcg") registro.item.tem_beta_hcg = true;
     if (classificacao.categoria === "abo_rh") registro.item.tem_abo_rh = true;
+    if (classificacao.categoria === "dengue") registro.item.tem_dengue = true;
 
     registro.item.exame = Array.from(registro.examesSet).join(" + ");
   }
@@ -693,6 +821,37 @@ export function extrairExamesBancadaConectaSUS(
     .map((v) => v.item)
     .sort((a, b) => a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR"));
 
+  // Processar e classificar os pacientes da Triagem EDTA
+  const pacientesEdta: ItemTriagemEdta[] = Array.from(mapaEdta.values())
+    .map(({ item, examesOriginais }) => {
+      let tipo_destino: TipoEdtaDestino = "apenas_hemograma";
+      if (item.tem_hemograma && item.tem_glicada) {
+        tipo_destino = "hemograma_glicada";
+      } else if (item.tem_hemograma) {
+        tipo_destino = "apenas_hemograma";
+      } else if (item.tem_glicada) {
+        tipo_destino = "apenas_glicada";
+      }
+
+      return {
+        ...item,
+        tipo_destino,
+        exames_originais: Array.from(examesOriginais),
+      };
+    })
+    .sort((a, b) => a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR"));
+
+  const totalEdta = pacientesEdta.length;
+  const totalFracionarGlicada = pacientesEdta.filter(
+    (p) => p.tipo_destino === "hemograma_glicada"
+  ).length;
+  const totalApenasHemograma = pacientesEdta.filter(
+    (p) => p.tipo_destino === "apenas_hemograma"
+  ).length;
+  const totalApenasGlicada = pacientesEdta.filter(
+    (p) => p.tipo_destino === "apenas_glicada"
+  ).length;
+
   return {
     dataReferencia,
     totalLinhasBrutas,
@@ -703,6 +862,36 @@ export function extrairExamesBancadaConectaSUS(
     totalDescartadosAutomatizados: totalDescartadosBioquimica,
     linhasRelatorioBancada,
     pacientesUnificados,
+    pacientesEdta,
+    totalEdta,
+    totalFracionarGlicada,
+    totalApenasHemograma,
+    totalApenasGlicada,
+  };
+}
+
+/**
+ * Função utilitária dedicada para extrair unicamente a partição de Triagem EDTA
+ */
+export function extrairTriagemEdta(
+  rows: any[][],
+  filtrarApenasRealizado: boolean = false
+): {
+  dataReferencia: string;
+  pacientesEdta: ItemTriagemEdta[];
+  totalEdta: number;
+  totalFracionarGlicada: number;
+  totalApenasHemograma: number;
+  totalApenasGlicada: number;
+} {
+  const res = processarMatrizLinhasBancada(rows, filtrarApenasRealizado);
+  return {
+    dataReferencia: res.dataReferencia,
+    pacientesEdta: res.pacientesEdta || [],
+    totalEdta: res.totalEdta || 0,
+    totalFracionarGlicada: res.totalFracionarGlicada || 0,
+    totalApenasHemograma: res.totalApenasHemograma || 0,
+    totalApenasGlicada: res.totalApenasGlicada || 0,
   };
 }
 

@@ -85,6 +85,17 @@ export interface LaudoUrina {
   tem_abo_rh?: boolean;
   resultado_abo_rh?: string;
 
+  // 8. Teste Rápido de Dengue (Duo / Combo: NS1, IgG e IgM)
+  tem_dengue?: boolean;
+  dengue_ns1?: string; // "Não Reagente" | "Reagente" | "Inconclusivo"
+  dengue_igg?: string; // "Não Reagente" | "Reagente"
+  dengue_igm?: string; // "Não Reagente" | "Reagente"
+  resultado_dengue?: string; // Consolidado (ex: "NS1: Não Reagente | IgG: Não Reagente | IgM: Não Reagente")
+
+  // Recoleta Específica por Exame (permite que Urina seja recoleta sem anular outros exames)
+  recoleta_exames?: string[]; // Ex: ["urina"] ou ["pso"] ou ["dengue"] ou ["todos"]
+  recoleta_motivo?: string;
+
   observacoes: string;
   status: StatusLaudo;
   responsavel_tecnico?: string;
@@ -103,6 +114,8 @@ export interface RotinaItem {
   status_coleta: string; // 'REALIZADO', 'COLETADO', 'PENDENTE'
   tem_laudo?: boolean;
   status_laudo?: StatusLaudo;
+  recoleta_exames?: string[];
+  recoleta_motivo?: string;
   tem_urina?: boolean;
   tem_pso?: boolean;
   tem_proteinuria_rapida?: boolean;
@@ -118,7 +131,30 @@ export interface RotinaItem {
   tem_tap?: boolean;
   tem_ttpa?: boolean;
   tem_abo_rh?: boolean;
+  tem_dengue?: boolean;
   exames_bancada?: string[];
+}
+
+export type TipoEdtaDestino = "apenas_hemograma" | "hemograma_glicada" | "apenas_glicada";
+export type StatusTriagemEdta = "pendente" | "pronto_grade" | "retido_bancada";
+
+export interface ItemTriagemEdta {
+  id?: string;
+  data: string; // YYYY-MM-DD
+  prontuario: string;
+  nome_paciente: string;
+  idade_sexo?: string;
+  posto_unidade?: string;
+  solicitante?: string;
+  urgencia?: boolean;
+  tem_hemograma: boolean;
+  tem_glicada: boolean;
+  tipo_destino: TipoEdtaDestino;
+  status: StatusTriagemEdta;
+  fracionado_glicada: boolean;
+  colocado_grade: boolean;
+  horario_bipado?: string; // HH:mm:ss
+  exames_originais?: string[];
 }
 
 export interface LabConfig {
@@ -132,13 +168,34 @@ export interface LabConfig {
 }
 
 export const DEFAULT_LAB_CONFIG: LabConfig = {
-  nomeInstituicao: "SISTEMA ÚNICO DE SAÚDE - SUS",
-  subtitulo: "SECRETARIA MUNICIPAL DE SAÚDE",
+  nomeInstituicao: "PREFEITURA MUNICIPAL DE CACONDE",
+  subtitulo: "ESTÂNCIA CLIMÁTICA DE CACONDE • DEPARTAMENTO MUNICIPAL DE SAÚDE",
   nomeLaboratorio: "LABORATÓRIO MUNICIPAL DE ANÁLISES CLÍNICAS",
-  cidadeUf: "Rede Municipal de Saúde",
+  cidadeUf: "Caconde - SP",
   responsavelTecnico: "Dra. Mariana S. Rezende",
   registroProfissional: "CRF-SP 48.912 / Resp. Técnica",
 };
+
+export const OPCOES_CORES_URINA = [
+  "Amarelo Claro",
+  "Amarelo Citrino",
+  "Amarelo Ouro",
+  "Amarelo Claríssimo",
+  "Âmbar",
+  "Acastanhado",
+  "Alaranjado",
+  "Alaranjado Medicamentoso",
+  "Leitoso e Esbranquiçado",
+  "Rosada",
+  "Verde Medicamentosa",
+  "Vermelho Sangue",
+] as const;
+
+export const OPCOES_ASPECTO_URINA = [
+  "Límpido",
+  "Ligeiramente Turvo",
+  "Turvo",
+] as const;
 
 export const VALORES_PADRAO_NORMAL: Omit<
   LaudoUrina,
@@ -146,19 +203,19 @@ export const VALORES_PADRAO_NORMAL: Omit<
 > = {
   tem_urina: true,
   volume: "60 mL",
-  cor: "Amarelo ouro",
-  aspecto: "L (Límpido)",
+  cor: "Amarelo Claro",
+  aspecto: "Límpido",
   densidade: "1.020",
   ph: "6.0",
   proteina: "Negativo",
   glicose: "Negativo",
   cetona: "Negativo",
   bilirrubina: "Negativo",
-  urobilinogenio: "Normal",
+  urobilinogenio: "Negativo",
   sangue: "Negativo",
   nitrito: "Negativo",
   leucocitos_fita: "Negativo",
-  celulas_epiteliais: "6.000 /mL",
+  celulas_epiteliais: "Raras",
   leucocitos_campo: "4.000 /mL",
   hemacias_campo: "1.000 /mL",
   bacterias: "Ausentes",
@@ -187,6 +244,12 @@ export const VALORES_PADRAO_NORMAL: Omit<
   resultado_fr: "Negativo (< 8 UI/mL)",
   tem_abo_rh: false,
   resultado_abo_rh: "O Positivo (+)",
+  tem_dengue: false,
+  dengue_ns1: "Não Reagente",
+  dengue_igg: "Não Reagente",
+  dengue_igm: "Não Reagente",
+  resultado_dengue: "NS1: Não Reagente | IgG: Não Reagente | IgM: Não Reagente",
+  recoleta_exames: [],
   tem_coagulograma: false,
   tp_tempo: "12.0 seg",
   tp_atividade: "100%",

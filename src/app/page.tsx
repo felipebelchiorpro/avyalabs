@@ -7,6 +7,7 @@ import { LaudoUrina, ItemRotina, StatusLaudo } from "@/lib/googleSheets";
 import { formatarProntuario } from "@/lib/extratorBancada";
 import { MapaBancadaPrintView } from "@/components/MapaBancadaPrintView";
 import { RelatorioBancadaDiaPrintView } from "@/components/RelatorioBancadaDiaPrintView";
+import { baixarXmlUrinalise, gerarStringXmlUrinalise } from "@/lib/exportadorXmlExtensao";
 import {
   Search,
   CheckCircle2,
@@ -28,11 +29,13 @@ import {
   X,
   Eye,
   Calendar,
+  FileCode,
+  Copy,
 } from "lucide-react";
 
 const VALORES_PADRAO_NORMAL = {
   volume: "60 mL",
-  cor: "Amarelo ouro",
+  cor: "Amarelo Claro",
   aspecto: "Límpido",
   densidade: "1.020",
   ph: "6.0",
@@ -40,11 +43,11 @@ const VALORES_PADRAO_NORMAL = {
   glicose: "Negativo",
   cetona: "Negativo",
   bilirrubina: "Negativo",
-  urobilinogenio: "Normal",
+  urobilinogenio: "Negativo",
   sangue: "Negativo",
   nitrito: "Negativo",
   leucocitos_fita: "Negativo",
-  celulas_epiteliais: "4.000 /mL",
+  celulas_epiteliais: "Raras",
   leucocitos_campo: "4.000 /mL",
   hemacias_campo: "1.000 /mL",
   bacterias: "fb",
@@ -164,13 +167,25 @@ export default function BancadaOperacionalPage() {
   const [temProteinuriaRapida, setTemProteinuriaRapida] = useState<boolean>(false);
   const [resultadoProteinuriaRapida, setResultadoProteinuriaRapida] = useState<string>("Negativo");
 
-  // Teste Rápido de Dengue (NS1 / IgG / IgM)
+  // Teste Rápido de Dengue (NS1, IgG e IgM)
   const [temDengue, setTemDengue] = useState<boolean>(false);
   const [resultadoDengue, setResultadoDengue] = useState<string>("Não Reagente (NS1 / IgG / IgM)");
+  const [dengueNs1, setDengueNs1] = useState<string>("Não Reagente");
+  const [dengueIgg, setDengueIgg] = useState<string>("Não Reagente");
+  const [dengueIgm, setDengueIgm] = useState<string>("Não Reagente");
 
   // Controle de Resultados da Aba de VDRL em Lote
   const [vdrlLoteResultados, setVdrlLoteResultados] = useState<Record<string, string>>({});
   const [isSalvandoLote, setIsSalvandoLote] = useState<boolean>(false);
+
+  // Controle de Recoleta Específica por Exame
+  const [modalRecoletaAberto, setModalRecoletaAberto] = useState<boolean>(false);
+  const [recoletaExamesSelecionados, setRecoletaExamesSelecionados] = useState<string[]>(["urina"]);
+  const [motivoRecoletaRapido, setMotivoRecoletaRapido] = useState<string>("");
+
+  // Exportação XML para Extensão
+  const [modalXmlAberto, setModalXmlAberto] = useState<boolean>(false);
+  const [conteudoXmlPreview, setConteudoXmlPreview] = useState<string>("");
 
   // Estados de UI e Feedback
   const [isSearching, setIsSearching] = useState<boolean>(false);
@@ -442,6 +457,9 @@ export default function BancadaOperacionalPage() {
     setTemAboRh(
       Boolean(pac.tem_abo_rh || laudoSalvo?.tem_abo_rh || laudoSalvo?.resultado_abo_rh)
     );
+    setTemDengue(
+      Boolean(pac.tem_dengue || laudoSalvo?.tem_dengue || laudoSalvo?.resultado_dengue || laudoSalvo?.dengue_ns1)
+    );
 
     if (laudoSalvo) {
       setForm({
@@ -490,6 +508,15 @@ export default function BancadaOperacionalPage() {
       if (laudoSalvo.resultado_dengue) {
         setResultadoDengue(laudoSalvo.resultado_dengue);
       }
+      if (laudoSalvo.dengue_ns1) setDengueNs1(laudoSalvo.dengue_ns1);
+      if (laudoSalvo.dengue_igg) setDengueIgg(laudoSalvo.dengue_igg);
+      if (laudoSalvo.dengue_igm) setDengueIgm(laudoSalvo.dengue_igm);
+      if (laudoSalvo.recoleta_exames && laudoSalvo.recoleta_exames.length > 0) {
+        setRecoletaExamesSelecionados(laudoSalvo.recoleta_exames);
+      } else {
+        setRecoletaExamesSelecionados(pac.tem_urina ? ["urina"] : ["todos"]);
+      }
+      setMotivoRecoletaRapido(laudoSalvo.recoleta_motivo || laudoSalvo.observacoes || "");
     } else {
       setForm({ ...VALORES_PADRAO_NORMAL, observacoes: "" });
       setResultadoPso("Negativo");
@@ -502,6 +529,11 @@ export default function BancadaOperacionalPage() {
       setResultadoPcr("Negativo (< 6 mg/L)");
       setResultadoAslo("Negativo (< 200 UI/mL)");
       setResultadoFr("Negativo (< 8 UI/mL)");
+      setDengueNs1("Não Reagente");
+      setDengueIgg("Não Reagente");
+      setDengueIgm("Não Reagente");
+      setRecoletaExamesSelecionados(pac.tem_urina ? ["urina"] : ["todos"]);
+      setMotivoRecoletaRapido("");
       const pacSoTap = pac.tem_tap && !pac.tem_ttpa;
       const pacSoTtpa = pac.tem_ttpa && !pac.tem_tap;
       setCoagTpTempo(pacSoTtpa ? "" : "12.0 seg");
@@ -667,10 +699,21 @@ export default function BancadaOperacionalPage() {
     setCoagTtpa1("");
     setTemProteinuriaRapida(false);
     setResultadoProteinuriaRapida("Negativo");
+    setTemDengue(false);
+    setDengueNs1("Não Reagente");
+    setDengueIgg("Não Reagente");
+    setDengueIgm("Não Reagente");
+    setModalRecoletaAberto(false);
+    setRecoletaExamesSelecionados(["urina"]);
+    setMotivoRecoletaRapido("");
   };
 
   // Salvar Laudo no Google Sheets / Memória e avançar para o próximo tubo da fila
-  const handleSalvar = async (status: StatusLaudo) => {
+  const handleSalvar = async (
+    status: StatusLaudo,
+    examesRecoletaCustom?: string[],
+    motivoRecoletaCustom?: string
+  ) => {
     const prontuarioFinal = formatarProntuario(prontuario);
     if (!prontuarioFinal) {
       mostrarNotificacao(
@@ -681,9 +724,23 @@ export default function BancadaOperacionalPage() {
       return;
     }
 
-    if (status === "recoleta" && !form.observacoes.trim()) {
+    const examesDoPaciente = [
+      pacienteInfo?.tem_urina ?? true ? "urina" : null,
+      temPso || pacienteInfo?.tem_pso ? "pso" : null,
+      temDengue || pacienteInfo?.tem_dengue ? "dengue" : null,
+    ].filter(Boolean) as string[];
+
+    // Se o usuário clicou em Recoleta e o paciente tem múltiplos exames, abre o modal de seleção se ainda não foi selecionado
+    if (status === "recoleta" && !examesRecoletaCustom && examesDoPaciente.length > 1 && !modalRecoletaAberto) {
+      setRecoletaExamesSelecionados([examesDoPaciente[0]]);
+      setModalRecoletaAberto(true);
+      return;
+    }
+
+    const motivoFinal = (motivoRecoletaCustom || form.observacoes || "").trim();
+    if (status === "recoleta" && !motivoFinal) {
       mostrarNotificacao(
-        "Para marcar RECOLETA, informe o motivo no campo de Observações.",
+        "Para marcar RECOLETA, informe o motivo da solicitação técnica.",
         "warning"
       );
       return;
@@ -693,7 +750,7 @@ export default function BancadaOperacionalPage() {
     try {
       const temUrina = Boolean(pacienteInfo?.tem_urina ?? (bancadaAtiva === "urina"));
       const dadosUrina = temUrina
-        ? { ...form }
+        ? { ...form, observacoes: motivoFinal || form.observacoes }
         : {
             volume: "",
             cor: "",
@@ -716,8 +773,13 @@ export default function BancadaOperacionalPage() {
             cristais: "",
             cilindros: "",
             outros_elementos: "",
-            observacoes: form.observacoes || "",
+            observacoes: motivoFinal || form.observacoes || "",
           };
+
+      const finalRecoletaExames =
+        status === "recoleta"
+          ? examesRecoletaCustom || (recoletaExamesSelecionados.length > 0 ? recoletaExamesSelecionados : ["urina"])
+          : [];
 
       const payload: Partial<LaudoUrina> = {
         prontuario: prontuarioFinal,
@@ -758,6 +820,15 @@ export default function BancadaOperacionalPage() {
         ttpa_relacao: (temCoagulograma || bancadaAtiva === "coag") && coagTtpaRelacao ? coagTtpaRelacao : "",
         tem_proteinuria_rapida: temProteinuriaRapida,
         resultado_proteinuria_rapida: temProteinuriaRapida ? resultadoProteinuriaRapida : "",
+        tem_dengue: temDengue,
+        dengue_ns1: temDengue ? dengueNs1 : "",
+        dengue_igg: temDengue ? dengueIgg : "",
+        dengue_igm: temDengue ? dengueIgm : "",
+        resultado_dengue: temDengue
+          ? `NS1: ${dengueNs1} | IgG: ${dengueIgg} | IgM: ${dengueIgm}`
+          : "",
+        recoleta_exames: finalRecoletaExames,
+        recoleta_motivo: status === "recoleta" ? motivoFinal : "",
       };
 
       const res = await fetch("/api/laudos", {
@@ -768,6 +839,7 @@ export default function BancadaOperacionalPage() {
 
       const data = await res.json();
       if (data.ok) {
+        setModalRecoletaAberto(false);
         if (data.laudo) {
           setLaudosDia((prev) => {
             const idx = prev.findIndex(
@@ -785,7 +857,12 @@ export default function BancadaOperacionalPage() {
         setRotinaDia((prev) =>
           prev.map((r) =>
             formatarProntuario(r.prontuario) === prontuarioFinal
-              ? { ...r, tem_laudo: status === "finalizado", status_laudo: status }
+              ? {
+                  ...r,
+                  tem_laudo: status === "finalizado",
+                  status_laudo: status,
+                  recoleta_exames: finalRecoletaExames,
+                }
               : r
           )
         );
@@ -793,6 +870,7 @@ export default function BancadaOperacionalPage() {
         // Recarregar os dados do servidor em segundo plano para manter 100% sincronizado
         carregarDadosSincronizados(true);
 
+        const recExamesStr = finalRecoletaExames.map((x) => x.toUpperCase()).join(", ");
         const msgStatus =
           status === "finalizado"
             ? proximoTubo
@@ -800,7 +878,7 @@ export default function BancadaOperacionalPage() {
               : `✅ Amostra #${prontuarioFinal} finalizada e sincronizada!`
             : status === "rascunho"
             ? `📝 Rascunho salvo para #${prontuarioFinal}.`
-            : `⚠️ Amostra #${prontuarioFinal} marcada para RECOLETA.`;
+            : `⚠️ Amostra #${prontuarioFinal} marcada para RECOLETA (${recExamesStr || "URINA"}).`;
 
         mostrarNotificacao(msgStatus, status === "recoleta" ? "warning" : "success");
 
@@ -1017,6 +1095,11 @@ export default function BancadaOperacionalPage() {
           resultado_proteinuria_rapida: r.tem_proteinuria_rapida ? "Negativo" : undefined,
           tem_vhs: r.tem_vhs,
           resultado_vhs: r.tem_vhs ? "10 mm/h" : undefined,
+          tem_dengue: r.tem_dengue,
+          dengue_ns1: r.tem_dengue ? "Não Reagente" : undefined,
+          dengue_igg: r.tem_dengue ? "Não Reagente" : undefined,
+          dengue_igm: r.tem_dengue ? "Não Reagente" : undefined,
+          recoleta_exames: r.recoleta_exames,
           ...(r.tem_urina ? VALORES_PADRAO_NORMAL : VALORES_SEM_URINA),
         });
       }
@@ -1118,11 +1201,13 @@ export default function BancadaOperacionalPage() {
             p.tem_aslo ||
             p.tem_fr ||
             p.tem_proteinuria_rapida ||
-            p.tem_abo_rh
+            p.tem_abo_rh ||
+            p.tem_dengue
         )
       ).length,
       coag: rotinaDoDia.filter((p) => Boolean(p.tem_coagulograma)).length,
       pso: rotinaDoDia.filter((p) => Boolean(p.tem_pso)).length,
+      dengue: rotinaDoDia.filter((p) => Boolean(p.tem_dengue)).length,
       vdrl: rotinaDoDia.filter((p) => Boolean(p.tem_vdrl)).length,
       dengue: rotinaDoDia.filter((p) => Boolean(p.tem_dengue)).length,
       abo: rotinaDoDia.filter((p) => Boolean(p.tem_abo_rh)).length,
@@ -1144,6 +1229,29 @@ export default function BancadaOperacionalPage() {
       }).length,
     };
   }, [rotinaDoDia, rotinaDia, laudosDia]);
+
+  const handleBaixarXml = () => {
+    try {
+      const dataAlvo = dataHoje || new Date().toISOString().split("T")[0];
+      const res = baixarXmlUrinalise(dataAlvo, rotinaDoDia, laudosDoDia);
+      setToast({
+        message: `Arquivo ${res.nomeArquivo} gerado com sucesso! (${res.totalItens} exames com trava da data ${dataAlvo.split("-").reverse().join("/")}).`,
+        type: "success",
+      });
+    } catch (err: any) {
+      setToast({
+        message: `Erro ao gerar XML: ${err?.message || "Falha desconhecida"}`,
+        type: "error",
+      });
+    }
+  };
+
+  const handleAbrirPreviaXml = () => {
+    const dataAlvo = dataHoje || new Date().toISOString().split("T")[0];
+    const xml = gerarStringXmlUrinalise(dataAlvo, rotinaDoDia, laudosDoDia);
+    setConteudoXmlPreview(xml);
+    setModalXmlAberto(true);
+  };
 
   return (
     <div className="min-h-screen bg-slate-100/80 pb-28 md:pb-12">
@@ -1256,160 +1364,270 @@ export default function BancadaOperacionalPage() {
                   </button>
                 </div>
               </div>
+            </div>
 
-              {/* Direita: DOIS CARDS DE IMPRESSÃO (1. TIRAGEM | 2. CANHOTOS FINAIS) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1 max-w-2xl">
-                {/* CARD 1: FOLHA DE TIRAGEM DA BANCADA (INÍCIO DO DIA) */}
-                <div className="relative overflow-hidden rounded-2xl border-2 border-sky-400/80 bg-gradient-to-br from-sky-50/60 via-white to-sky-50/30 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-                  <div className="absolute top-0 right-0 bg-sky-600 text-white text-[9.5px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
-                    Início do Plantão
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-9 h-9 rounded-xl bg-sky-600 text-white flex items-center justify-center shadow-md shadow-sky-600/30">
-                        <FileSpreadsheet className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-black text-slate-900">
-                          1. Tiragem do Dia (Bancada)
-                        </h3>
-                        <p className="text-[11px] font-bold text-sky-700">
-                          Nº | Exame | Paciente | Prontuário | Resultado
-                        </p>
-                      </div>
+            {/* CARDS DE PRODUÇÃO: 1. TIRAGEM | 2. TRIAGEM EDTA | 3. CANHOTOS FINAIS | 4. EXPORTAR XML EXTENSÃO */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-5 border-t border-slate-100">
+              {/* CARD 1: FOLHA DE TIRAGEM DA BANCADA (INÍCIO DO DIA) */}
+              <div className="relative overflow-hidden rounded-2xl border-2 border-sky-400/80 bg-gradient-to-br from-sky-50/60 via-white to-sky-50/30 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                <div className="absolute top-0 right-0 bg-sky-600 text-white text-[9.5px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
+                  Início do Plantão
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-9 h-9 rounded-xl bg-sky-600 text-white flex items-center justify-center shadow-md shadow-sky-600/30">
+                      <FileSpreadsheet className="w-5 h-5" />
                     </div>
-
-                    <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-                      Imprime a folha de tiragem igual à planilha de bancada, agrupada por exame e em ordem alfabética (Urina #1, #2, #3, #4, #5, #6...), na exata sequência em que aparece no celular.
-                    </p>
+                    <div>
+                      <h3 className="text-base font-black text-slate-900">
+                        1. Tiragem do Dia (Bancada)
+                      </h3>
+                      <p className="text-[11px] font-bold text-sky-700">
+                        Nº | Exame | Paciente | Prontuário | Resultado
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="space-y-2 pt-3 border-t border-sky-200/80">
-                    <div className="flex items-center justify-between text-xs text-slate-600">
-                      <span>Total na tiragem de hoje:</span>
-                      <span className="font-bold font-mono text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
-                        {totalExamesContagem} exames ({rotinaDia.length} pacientes)
-                      </span>
-                    </div>
+                  <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+                    Imprime a folha de tiragem igual à planilha de bancada, agrupada por exame e em ordem alfabética (Urina #1, #2, #3, #4, #5, #6...), na exata sequência em que aparece no celular.
+                  </p>
+                </div>
 
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={handleImprimirTiragem}
-                        disabled={rotinaDia.length === 0}
-                        className="flex-1 py-3 px-4 bg-sky-700 hover:bg-sky-800 active:bg-sky-900 disabled:opacity-40 text-white font-black text-xs sm:text-sm rounded-xl shadow-md shadow-sky-700/20 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
-                      >
-                        <Printer className="w-4 h-4" />
-                        <span>Imprimir Tiragem do Dia</span>
-                      </button>
+                <div className="space-y-2 pt-3 border-t border-sky-200/80">
+                  <div className="flex items-center justify-between text-xs text-slate-600">
+                    <span>Total na tiragem de hoje:</span>
+                    <span className="font-bold font-mono text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                      {totalExamesContagem} exames ({rotinaDia.length} pacientes)
+                    </span>
+                  </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setPreviewImpressao("triagem")}
-                        disabled={rotinaDia.length === 0}
-                        className="py-3 px-3.5 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                        title="Ver prévia da folha de tiragem"
-                      >
-                        <Eye className="w-4 h-4 text-slate-600" />
-                        <span className="hidden sm:inline">Prévia</span>
-                      </button>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleImprimirTiragem}
+                      disabled={rotinaDia.length === 0}
+                      className="flex-1 py-3 px-4 bg-sky-700 hover:bg-sky-800 active:bg-sky-900 disabled:opacity-40 text-white font-black text-xs sm:text-sm rounded-xl shadow-md shadow-sky-700/20 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>Imprimir Tiragem</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPreviewImpressao("triagem")}
+                      disabled={rotinaDia.length === 0}
+                      className="py-3 px-3 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Ver prévia da folha de tiragem"
+                    >
+                      <Eye className="w-4 h-4 text-slate-600" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 2: TRIAGEM EDTA (NOVA ABA EXCLUSIVA TAMPA ROXA) */}
+              <div className="relative overflow-hidden rounded-2xl border-2 border-purple-400/90 bg-gradient-to-br from-purple-50/70 via-white to-purple-50/30 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                <div className="absolute top-0 right-0 bg-purple-700 text-white text-[9.5px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
+                  Tampa Roxa
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-9 h-9 rounded-xl bg-purple-700 text-white flex items-center justify-center shadow-md shadow-purple-700/30">
+                      <Sparkles className="w-5 h-5" />
                     </div>
+                    <div>
+                      <h3 className="text-base font-black text-slate-900">
+                        2. Triagem EDTA
+                      </h3>
+                      <p className="text-[11px] font-bold text-purple-700">
+                        Hemograma & Hemoglobina Glicada
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+                    Bipagem por câmera ou digitação. Alerta sonoro de alíquota (500 µL p/ Glicada local + Apoio), controle de grade e emissão de folha A4 para o faturamento da tarde.
+                  </p>
+                </div>
+
+                <div className="space-y-2 pt-3 border-t border-purple-200/80">
+                  <div className="flex items-center justify-between text-xs text-slate-600">
+                    <span>Destino das amostras:</span>
+                    <span className="font-bold font-mono text-purple-900 bg-white px-2 py-0.5 rounded border border-purple-200">
+                      Apoio / Bancada
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <Link
+                      href="/triagem-edta"
+                      className="flex-1 py-3 px-4 bg-purple-700 hover:bg-purple-800 active:bg-purple-900 text-white font-black text-xs sm:text-sm rounded-xl shadow-md shadow-purple-700/20 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer text-center"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>Abrir Triagem</span>
+                    </Link>
+
+                    <Link
+                      href="/triagem-edta"
+                      className="py-3 px-3 bg-white border border-purple-300 hover:bg-purple-50 text-purple-800 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Acessar leitor e impressão A4"
+                    >
+                      <Printer className="w-4 h-4 text-purple-700" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 2: CANHOTOS DE RESULTADOS FINAIS (FIM DA ROTINA) */}
+              <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/60 via-white to-emerald-50/30 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[9.5px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
+                  Fim do Plantão
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/30">
+                      <Printer className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-slate-900">
+                        3. Relatório / Canhotos Finais
+                      </h3>
+                      <p className="text-[11px] font-bold text-emerald-700">
+                        Tiras Recortáveis (9 a 12 por Folha A4)
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-600 mb-2 leading-relaxed">
+                    Imprime os resultados lançados pelo celular com todos os parâmetros: <b>VOL, COR, ASP, PH, DENS, H, L, C, B, CRISTAIS, Rápidos e ABO/Rh</b>.
+                  </p>
+
+                  {/* Seletor de Formato do Relatório Final */}
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit text-[11px] mb-3">
+                    <span className="text-slate-500 text-[10px] font-bold px-1.5">Formato:</span>
+                    <button
+                      type="button"
+                      onClick={() => setModoRelatorio("tiras")}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition ${
+                        modoRelatorio === "tiras"
+                          ? "bg-emerald-600 text-white shadow-2xs"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      Tiras (9-12 p/ A4)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModoRelatorio("caixas")}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition ${
+                        modoRelatorio === "caixas"
+                          ? "bg-emerald-600 text-white shadow-2xs"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      Caixas Médias
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModoRelatorio("tabela")}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition ${
+                        modoRelatorio === "tabela"
+                          ? "bg-emerald-600 text-white shadow-2xs"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      Tabela
+                    </button>
                   </div>
                 </div>
 
-                {/* CARD 2: CANHOTOS DE RESULTADOS FINAIS (FIM DA ROTINA) */}
-                <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/60 via-white to-emerald-50/30 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-                  <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[9.5px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
-                    Fim do Plantão
+                <div className="space-y-2 pt-3 border-t border-emerald-200/80">
+                  <div className="flex items-center justify-between text-xs text-slate-600">
+                    <span>Contagens pelo celular:</span>
+                    <span className="font-bold font-mono text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200">
+                      {concluidosCount} de {rotinaDia.length} concluídos
+                    </span>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/30">
-                        <Printer className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-black text-slate-900">
-                          2. Relatório / Canhotos Finais
-                        </h3>
-                        <p className="text-[11px] font-bold text-emerald-700">
-                          Tiras Recortáveis (9 a 12 por Folha A4)
-                        </p>
-                      </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleImprimirCanhotos}
+                      disabled={laudosDia.length === 0 && rotinaDia.length === 0}
+                      className="flex-1 py-3 px-4 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 disabled:opacity-40 text-white font-black text-xs sm:text-sm rounded-xl shadow-md shadow-emerald-700/20 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>Imprimir Relatório Final</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPreviewImpressao("canhotos")}
+                      disabled={laudosDia.length === 0 && rotinaDia.length === 0}
+                      className="py-3 px-3.5 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Ver prévia dos canhotos recortáveis"
+                    >
+                      <Eye className="w-4 h-4 text-slate-600" />
+                      <span className="hidden sm:inline">Prévia</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 3: EXPORTAÇÃO XML PARA A EXTENSÃO (LAUDO AUTOMÁTICO) */}
+              <div className="relative overflow-hidden rounded-2xl border-2 border-violet-400/80 bg-gradient-to-br from-violet-50/60 via-white to-violet-50/30 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                <div className="absolute top-0 right-0 bg-violet-600 text-white text-[9.5px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
+                  Extensão Chrome
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-9 h-9 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-md shadow-violet-600/30">
+                      <FileCode className="w-5 h-5" />
                     </div>
-
-                    <p className="text-xs text-slate-600 mb-2 leading-relaxed">
-                      Imprime os resultados lançados pelo celular com todos os parâmetros: <b>VOL, COR, ASP, PH, DENS, H, L, C, B, CRISTAIS, Rápidos e ABO/Rh</b>.
-                    </p>
-
-                    {/* Seletor de Formato do Relatório Final */}
-                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit text-[11px] mb-3">
-                      <span className="text-slate-500 text-[10px] font-bold px-1.5">Formato:</span>
-                      <button
-                        type="button"
-                        onClick={() => setModoRelatorio("tiras")}
-                        className={`px-2.5 py-1 rounded-lg font-bold transition ${
-                          modoRelatorio === "tiras"
-                            ? "bg-emerald-600 text-white shadow-2xs"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        Tiras (9-12 p/ A4)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setModoRelatorio("caixas")}
-                        className={`px-2.5 py-1 rounded-lg font-bold transition ${
-                          modoRelatorio === "caixas"
-                            ? "bg-emerald-600 text-white shadow-2xs"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        Caixas Médias
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setModoRelatorio("tabela")}
-                        className={`px-2.5 py-1 rounded-lg font-bold transition ${
-                          modoRelatorio === "tabela"
-                            ? "bg-emerald-600 text-white shadow-2xs"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        Tabela
-                      </button>
+                    <div>
+                      <h3 className="text-base font-black text-slate-900">
+                        4. Exportar XML (Extensão)
+                      </h3>
+                      <p className="text-[11px] font-bold text-violet-700">
+                        Trava de Segurança: {dataHoje ? dataHoje.split("-").reverse().join("/") : "Data do Dia"}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="space-y-2 pt-3 border-t border-emerald-200/80">
-                    <div className="flex items-center justify-between text-xs text-slate-600">
-                      <span>Contagens pelo celular:</span>
-                      <span className="font-bold font-mono text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200">
-                        {concluidosCount} de {rotinaDia.length} concluídos
-                      </span>
-                    </div>
+                  <p className="text-xs text-slate-600 mb-2 leading-relaxed">
+                    Gera o arquivo XML da rotina de urinálise com trava estrita de data. Sua extensão lê esse arquivo e digita o laudo automaticamente pelo <b>Prontuário + Data</b>.
+                  </p>
+                </div>
 
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={handleImprimirCanhotos}
-                        disabled={laudosDia.length === 0 && rotinaDia.length === 0}
-                        className="flex-1 py-3 px-4 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 disabled:opacity-40 text-white font-black text-xs sm:text-sm rounded-xl shadow-md shadow-emerald-700/20 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
-                      >
-                        <Printer className="w-4 h-4" />
-                        <span>Imprimir Relatório Final</span>
-                      </button>
+                <div className="space-y-2 pt-3 border-t border-violet-200/80">
+                  <div className="flex items-center justify-between text-xs text-slate-600">
+                    <span>Urina com resultado pronto:</span>
+                    <span className="font-bold font-mono text-violet-900 bg-white px-2 py-0.5 rounded border border-violet-200">
+                      {concluidosCount} pacientes prontos
+                    </span>
+                  </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setPreviewImpressao("canhotos")}
-                        disabled={laudosDia.length === 0 && rotinaDia.length === 0}
-                        className="py-3 px-3.5 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                        title="Ver prévia dos canhotos recortáveis"
-                      >
-                        <Eye className="w-4 h-4 text-slate-600" />
-                        <span className="hidden sm:inline">Prévia</span>
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleBaixarXml}
+                      disabled={rotinaDia.length === 0 && laudosDia.length === 0}
+                      className="flex-1 py-3 px-4 bg-violet-700 hover:bg-violet-800 active:bg-violet-900 disabled:opacity-40 text-white font-black text-xs sm:text-sm rounded-xl shadow-md shadow-violet-700/20 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                    >
+                      <FileCode className="w-4 h-4" />
+                      <span>Baixar XML</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleAbrirPreviaXml}
+                      disabled={rotinaDia.length === 0 && laudosDia.length === 0}
+                      className="py-3 px-3.5 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Ver prévia e copiar o XML"
+                    >
+                      <Eye className="w-4 h-4 text-slate-600" />
+                      <span className="hidden sm:inline">Prévia</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1712,6 +1930,11 @@ export default function BancadaOperacionalPage() {
                                   COAGULOGRAMA / TAP
                                 </span>
                               )}
+                              {item.tem_dengue && (
+                                <span className="bg-emerald-50 text-emerald-800 border border-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded">
+                                  DENGUE (TESTE RÁPIDO)
+                                </span>
+                              )}
                               {!item.tem_urina &&
                                 !item.tem_proteinuria_rapida &&
                                 !item.tem_pso &&
@@ -1722,7 +1945,8 @@ export default function BancadaOperacionalPage() {
                                 !item.tem_aslo &&
                                 !item.tem_fr &&
                                 !item.tem_vhs &&
-                                !item.tem_coagulograma && (
+                                !item.tem_coagulograma &&
+                                !item.tem_dengue && (
                                   <span className="text-slate-700 text-[11px] font-semibold">
                                     {item.exame || "URINA I"}
                                   </span>
@@ -1741,7 +1965,14 @@ export default function BancadaOperacionalPage() {
                               </span>
                             ) : ehRecoleta ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Recoleta Solicitada
+                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                                {(() => {
+                                  const recs = (laudoGravado?.recoleta_exames || item.recoleta_exames || []).map((x) => x.toLowerCase());
+                                  if (recs.includes("urina") || (!recs.length && item.tem_urina)) return "Recoleta (Urina)";
+                                  if (recs.includes("pso")) return "Recoleta (PSO)";
+                                  if (recs.includes("dengue")) return "Recoleta (Dengue)";
+                                  return "Recoleta Solicitada";
+                                })()}
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
@@ -1751,71 +1982,92 @@ export default function BancadaOperacionalPage() {
                           </td>
 
                           <td className="py-3 px-3.5 text-slate-800 font-mono text-[11px]">
-                            {ehRecoleta ? (
-                              <div className="p-2 bg-rose-50 border border-rose-300 rounded-lg text-rose-900 font-bold text-xs">
-                                ⚠️ RECOLETA SOLICITADA: {laudoGravado?.observacoes || "Amostra inadequada para análise técnica."}
-                              </div>
-                            ) : laudoGravado ? (
-                              <div className="space-y-0.5">
-                                {item.tem_urina && (
-                                  <div className="text-slate-900">
-                                    <span className="font-bold text-sky-800">URINA I:</span>{" "}
-                                    VOL: {laudoGravado.volume || "60 mL"} | D: {laudoGravado.densidade} | pH: {laudoGravado.ph} | Leu: {laudoGravado.leucocitos_campo} | Hem: {laudoGravado.hemacias_campo}
+                            {(() => {
+                              const recs = (laudoGravado?.recoleta_exames || item.recoleta_exames || []).map((x) => x.toLowerCase());
+                              const recUrina = ehRecoleta && (recs.includes("urina") || (!recs.length && item.tem_urina));
+                              const recPso = ehRecoleta && recs.includes("pso");
+                              const recDengue = ehRecoleta && recs.includes("dengue");
+                              const recTotal = ehRecoleta && recs.includes("todos");
+
+                              if (recTotal) {
+                                return (
+                                  <div className="p-2 bg-rose-50 border border-rose-300 rounded-lg text-rose-900 font-bold text-xs">
+                                    ⚠️ RECOLETA GERAL: {laudoGravado?.observacoes || "Amostra inadequada para análise técnica."}
                                   </div>
-                                )}
-                                {(laudoGravado.resultado_proteinuria_rapida ||
-                                  laudoGravado.resultado_pso ||
-                                  laudoGravado.resultado_abo_rh ||
-                                  laudoGravado.resultado_vdrl ||
-                                  laudoGravado.resultado_beta_hcg ||
-                                  laudoGravado.resultado_pcr ||
-                                  laudoGravado.resultado_aslo ||
-                                  laudoGravado.resultado_fr ||
-                                  laudoGravado.resultado_vhs ||
-                                  laudoGravado.tp_tempo) && (
-                                  <div className="text-[10.5px] text-slate-700 font-semibold">
-                                    {[
-                                      laudoGravado.resultado_proteinuria_rapida
-                                        ? `Proteinúria Rápida: ${laudoGravado.resultado_proteinuria_rapida}`
-                                        : null,
-                                      laudoGravado.resultado_pso
-                                        ? `PSO: ${laudoGravado.resultado_pso}`
-                                        : null,
-                                      laudoGravado.resultado_abo_rh
-                                        ? `ABO/Rh: ${laudoGravado.resultado_abo_rh}`
-                                        : null,
-                                      laudoGravado.resultado_vdrl
-                                        ? `VDRL: ${laudoGravado.resultado_vdrl}`
-                                        : null,
-                                      laudoGravado.resultado_beta_hcg
-                                        ? `Beta-HCG: ${laudoGravado.resultado_beta_hcg}`
-                                        : null,
-                                      laudoGravado.resultado_pcr
-                                        ? `PCR: ${laudoGravado.resultado_pcr}`
-                                        : null,
-                                      laudoGravado.resultado_aslo
-                                        ? `ASLO: ${laudoGravado.resultado_aslo}`
-                                        : null,
-                                      laudoGravado.resultado_fr
-                                        ? `FR: ${laudoGravado.resultado_fr}`
-                                        : null,
-                                      laudoGravado.resultado_vhs
-                                        ? `VHS: ${laudoGravado.resultado_vhs}`
-                                        : null,
-                                      laudoGravado.tp_tempo
-                                        ? `TAP/TP: ${laudoGravado.tp_tempo} (INR ${laudoGravado.tp_inr})`
-                                        : null,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(" • ")}
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-slate-400 italic text-[11px] flex items-center gap-1">
-                                <Clock className="w-3 h-3" /> Aguardando contagem pelo celular na bancada
-                              </span>
-                            )}
+                                );
+                              }
+
+                              return (
+                                <div className="space-y-1">
+                                  {recUrina && (
+                                    <div className="p-1.5 bg-rose-50 border border-rose-300 rounded-lg text-rose-900 font-bold text-xs">
+                                      ⚠️ RECOLETA URINA I: {laudoGravado?.observacoes || "Amostra insuficiente ou muco excessivo."}
+                                    </div>
+                                  )}
+
+                                  {!recUrina && item.tem_urina && laudoGravado && (
+                                    <div className="text-slate-900">
+                                      <span className="font-bold text-sky-800">URINA I:</span>{" "}
+                                      VOL: {laudoGravado.volume || "60 mL"} | D: {laudoGravado.densidade} | pH: {laudoGravado.ph} | Leu: {laudoGravado.leucocitos_campo} | Hem: {laudoGravado.hemacias_campo} | Muco: {laudoGravado.muco || "Aus"}
+                                    </div>
+                                  )}
+
+                                  {recPso && (
+                                    <div className="p-1.5 bg-rose-50 border border-rose-300 rounded-lg text-rose-900 font-bold text-xs">
+                                      ⚠️ RECOLETA PSO (FEZES): {laudoGravado?.obs_pso || laudoGravado?.observacoes || "Amostra fecal inadequada."}
+                                    </div>
+                                  )}
+
+                                  {recDengue && (
+                                    <div className="p-1.5 bg-rose-50 border border-rose-300 rounded-lg text-rose-900 font-bold text-xs">
+                                      ⚠️ RECOLETA DENGUE: {laudoGravado?.observacoes || "Amostra de sangue inadequada/hemolisada."}
+                                    </div>
+                                  )}
+
+                                  {laudoGravado && (
+                                    <div className="text-[10.5px] text-slate-700 font-semibold">
+                                      {[
+                                        !recPso && laudoGravado.resultado_pso
+                                          ? `PSO: ${laudoGravado.resultado_pso}`
+                                          : null,
+                                        !recDengue && (laudoGravado.dengue_ns1 || laudoGravado.resultado_dengue)
+                                          ? `Dengue: NS1 ${laudoGravado.dengue_ns1 || "-"} / IgG ${laudoGravado.dengue_igg || "NR"} / IgM ${laudoGravado.dengue_igm || "NR"}`
+                                          : null,
+                                        laudoGravado.resultado_proteinuria_rapida
+                                          ? `Proteinúria Rápida: ${laudoGravado.resultado_proteinuria_rapida}`
+                                          : null,
+                                        laudoGravado.resultado_abo_rh
+                                          ? `ABO/Rh: ${laudoGravado.resultado_abo_rh}`
+                                          : null,
+                                        laudoGravado.resultado_vdrl
+                                          ? `VDRL: ${laudoGravado.resultado_vdrl}`
+                                          : null,
+                                        laudoGravado.resultado_beta_hcg
+                                          ? `Beta-HCG: ${laudoGravado.resultado_beta_hcg}`
+                                          : null,
+                                        laudoGravado.resultado_pcr
+                                          ? `PCR: ${laudoGravado.resultado_pcr}`
+                                          : null,
+                                        laudoGravado.resultado_aslo
+                                          ? `ASLO: ${laudoGravado.resultado_aslo}`
+                                          : null,
+                                        laudoGravado.resultado_fr
+                                          ? `FR: ${laudoGravado.resultado_fr}`
+                                          : null,
+                                        laudoGravado.resultado_vhs
+                                          ? `VHS: ${laudoGravado.resultado_vhs}`
+                                          : null,
+                                        laudoGravado.tp_tempo
+                                          ? `TAP/TP: ${laudoGravado.tp_tempo} (INR ${laudoGravado.tp_inr})`
+                                          : null,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" • ")}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </td>
                         </tr>
                       );
@@ -2112,8 +2364,14 @@ export default function BancadaOperacionalPage() {
                             </span>
                           )}
                           {!isAtivo && ehRecoleta && (
-                            <span className="text-[7.5px] font-black uppercase px-1 py-0.2 rounded bg-rose-200 text-rose-900">
-                              Recol
+                            <span className="text-[7.5px] font-black uppercase px-1.5 py-0.2 rounded bg-rose-200 text-rose-900 border border-rose-300">
+                              {(() => {
+                                const recs = (laudoItem?.recoleta_exames || item.recoleta_exames || []).map((x) => x.toLowerCase());
+                                if (recs.includes("urina") || (!recs.length && item.tem_urina)) return "Recol (Urina)";
+                                if (recs.includes("pso") || laudoItem?.resultado_pso?.toLowerCase().includes("recoleta")) return "Recol (PSO)";
+                                if (recs.includes("dengue")) return "Recol (Dengue)";
+                                return "Recoleta";
+                              })()}
                             </span>
                           )}
                         </div>
@@ -2335,28 +2593,36 @@ export default function BancadaOperacionalPage() {
                     <QuickChipSelect
                       compact
                       label="Cor da Urina"
-                      sublabel="Visual"
+                      sublabel="Visual (Ref: Amarelo Claro)"
                       value={form.cor}
                       onChange={(val) => setForm({ ...form, cor: val })}
+                      allowCustom
                       options={[
-                        { label: "Amarelo Ouro", value: "Amarelo ouro" },
-                        { label: "Amarelo Citrino", value: "Amarelo citrino" },
-                        { label: "Amarelo Claro", value: "Amarelo claro" },
-                        { label: "Amarelo Escuro", value: "Amarelo escuro", isAbnormal: true },
+                        { label: "Amarelo Claro (Padrão)", value: "Amarelo Claro" },
+                        { label: "Amarelo Citrino", value: "Amarelo Citrino" },
+                        { label: "Amarelo Ouro", value: "Amarelo Ouro" },
+                        { label: "Amarelo Claríssimo", value: "Amarelo Claríssimo" },
                         { label: "Âmbar", value: "Âmbar", isAbnormal: true },
-                        { label: "Avermelhado", value: "Avermelhado", isAbnormal: true },
+                        { label: "Acastanhado", value: "Acastanhado", isAbnormal: true },
+                        { label: "Alaranjado", value: "Alaranjado", isAbnormal: true },
+                        { label: "Alaranjado Medicamentoso", value: "Alaranjado Medicamentoso", isAbnormal: true },
+                        { label: "Leitoso e Esbranquiçado", value: "Leitoso e Esbranquiçado", isAbnormal: true },
+                        { label: "Rosada", value: "Rosada", isAbnormal: true },
+                        { label: "Verde Medicamentosa", value: "Verde Medicamentosa", isAbnormal: true },
+                        { label: "Vermelho Sangue", value: "Vermelho Sangue", isAbnormal: true },
                       ]}
                     />
 
                     <QuickChipSelect
                       compact
                       label="Aspecto"
-                      sublabel="Transparência"
+                      sublabel="Transparência (Ref: Límpido)"
                       value={form.aspecto}
                       onChange={(val) => setForm({ ...form, aspecto: val })}
+                      allowCustom
                       options={[
-                        { label: "Límpido (Normal)", value: "Límpido" },
-                        { label: "Ligeiramente Turvo", value: "Ligeiramente turvo", isAbnormal: true },
+                        { label: "Límpido (Padrão)", value: "Límpido" },
+                        { label: "Ligeiramente Turvo", value: "Ligeiramente Turvo", isAbnormal: true },
                         { label: "Turvo", value: "Turvo", isAbnormal: true },
                       ]}
                     />
@@ -2498,10 +2764,15 @@ export default function BancadaOperacionalPage() {
                       <QuickChipSelect
                         compact
                         label="Urobilinogênio"
+                        sublabel="Ref: Negativo"
                         value={form.urobilinogenio}
                         onChange={(val) => setForm({ ...form, urobilinogenio: val })}
+                        allowCustom
                         options={[
+                          { label: "Negativo (Padrão)", value: "Negativo" },
                           { label: "Normal", value: "Normal" },
+                          { label: "(+)", value: "(+)", isAbnormal: true },
+                          { label: "(++)", value: "(++)", isAbnormal: true },
                           { label: "Aumentado", value: "Aumentado", isAbnormal: true },
                         ]}
                       />
@@ -2565,7 +2836,7 @@ export default function BancadaOperacionalPage() {
                   <QuickChipSelect
                     compact
                     label="Hemácias (H)"
-                    sublabel="Em mil /mL"
+                    sublabel="Ref: Até 7.000/ml"
                     value={form.hemacias_campo}
                     onChange={(val) => setForm({ ...form, hemacias_campo: val })}
                     allowCustom
@@ -2573,6 +2844,7 @@ export default function BancadaOperacionalPage() {
                       { label: "1.000 /mL", value: "1.000 /mL" },
                       { label: "2.000 /mL", value: "2.000 /mL" },
                       { label: "5.000 /mL", value: "5.000 /mL" },
+                      { label: "7.000 /mL (Ref)", value: "7.000 /mL" },
                       { label: "10.000 /mL", value: "10.000 /mL", isAbnormal: true },
                       { label: "14.000 /mL", value: "14.000 /mL", isAbnormal: true },
                       { label: "20.000 /mL", value: "20.000 /mL", isAbnormal: true },
@@ -2583,17 +2855,19 @@ export default function BancadaOperacionalPage() {
                   <QuickChipSelect
                     compact
                     label="Células Epiteliais (C)"
-                    sublabel="Em mil /mL"
+                    sublabel="Ref: Raras"
                     value={form.celulas_epiteliais}
                     onChange={(val) => setForm({ ...form, celulas_epiteliais: val })}
                     allowCustom
                     options={[
+                      { label: "Raras (Padrão)", value: "Raras" },
+                      { label: "Ausentes", value: "Ausentes" },
+                      { label: "Algumas", value: "Algumas", isAbnormal: true },
+                      { label: "Numerosas", value: "Numerosas", isAbnormal: true },
                       { label: "1.000 /mL", value: "1.000 /mL" },
                       { label: "4.000 /mL", value: "4.000 /mL" },
                       { label: "6.000 /mL", value: "6.000 /mL" },
-                      { label: "10.000 /mL", value: "10.000 /mL" },
-                      { label: "20.000 /mL", value: "20.000 /mL", isAbnormal: true },
-                      { label: "25.000 /mL", value: "25.000 /mL", isAbnormal: true },
+                      { label: "10.000 /mL", value: "10.000 /mL", isAbnormal: true },
                     ]}
                   />
 
@@ -2602,9 +2876,14 @@ export default function BancadaOperacionalPage() {
                     label="Flora Bacteriana (B)"
                     value={form.bacterias}
                     onChange={(val) => setForm({ ...form, bacterias: val })}
+                    allowCustom
                     options={[
                       { label: "Ausentes", value: "Ausentes" },
+                      { label: "Raras", value: "Raras" },
                       { label: "fb (Habitual)", value: "fb" },
+                      { label: "+ (1 Cruz)", value: "+" },
+                      { label: "++ (2 Cruzes)", value: "++", isAbnormal: true },
+                      { label: "+++ (3 Cruzes)", value: "+++", isAbnormal: true },
                       { label: "F.B.A (Aumentada)", value: "F.B.A", isAbnormal: true },
                       { label: "Abundante", value: "Abundante", isAbnormal: true },
                     ]}
@@ -2622,6 +2901,24 @@ export default function BancadaOperacionalPage() {
                       { label: "Alguns (++)", value: "Alguns (++)", isAbnormal: true },
                       { label: "Numerosos (+++)", value: "Numerosos (+++)", isAbnormal: true },
                       { label: "Abundantes (++++)", value: "Abundantes (++++)", isAbnormal: true },
+                    ]}
+                  />
+
+                  <QuickChipSelect
+                    compact
+                    label="Filamentos de Muco (M)"
+                    sublabel="Parâmetro rotineiro"
+                    value={form.muco || "Ausentes"}
+                    onChange={(val) => setForm({ ...form, muco: val })}
+                    allowCustom
+                    options={[
+                      { label: "Ausentes", value: "Ausentes" },
+                      { label: "Raros", value: "Raros" },
+                      { label: "Presentes", value: "Presentes" },
+                      { label: "+ (1 Cruz)", value: "+" },
+                      { label: "++ (2 Cruzes)", value: "++", isAbnormal: true },
+                      { label: "+++ (3 Cruzes)", value: "+++", isAbnormal: true },
+                      { label: "Abundantes", value: "Abundantes", isAbnormal: true },
                     ]}
                   />
 
@@ -2742,14 +3039,31 @@ export default function BancadaOperacionalPage() {
                   <QuickChipSelect
                     compact
                     label="Cilindros"
+                    sublabel="Ref: Ausentes"
                     value={form.cilindros}
                     onChange={(val) => setForm({ ...form, cilindros: val })}
+                    allowCustom
                     options={[
-                      { label: "Ausentes", value: "Ausentes" },
-                      { label: "Hialinos", value: "Hialinos", isAbnormal: true },
-                      { label: "Granulosos", value: "Granulosos", isAbnormal: true },
-                      { label: "Leucocitários", value: "Leucocitários", isAbnormal: true },
-                      { label: "Hemáticos", value: "Hemáticos", isAbnormal: true },
+                      { label: "Ausentes (Padrão)", value: "Ausentes" },
+                      { label: "Hialinos (+)", value: "Hialinos (+)", isAbnormal: true },
+                      { label: "Granulosos (+)", value: "Granulosos (+)", isAbnormal: true },
+                      { label: "Leucocitários (+)", value: "Leucocitários (+)", isAbnormal: true },
+                      { label: "Hemáticos (+)", value: "Hemáticos (+)", isAbnormal: true },
+                    ]}
+                  />
+
+                  <QuickChipSelect
+                    compact
+                    label="Outros Elementos"
+                    sublabel="Ref: Ausentes"
+                    value={form.outros_elementos || "Ausentes"}
+                    onChange={(val) => setForm({ ...form, outros_elementos: val })}
+                    allowCustom
+                    options={[
+                      { label: "Ausentes (Padrão)", value: "Ausentes" },
+                      { label: "Leveduras (+)", value: "Leveduras (+)", isAbnormal: true },
+                      { label: "Leveduras (++)", value: "Leveduras (++)", isAbnormal: true },
+                      { label: "Tricomonas", value: "Tricomonas", isAbnormal: true },
                     ]}
                   />
 
@@ -2824,11 +3138,64 @@ export default function BancadaOperacionalPage() {
                 temBetaHcg ||
                 temVhs ||
                 temProvasInflamatorias ||
-                temCoagulograma) && (
+                temCoagulograma ||
+                temDengue) && (
                 <section className="bg-amber-50/60 rounded-2xl border border-amber-300 p-3 mb-2.5 space-y-2.5">
                   <div className="text-[11px] font-black text-amber-950 uppercase">
                     ⚡ Exames Adicionais deste Paciente na Bancada:
                   </div>
+                  {temDengue && (
+                    <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-xl space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-emerald-950 uppercase">
+                          🦟 Teste Rápido Dengue
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDengueNs1("Não Reagente");
+                            setDengueIgg("Não Reagente");
+                            setDengueIgm("Não Reagente");
+                          }}
+                          className="text-[9px] font-bold text-emerald-800 bg-white border border-emerald-300 px-1.5 py-0.5 rounded"
+                        >
+                          ✓ Tudo Não Reagente
+                        </button>
+                      </div>
+                      <QuickChipSelect
+                        compact
+                        label="Dengue NS1"
+                        value={dengueNs1}
+                        onChange={setDengueNs1}
+                        options={[
+                          { label: "Não Reagente", value: "Não Reagente" },
+                          { label: "Reagente (+)", value: "Reagente", isAbnormal: true },
+                        ]}
+                      />
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <QuickChipSelect
+                          compact
+                          label="Dengue IgM"
+                          value={dengueIgm}
+                          onChange={setDengueIgm}
+                          options={[
+                            { label: "Não Reagente", value: "Não Reagente" },
+                            { label: "Reagente (+)", value: "Reagente", isAbnormal: true },
+                          ]}
+                        />
+                        <QuickChipSelect
+                          compact
+                          label="Dengue IgG"
+                          value={dengueIgg}
+                          onChange={setDengueIgg}
+                          options={[
+                            { label: "Não Reagente", value: "Não Reagente" },
+                            { label: "Reagente (+)", value: "Reagente", isAbnormal: true },
+                          ]}
+                        />
+                      </div>
+                    </div>
+                  )}
                   {temProteinuriaRapida && (
                     <QuickChipSelect
                       compact
@@ -2945,6 +3312,11 @@ export default function BancadaOperacionalPage() {
                         toggle: () => setTemVhs(!temVhs),
                         label: "VHS",
                       },
+                      {
+                        ativo: temDengue,
+                        toggle: () => setTemDengue(!temDengue),
+                        label: "Dengue (NS1/IgG/IgM)",
+                      },
                     ].map((chip) => (
                       <button
                         key={chip.label}
@@ -2970,7 +3342,8 @@ export default function BancadaOperacionalPage() {
                 !temDengue &&
                 !temBetaHcg &&
                 !temProvasInflamatorias &&
-                !temVhs && (
+                !temVhs &&
+                !temDengue && (
                   <div className="p-4 text-center text-xs text-slate-600 bg-slate-50 rounded-xl border border-dashed border-slate-300 space-y-2">
                     <p className="font-bold text-slate-700">
                       Nenhum teste rápido solicitado automaticamente para este paciente.
@@ -2981,6 +3354,63 @@ export default function BancadaOperacionalPage() {
                     </p>
                   </div>
                 )}
+
+              {/* DENGUE (NS1, IgG e IgM) */}
+              {temDengue && (
+                <div className="p-2.5 bg-emerald-50/70 border border-emerald-300 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black text-emerald-950 uppercase flex items-center gap-1">
+                      🦟 Dengue (Teste Rápido NS1 / IgG / IgM)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDengueNs1("Não Reagente");
+                        setDengueIgg("Não Reagente");
+                        setDengueIgm("Não Reagente");
+                      }}
+                      className="text-[9.5px] font-bold text-emerald-800 bg-white hover:bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded shadow-2xs active:scale-95 transition"
+                    >
+                      ✓ Tudo Não Reagente
+                    </button>
+                  </div>
+
+                  <QuickChipSelect
+                    compact
+                    label="Antígeno NS1 da Dengue (Infecção Aguda)"
+                    value={dengueNs1}
+                    onChange={setDengueNs1}
+                    options={[
+                      { label: "Não Reagente", value: "Não Reagente" },
+                      { label: "Reagente (+)", value: "Reagente", isAbnormal: true },
+                      { label: "Inconclusivo", value: "Inconclusivo", isAbnormal: true },
+                    ]}
+                  />
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <QuickChipSelect
+                      compact
+                      label="Anticorpo IgM (Fase Recente)"
+                      value={dengueIgm}
+                      onChange={setDengueIgm}
+                      options={[
+                        { label: "Não Reagente", value: "Não Reagente" },
+                        { label: "Reagente (+)", value: "Reagente", isAbnormal: true },
+                      ]}
+                    />
+                    <QuickChipSelect
+                      compact
+                      label="Anticorpo IgG (Fase Convalescente)"
+                      value={dengueIgg}
+                      onChange={setDengueIgg}
+                      options={[
+                        { label: "Não Reagente", value: "Não Reagente" },
+                        { label: "Reagente (+)", value: "Reagente", isAbnormal: true },
+                      ]}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* VDRL (SÓ RENDERIZA SE O PACIENTE TIVER VDRL!) */}
               {temVdrl && (
@@ -3639,7 +4069,7 @@ export default function BancadaOperacionalPage() {
             <button
               type="button"
               disabled={isSaving}
-              onClick={() => handleSalvar("recoleta")}
+              onClick={() => setModalRecoletaAberto(true)}
               className="px-3 py-2.5 bg-rose-600 active:bg-rose-800 text-white font-bold rounded-xl shadow-sm flex items-center justify-center gap-1 text-xs active:scale-95 disabled:opacity-50"
             >
               <AlertTriangle className="w-3.5 h-3.5" />
@@ -3661,6 +4091,264 @@ export default function BancadaOperacionalPage() {
                   : "Finalizar Contagem"}
               </span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL INTELIGENTE DE RECOLETA ESPECÍFICA */}
+      {modalRecoletaAberto && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 print:hidden animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-rose-300 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-700">
+                <AlertTriangle className="w-5 h-5 shrink-0" />
+                <h3 className="font-black text-sm uppercase tracking-tight">
+                  Solicitar Recoleta de Amostra
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalRecoletaAberto(false)}
+                className="text-slate-400 hover:text-slate-700 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-rose-50 p-2.5 rounded-xl border border-rose-200 text-xs">
+              <span className="font-bold text-rose-950 block">
+                Paciente: {nomeManual || pacienteInfo?.nome_paciente || "Paciente Selecionado"}
+              </span>
+              <span className="text-slate-600 font-mono text-[11px]">
+                Prontuário #{formatarProntuario(prontuario)}
+              </span>
+            </div>
+
+            {/* SELEÇÃO DE QUAIS EXAMES PRECISAM DE RECOLETA */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-black uppercase text-slate-700">
+                1. Qual exame requer nova coleta?
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {(pacienteInfo?.tem_urina ?? true) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRecoletaExamesSelecionados((prev) =>
+                        prev.includes("urina")
+                          ? prev.filter((x) => x !== "urina")
+                          : [...prev, "urina"]
+                      );
+                    }}
+                    className={`p-2.5 rounded-xl border font-bold text-left flex items-center justify-between transition ${
+                      recoletaExamesSelecionados.includes("urina")
+                        ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                        : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span>🧪 Urina I (EAS / Sumário)</span>
+                    <span>{recoletaExamesSelecionados.includes("urina") ? "✓" : "+"}</span>
+                  </button>
+                )}
+
+                {(temPso || pacienteInfo?.tem_pso) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRecoletaExamesSelecionados((prev) =>
+                        prev.includes("pso")
+                          ? prev.filter((x) => x !== "pso")
+                          : [...prev, "pso"]
+                      );
+                    }}
+                    className={`p-2.5 rounded-xl border font-bold text-left flex items-center justify-between transition ${
+                      recoletaExamesSelecionados.includes("pso")
+                        ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                        : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span>💩 Sangue Oculto (PSO)</span>
+                    <span>{recoletaExamesSelecionados.includes("pso") ? "✓" : "+"}</span>
+                  </button>
+                )}
+
+                {(temDengue || pacienteInfo?.tem_dengue) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRecoletaExamesSelecionados((prev) =>
+                        prev.includes("dengue")
+                          ? prev.filter((x) => x !== "dengue")
+                          : [...prev, "dengue"]
+                      );
+                    }}
+                    className={`p-2.5 rounded-xl border font-bold text-left flex items-center justify-between transition ${
+                      recoletaExamesSelecionados.includes("dengue")
+                        ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                        : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span>🦟 Teste Rápido Dengue</span>
+                    <span>{recoletaExamesSelecionados.includes("dengue") ? "✓" : "+"}</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecoletaExamesSelecionados((prev) =>
+                      prev.includes("todos") ? ["urina"] : ["todos"]
+                    );
+                  }}
+                  className={`p-2.5 rounded-xl border font-bold text-left flex items-center justify-between transition ${
+                    recoletaExamesSelecionados.includes("todos")
+                      ? "bg-rose-700 text-white border-rose-700 shadow-xs"
+                      : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                  }`}
+                >
+                  <span>⚠️ Todos os Exames</span>
+                  <span>{recoletaExamesSelecionados.includes("todos") ? "✓" : "+"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* MOTIVO DA RECOLETA COM ATALHOS */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-black uppercase text-slate-700">
+                2. Motivo Técnico da Recoleta (Obrigatório)
+              </label>
+              <div className="flex flex-wrap gap-1 mb-1.5">
+                {[
+                  "Amostra insuficiente.",
+                  "Presença excessiva de muco.",
+                  "Coleta inadequada / Menstruação.",
+                  "Frasco com vazamento / inadequado.",
+                  "Amostra hemolisada / coagulada.",
+                  "Dificuldade de homogeneização.",
+                ].map((frase) => (
+                  <button
+                    key={frase}
+                    type="button"
+                    onClick={() => {
+                      setMotivoRecoletaRapido(frase);
+                      setForm((prev) => ({ ...prev, observacoes: frase }));
+                    }}
+                    className="text-[10px] bg-slate-100 hover:bg-rose-100 text-slate-700 hover:text-rose-900 px-2 py-0.5 rounded-lg border border-slate-200 transition"
+                  >
+                    + {frase}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="text"
+                value={motivoRecoletaRapido || form.observacoes}
+                onChange={(e) => {
+                  setMotivoRecoletaRapido(e.target.value);
+                  setForm((prev) => ({ ...prev, observacoes: e.target.value }));
+                }}
+                placeholder="Ex: Amostra insuficiente para análise ou presença excessiva de muco..."
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-rose-600"
+              />
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setModalRecoletaAberto(false)}
+                className="px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => {
+                  handleSalvar(
+                    "recoleta",
+                    recoletaExamesSelecionados,
+                    motivoRecoletaRapido || form.observacoes
+                  );
+                }}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-md shadow-rose-600/30 flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Confirmar Recoleta</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE PRÉ-VISUALIZAÇÃO DO XML DA ROTINA (EXTENSÃO CHROME) */}
+      {modalXmlAberto && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 print:hidden">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-300">
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <FileCode className="w-5 h-5 text-violet-400" />
+                <div>
+                  <h3 className="font-bold text-sm">
+                    Arquivo XML de Urinálise para Extensão do Chrome
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Trava de segurança ativada: somente rotina de {dataHoje ? dataHoje.split("-").reverse().join("/") : "Hoje"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(conteudoXmlPreview);
+                    setToast({
+                      message: "Conteúdo XML copiado para a área de transferência!",
+                      type: "success",
+                    });
+                  }}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Copiar XML
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBaixarXml}
+                  className="px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
+                >
+                  <FileCode className="w-3.5 h-3.5" />
+                  Baixar .XML
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalXmlAberto(false)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 overflow-y-auto bg-slate-950 flex-1">
+              <pre className="text-xs font-mono text-emerald-400 whitespace-pre-wrap leading-relaxed select-all">
+                {conteudoXmlPreview}
+              </pre>
+            </div>
+
+            <div className="p-3 bg-slate-100 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-600">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>
+                  Todos os campos físicos, químicos e sedimentoscópicos estão indexados por <b>Prontuário + Data</b>.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalXmlAberto(false)}
+                className="px-4 py-1.5 bg-white border border-slate-300 font-bold rounded-xl text-slate-700 hover:bg-slate-50 transition"
+              >
+                Fechar
+              </button>
+            </div>
           </div>
         </div>
       )}

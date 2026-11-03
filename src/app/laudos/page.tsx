@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { LaudoUrina, StatusLaudo, LabConfig, DEFAULT_LAB_CONFIG } from "@/types/urinalise";
