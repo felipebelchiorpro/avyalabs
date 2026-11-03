@@ -162,3 +162,4 @@ export async function sincronizarOperadoresComServidor(): Promise<{ operadores: 
     ativo: obterOperadorAtivo(),
   };
 }
+

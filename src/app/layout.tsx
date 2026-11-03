@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Navbar } from "@/components/Navbar";
+import { AppLayoutWrapper } from "@/components/AppLayoutWrapper";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Urinálise & PSO SUS | Automação de Bancada",
+  title: "BancadaLab SUS | Automação de Bancada & Laudos",
   description:
-    "Sistema PWA de Automação de Bancada de Urinálise (EAS) e Pesquisa de Sangue Oculto (PSO) para Postos de Saúde SUS com persistência em Google Sheets e impressão A4 profissional.",
+    "Sistema de Automação de Bancadas de Rotina (Urinálise, EDTA/Hemograma, Rápidos, PSO e VDRL) para Postos de Saúde SUS com persistência em Google Sheets e impressão A4 profissional.",
   manifest: "/manifest.json",
   icons: {
     icon: "/icon.svg",
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Urinálise & PSO SUS",
+    title: "BancadaLab SUS",
   },
 };
 
@@ -49,7 +50,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-slate-100 text-slate-900">
         <Navbar />
-        <main className="flex-1 md:pl-64 min-w-0">{children}</main>
+        <AppLayoutWrapper>{children}</AppLayoutWrapper>
       </body>
     </html>
   );

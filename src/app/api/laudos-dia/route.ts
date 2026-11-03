@@ -1,4 +1,4 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
@@ -8,13 +8,15 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const data = searchParams.get("data") || undefined;
+    const de = searchParams.get("de") || searchParams.get("dataInicio") || undefined;
+    const ate = searchParams.get("ate") || searchParams.get("dataFim") || undefined;
 
-    const laudos = await listarLaudos(data);
+    const laudos = await listarLaudos({ data, de, ate });
     const sheetsAtivo = isGoogleSheetsConfigured();
 
     return NextResponse.json({
       ok: true,
-      dataFiltro: data || "todas",
+      dataFiltro: data || (de && ate ? `${de} até ${ate}` : "todas"),
       total: laudos.length,
       isGoogleSheets: sheetsAtivo,
       laudos,

@@ -133,19 +133,27 @@ export interface RotinaItem {
 export type ItemRotina = RotinaItem;
 
 export type TipoEdtaDestino = "apenas_hemograma" | "hemograma_glicada" | "apenas_glicada";
-export type StatusTriagemEdta = "pendente" | "pronto_grade" | "retido_bancada";
+export type StatusTriagemEdta = "pendente" | "pronto_grade" | "retido_bancada" | "retido_envio_posterior";
 
 export interface ItemTriagemEdta {
   id?: string;
   data: string; // YYYY-MM-DD
   prontuario: string;
+  prontuario_normalizado?: string; // sem zeros à esquerda (ex: "24087")
   nome_paciente: string;
+  data_nascimento?: string; // DD/MM/AAAA
+  data_nascimento_digitos?: string; // 8 dígitos (ex: "23122025")
   idade_sexo?: string;
   posto_unidade?: string;
   solicitante?: string;
   urgencia?: boolean;
   tem_hemograma: boolean;
   tem_glicada: boolean;
+  tem_vhs?: boolean; // Paciente tem VHS na rotina do dia
+  coletado_dois_tubos?: boolean; // Indica se foram coletados 2 tubos EDTA (1 Apoio + 1 VHS Local)
+  qtd_tubos_coletados?: number; // 1 ou 2
+  enviar_hemograma_hoje?: boolean; // true = Enviar hoje na remessa | false = Reter na gradinha local p/ mandar outro dia
+  data_liberacao_apoio?: string; // Data em que o tubo retido foi efetivamente liberado para o apoio
   tipo_destino: TipoEdtaDestino;
   status: StatusTriagemEdta;
   fracionado_glicada: boolean;

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
@@ -100,8 +100,13 @@ export default function ImportarRotinaPage() {
         if (data.ok && Array.isArray(data.pacientesUnificados)) {
           setPacientes(data.pacientesUnificados);
           setTotalLinhasArquivo(data.totalLidos);
+          const msgEdta = data.resultadoMergeEdta?.message
+            ? ` | 🟣 ${data.resultadoMergeEdta.message}`
+            : data.totalEdta
+            ? ` | 🟣 ${data.totalEdta} tubos EDTA na Triagem`
+            : "";
           setFeedback({
-            message: `📄 PDF "${file.name}" processado com sucesso! ${data.pacientesUnificados.length} pacientes de bancada identificados (${data.totalDescartadosAutomatizados} exames de bioquímica/hemograma automatizados foram descartados).`,
+            message: `📄 PDF "${file.name}" processado! ${data.pacientesUnificados.length} pacientes de bancada identificados${msgEdta}.`,
             type: "success",
           });
         } else {
@@ -116,7 +121,7 @@ export default function ImportarRotinaPage() {
       // Leitura de Excel (.xlsx, .xls) ou CSV direto no cliente
       try {
         const reader = new FileReader();
-        reader.onload = (evt) => {
+        reader.onload = async (evt) => {
           try {
             const bstr = evt.target?.result;
             const wb = XLSX.read(bstr, { type: "binary" });
@@ -128,16 +133,28 @@ export default function ImportarRotinaPage() {
             setPacientes(res.pacientesUnificados);
             setTotalLinhasArquivo(res.totalLidos);
 
-            // Sincronizar partição Triagem EDTA
+            // Sincronizar partição Triagem EDTA via Merge incremental (preservando já triados)
+            let edtaMsg = "";
             if (res.pacientesEdta && res.pacientesEdta.length > 0) {
-              fetch("/api/triagem-edta", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ itens: res.pacientesEdta, substituir: true }),
-              }).catch((e) => console.warn("Erro ao sincronizar EDTA:", e));
+              try {
+                const edtaRes = await fetch("/api/triagem-edta", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ itens: res.pacientesEdta, substituir: false }),
+                });
+                const edtaData = await edtaRes.json();
+                if (edtaData.message) {
+                  edtaMsg = ` | 🟣 ${edtaData.message}`;
+                }
+              } catch (e) {
+                console.warn("Erro ao sincronizar EDTA:", e);
+              }
             }
 
-            const edtaMsg = res.totalEdta ? ` | 🟣 ${res.totalEdta} tubos EDTA na Triagem` : "";
+            if (!edtaMsg && res.totalEdta) {
+              edtaMsg = ` | 🟣 ${res.totalEdta} tubos EDTA na Triagem`;
+            }
+
             setFeedback({
               message: `📊 Planilha "${file.name}" processada! ${res.totalAproveitados} pacientes de bancada identificados${edtaMsg} (${res.totalDescartadosAutomatizados} descartados).`,
               type: "success",
@@ -157,7 +174,7 @@ export default function ImportarRotinaPage() {
   };
 
   // Processa texto colado do Excel/Bloco de Notas
-  const handleColarTexto = () => {
+  const handleColarTexto = async () => {
     if (!colarTexto.trim()) {
       setFeedback({ message: "Cole os dados da planilha na caixa de texto primeiro.", type: "error" });
       return;
@@ -174,16 +191,28 @@ export default function ImportarRotinaPage() {
     setPacientes(res.pacientesUnificados);
     setTotalLinhasArquivo(res.totalLidos);
 
-    // Sincronizar partição Triagem EDTA
+    // Sincronizar partição Triagem EDTA via Merge incremental
+    let edtaMsg = "";
     if (res.pacientesEdta && res.pacientesEdta.length > 0) {
-      fetch("/api/triagem-edta", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itens: res.pacientesEdta, substituir: true }),
-      }).catch((e) => console.warn("Erro ao sincronizar EDTA:", e));
+      try {
+        const edtaRes = await fetch("/api/triagem-edta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ itens: res.pacientesEdta, substituir: false }),
+        });
+        const edtaData = await edtaRes.json();
+        if (edtaData.message) {
+          edtaMsg = ` | 🟣 ${edtaData.message}`;
+        }
+      } catch (e) {
+        console.warn("Erro ao sincronizar EDTA:", e);
+      }
     }
 
-    const edtaMsg = res.totalEdta ? ` | 🟣 ${res.totalEdta} tubos EDTA na Triagem` : "";
+    if (!edtaMsg && res.totalEdta) {
+      edtaMsg = ` | 🟣 ${res.totalEdta} tubos EDTA na Triagem`;
+    }
+
     setFeedback({
       message: `📋 Texto colado processado com sucesso! ${res.totalAproveitados} pacientes de bancada identificados${edtaMsg} (${res.totalDescartadosAutomatizados} descartados).`,
       type: "success",

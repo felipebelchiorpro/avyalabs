@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const prontuario = searchParams.get("prontuario");
     const data = searchParams.get("data") || undefined;
+    const de = searchParams.get("de") || searchParams.get("dataInicio") || undefined;
+    const ate = searchParams.get("ate") || searchParams.get("dataFim") || undefined;
 
     if (prontuario) {
       const { paciente, ultimoLaudo } = await buscarPacientePorProntuario(prontuario);
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const rotina = await listarRotinaDia(data);
+    const rotina = await listarRotinaDia({ data, de, ate });
     return NextResponse.json({ ok: true, rotina });
   } catch (error: any) {
     return NextResponse.json(

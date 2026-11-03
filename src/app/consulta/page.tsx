@@ -22,6 +22,7 @@ import {
 export default function ConsultaAuditoriaPage() {
   const [laudos, setLaudos] = useState<LaudoUrina[]>([]);
   const [dataFiltro, setDataFiltro] = useState<string>("");
+  const [dataFimFiltro, setDataFimFiltro] = useState<string>("");
   const [busca, setBusca] = useState<string>("");
   const [statusFiltro, setStatusFiltro] = useState<string>("todos");
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -33,12 +34,17 @@ export default function ConsultaAuditoriaPage() {
 
   useEffect(() => {
     carregarLaudos();
-  }, [dataFiltro]);
+  }, [dataFiltro, dataFimFiltro]);
 
   const carregarLaudos = async () => {
     setIsLoading(true);
     try {
-      const url = dataFiltro ? `/api/laudos-dia?data=${dataFiltro}` : "/api/laudos-dia";
+      let url = "/api/laudos-dia";
+      if (dataFiltro && dataFimFiltro && dataFimFiltro !== dataFiltro) {
+        url = `/api/laudos-dia?de=${dataFiltro}&ate=${dataFimFiltro}`;
+      } else if (dataFiltro) {
+        url = `/api/laudos-dia?data=${dataFiltro}`;
+      }
       const res = await fetch(url);
       const data = await res.json();
       if (data.ok && Array.isArray(data.laudos)) {
@@ -190,7 +196,13 @@ export default function ConsultaAuditoriaPage() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "AutoLaudo_Bancada");
-    XLSX.writeFile(wb, `AutoLaudo_Urinálise_Extensao_${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+    const rotuloArquivo =
+      dataFimFiltro && dataFimFiltro !== dataFiltro
+        ? `${dataFiltro}_a_${dataFimFiltro}`
+        : dataFiltro || new Date().toISOString().slice(0, 10);
+
+    XLSX.writeFile(wb, `AutoLaudo_Urinalise_Extensao_${rotuloArquivo}.xlsx`);
   };
 
   // Copiar dados formatados para colar direto na extensão (TSV / Clipboard)
@@ -316,61 +328,121 @@ export default function ConsultaAuditoriaPage() {
 
         {/* BARRA DE FILTROS AVANÇADOS COM SELEÇÃO DE DIAS ANTERIORES */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-5 shadow-xs space-y-3">
-          {/* BOTÕES RÁPIDOS DE DIAS ANTERIORES */}
+          {/* BOTÕES RÁPIDOS DE DIAS ANTERIORES E PERÍODOS */}
           <div className="flex items-center gap-2 pb-2 border-b border-slate-100 overflow-x-auto">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-indigo-600" />
               Período:
             </span>
-            {[
-              { id: "", label: "🌐 Todos os Dias (Histórico Completo)" },
-              { id: hojeStr, label: "📅 Hoje" },
-              { id: ontemStr, label: "⏪ Ontem" },
-              { id: anteontemStr, label: "🗓️ Anteontem" },
-            ].map((btn) => (
-              <button
-                key={btn.id}
-                type="button"
-                onClick={() => setDataFiltro(btn.id)}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition shrink-0 ${
-                  dataFiltro === btn.id
-                    ? "bg-indigo-600 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
-              >
-                {btn.label}
-              </button>
-            ))}
+            <button
+              type="button"
+              onClick={() => {
+                setDataFiltro("");
+                setDataFimFiltro("");
+              }}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
+                !dataFiltro && !dataFimFiltro
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              🌐 Todos os Dias
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDataFiltro(hojeStr);
+                setDataFimFiltro(hojeStr);
+              }}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
+                dataFiltro === hojeStr && (!dataFimFiltro || dataFimFiltro === hojeStr)
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              📅 Hoje
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDataFiltro(ontemStr);
+                setDataFimFiltro(ontemStr);
+              }}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
+                dataFiltro === ontemStr && (!dataFimFiltro || dataFimFiltro === ontemStr)
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              ⏪ Ontem
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const seteDias = new Date(Date.now() - 6 * 86400000).toISOString().split("T")[0];
+                setDataFiltro(seteDias);
+                setDataFimFiltro(hojeStr);
+              }}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
+                dataFiltro && dataFimFiltro === hojeStr && dataFiltro !== hojeStr
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              🗓️ 7 Dias (Semana)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const quinzeDias = new Date(Date.now() - 14 * 86400000).toISOString().split("T")[0];
+                setDataFiltro(quinzeDias);
+                setDataFimFiltro(hojeStr);
+              }}
+              className="px-3 py-1 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer bg-slate-100 text-slate-700 hover:bg-slate-200"
+            >
+              🗓️ 15 Dias
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
             {/* BUSCA POR TEXTO */}
-            <div className="relative sm:col-span-2">
+            <div className="relative sm:col-span-6">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
                 type="text"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar por nome do paciente ou número do prontuário em qualquer data..."
-                className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500"
+                placeholder="Buscar por nome do paciente ou número do prontuário..."
+                className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500 font-bold"
               />
             </div>
 
-            {/* SELETOR DE DATA CALENDÁRIO */}
-            <div className="flex items-center gap-2">
+            {/* SELETORES DE DATA CALENDÁRIO: DE -> ATÉ */}
+            <div className="sm:col-span-6 flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-bold text-slate-500">De:</span>
               <input
                 type="date"
                 value={dataFiltro}
                 onChange={(e) => setDataFiltro(e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500 font-medium text-slate-700"
+                className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500 font-bold text-slate-800"
               />
-              {dataFiltro && (
+              <span className="text-[11px] font-bold text-slate-500">Até:</span>
+              <input
+                type="date"
+                value={dataFimFiltro}
+                onChange={(e) => setDataFimFiltro(e.target.value)}
+                className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500 font-bold text-slate-800"
+              />
+              {(dataFiltro || dataFimFiltro) && (
                 <button
                   type="button"
-                  onClick={() => setDataFiltro("")}
-                  className="text-xs text-slate-500 hover:text-slate-800 px-2 py-1 bg-slate-100 rounded-lg shrink-0 font-medium"
+                  onClick={() => {
+                    setDataFiltro("");
+                    setDataFimFiltro("");
+                  }}
+                  className="text-xs text-slate-600 hover:text-slate-900 px-2 py-1 bg-slate-100 border border-slate-200 rounded-lg shrink-0 font-bold cursor-pointer"
                 >
-                  Ver Todos
+                  Limpar
                 </button>
               )}
             </div>

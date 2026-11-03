@@ -1,4 +1,4 @@
-﻿// Utilitário de feedback sonoro usando a Web Audio API nativa
+// Utilitário de feedback sonoro usando a Web Audio API nativa
 // Funciona 100% offline em celulares (Android, iOS) e PC sem depender de arquivos .mp3 externos
 
 let audioCtx: AudioContext | null = null;
@@ -67,20 +67,45 @@ export function tocarSomApenasHemograma() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(660, agora);
-    osc.frequency.exponentialRampToValueAtTime(880, agora + 0.18);
+    // Beep simples e limpo
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, agora);
 
     gain.gain.setValueAtTime(0.25, agora);
-    gain.gain.exponentialRampToValueAtTime(0.01, agora + 0.28);
+    gain.gain.exponentialRampToValueAtTime(0.01, agora + 0.18);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(agora);
-    osc.stop(agora + 0.3);
+    osc.stop(agora + 0.19);
   } catch (e) {
     console.warn("AudioContext error:", e);
   }
+}
+
+/**
+ * c) FOLHA SEM EDTA / NÃO LOCALIZADA: Som ultra sutil / discreto (neutro)
+ */
+export function tocarSomSutil() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const agora = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(440, agora);
+
+    gain.gain.setValueAtTime(0.03, agora);
+    gain.gain.exponentialRampToValueAtTime(0.001, agora + 0.06);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(agora);
+    osc.stop(agora + 0.07);
+  } catch (_) {}
 }
 
 /**

@@ -1,4 +1,5 @@
-﻿import { LaudoUrina, RotinaItem } from "@/types/urinalise";
+import * as XLSX from "xlsx";
+import { LaudoUrina, RotinaItem } from "@/types/urinalise";
 
 function escaparXml(valor: any): string {
   if (valor === null || valor === undefined) return "";
@@ -84,24 +85,42 @@ export interface ItemXmlUrinalise {
   observacao: string;
 }
 
+function estaNoIntervaloData(d?: string, de?: string, ate?: string): boolean {
+  if (!d) return true;
+  const data = d.split("T")[0];
+  if (de && ate) {
+    return data >= de && data <= ate;
+  }
+  if (de) {
+    return data === de;
+  }
+  return true;
+}
+
 /**
  * Monta os dados padronizados para o modelo de laudo oficial
- * garantindo a trava de segurança por DATA (somente exames do dia solicitado).
+ * garantindo a trava de segurança por DATA (somente exames do dia ou período solicitado).
  */
 export function prepararDadosXmlUrinalise(
   dataAlvo: string,
   rotina: RotinaItem[],
-  laudos: LaudoUrina[]
+  laudos: LaudoUrina[],
+  dataFim?: string
 ): { dataAlvo: string; dataFormatada: string; itens: ItemXmlUrinalise[] } {
-  const dataAlvoLimpa = (dataAlvo || "").split("T")[0];
-  const dataFormatada = formatarDataPtBr(dataAlvoLimpa);
+  const de = (dataAlvo || "").split("T")[0];
+  const ate = (dataFim || "").split("T")[0] || de;
+  const ehPeriodo = Boolean(dataFim && ate !== de);
+
+  const dataFormatada = ehPeriodo
+    ? `${formatarDataPtBr(de)} a ${formatarDataPtBr(ate)}`
+    : formatarDataPtBr(de);
 
   // Mapa de laudos indexados por prontuário LIMPO
   const mapaLaudos = new Map<string, LaudoUrina>();
   laudos.forEach((l) => {
     const d = (l.data_hora || "").split("T")[0];
     // Trava de segurança: somente laudos com data compatível
-    if (!d || d === dataAlvoLimpa) {
+    if (!d || estaNoIntervaloData(d, de, ate)) {
       const p = (l.prontuario || "").replace(/\D/g, "");
       if (p) {
         mapaLaudos.set(p, l);
@@ -115,7 +134,7 @@ export function prepararDadosXmlUrinalise(
   // 1. Processar a partir da rotina do dia
   rotina.forEach((item) => {
     const dItem = (item.data || item.data_rotina || "").split("T")[0];
-    if (dItem && dItem !== dataAlvoLimpa) return; // Trava: ignora qualquer paciente de outro dia
+    if (dItem && !estaNoIntervaloData(dItem, de, ate)) return; // Trava: ignora qualquer paciente fora do período
 
     const prontLimpo = (item.prontuario || "").replace(/\D/g, "");
     if (!prontLimpo || prontuariosProcessados.has(prontLimpo)) return;
@@ -161,8 +180,8 @@ export function prepararDadosXmlUrinalise(
 
     itensResultado.push({
       prontuario: item.prontuario || laudo?.prontuario || "",
-      data: dataAlvoLimpa,
-      data_formatada: dataFormatada,
+      data: dItem || de,
+      data_formatada: formatarDataPtBr(dItem || de),
       nome_paciente: item.nome_paciente || laudo?.nome_paciente || "",
       idade_sexo: item.idade_sexo || laudo?.idade_sexo || "",
       posto_unidade: item.posto_unidade || laudo?.posto_unidade || "",
@@ -200,10 +219,10 @@ export function prepararDadosXmlUrinalise(
     });
   });
 
-  // 2. Se houver laudos que não estavam na lista de rotina mas pertencem ao dia
+  // 2. Se houver laudos que não estavam na lista de rotina mas pertencem ao dia/período
   laudos.forEach((laudo) => {
     const d = (laudo.data_hora || "").split("T")[0];
-    if (d && d !== dataAlvoLimpa) return; // Trava estrita de data
+    if (d && !estaNoIntervaloData(d, de, ate)) return; // Trava estrita de data/período
 
     const prontLimpo = (laudo.prontuario || "").replace(/\D/g, "");
     if (!prontLimpo || prontuariosProcessados.has(prontLimpo)) return;
@@ -227,8 +246,8 @@ export function prepararDadosXmlUrinalise(
 
     itensResultado.push({
       prontuario: laudo.prontuario,
-      data: dataAlvoLimpa,
-      data_formatada: dataFormatada,
+      data: d || de,
+      data_formatada: formatarDataPtBr(d || de),
       nome_paciente: laudo.nome_paciente || "",
       idade_sexo: laudo.idade_sexo || "",
       posto_unidade: laudo.posto_unidade || "",
@@ -267,7 +286,7 @@ export function prepararDadosXmlUrinalise(
   });
 
   return {
-    dataAlvo: dataAlvoLimpa,
+    dataAlvo: de,
     dataFormatada,
     itens: itensResultado,
   };
@@ -279,9 +298,10 @@ export function prepararDadosXmlUrinalise(
 export function gerarStringXmlUrinalise(
   dataAlvo: string,
   rotina: RotinaItem[],
-  laudos: LaudoUrina[]
+  laudos: LaudoUrina[],
+  dataFim?: string
 ): string {
-  const dados = prepararDadosXmlUrinalise(dataAlvo, rotina, laudos);
+  const dados = prepararDadosXmlUrinalise(dataAlvo, rotina, laudos, dataFim);
 
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
   xml += `<rotina_urinalise data="${escaparXml(dados.dataAlvo)}" data_formatada="${escaparXml(dados.dataFormatada)}" total_pacientes="${dados.itens.length}" gerado_em="${new Date().toISOString()}">\n`;
@@ -342,11 +362,17 @@ export function gerarStringXmlUrinalise(
 export function baixarXmlUrinalise(
   dataAlvo: string,
   rotina: RotinaItem[],
-  laudos: LaudoUrina[]
+  laudos: LaudoUrina[],
+  dataFim?: string
 ): { sucesso: boolean; totalItens: number; nomeArquivo: string } {
-  const xmlString = gerarStringXmlUrinalise(dataAlvo, rotina, laudos);
-  const dataLimpa = (dataAlvo || new Date().toISOString().split("T")[0]).split("T")[0];
-  const nomeArquivo = `urinalise_rotina_${dataLimpa}.xml`;
+  const xmlString = gerarStringXmlUrinalise(dataAlvo, rotina, laudos, dataFim);
+  const de = (dataAlvo || new Date().toISOString().split("T")[0]).split("T")[0];
+  const ate = (dataFim || "").split("T")[0];
+  const ehPeriodo = Boolean(ate && ate !== de);
+
+  const nomeArquivo = ehPeriodo
+    ? `urinalise_rotina_${de}_a_${ate}.xml`
+    : `urinalise_rotina_${de}.xml`;
 
   const blob = new Blob([xmlString], { type: "application/xml;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -358,7 +384,75 @@ export function baixarXmlUrinalise(
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
-  const dados = prepararDadosXmlUrinalise(dataAlvo, rotina, laudos);
+  const dados = prepararDadosXmlUrinalise(dataAlvo, rotina, laudos, dataFim);
+  return {
+    sucesso: true,
+    totalItens: dados.itens.length,
+    nomeArquivo,
+  };
+}
+
+/**
+ * Dispara o download automático do arquivo Excel (.xlsx) para a Extensão / Validador
+ * com todos os parâmetros formatados e padronizados
+ */
+export function baixarXlsxUrinalise(
+  dataAlvo: string,
+  rotina: RotinaItem[],
+  laudos: LaudoUrina[],
+  dataFim?: string
+): { sucesso: boolean; totalItens: number; nomeArquivo: string } {
+  const dados = prepararDadosXmlUrinalise(dataAlvo, rotina, laudos, dataFim);
+
+  const rows = dados.itens.map((it) => ({
+    PRONTUARIO: it.prontuario,
+    PACIENTE: it.nome_paciente,
+    DATA: it.data,
+    DATA_FORMATADA: it.data_formatada,
+    POSTO_UNIDADE: it.posto_unidade || "UBS Central",
+    SOLICITANTE: it.solicitante || "Dr(a). Clínico Geral",
+    VOLUME_ML: it.volume,
+    COR: it.cor,
+    ASPECTO: it.aspecto,
+    DENSIDADE: it.densidade,
+    PH: it.ph,
+    PROTEINA: it.proteina,
+    GLICOSE: it.glicose,
+    CETONAS: it.corpos_cetonicos,
+    BILIRRUBINA: it.bilirrubina,
+    UROBILINOGENIO: it.urobilinogenio,
+    NITRITO: it.nitrito,
+    SANGUE: it.sangue_oculto,
+    HEMACIAS: it.hemacias,
+    HEMACIAS_NUMERO: it.hemacias_numero,
+    LEUCOCITOS: it.leucocitos,
+    LEUCOCITOS_NUMERO: it.leucocitos_numero,
+    CELULAS_EPITELIAIS: it.celulas_epiteliais,
+    CILINDROS: it.cilindros,
+    CRISTAIS: it.cristais,
+    BACTERIAS: it.bacterias,
+    MUCO: it.filamentos_de_muco,
+    OUTROS_ELEMENTOS: it.outros_elementos,
+    OBSERVACOES: it.observacao,
+    STATUS: it.status.toUpperCase(),
+    RECOLETA: it.recoleta.toUpperCase(),
+    RECOLETA_MOTIVO: it.recoleta_motivo || "",
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "AutoLaudo_Urina");
+
+  const de = (dataAlvo || new Date().toISOString().split("T")[0]).split("T")[0];
+  const ate = (dataFim || "").split("T")[0];
+  const ehPeriodo = Boolean(ate && ate !== de);
+
+  const nomeArquivo = ehPeriodo
+    ? `AutoLaudo_Urinalise_${de}_a_${ate}.xlsx`
+    : `AutoLaudo_Urinalise_${de}.xlsx`;
+
+  XLSX.writeFile(wb, nomeArquivo);
+
   return {
     sucesso: true,
     totalItens: dados.itens.length,

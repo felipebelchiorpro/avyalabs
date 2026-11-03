@@ -13,10 +13,12 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const data = searchParams.get("data") || undefined;
+    const de = searchParams.get("de") || searchParams.get("dataInicio") || undefined;
+    const ate = searchParams.get("ate") || searchParams.get("dataFim") || undefined;
     const prontuario = searchParams.get("prontuario") || undefined;
     const busca = searchParams.get("busca") || undefined;
 
-    const laudos = await listarLaudos({ data, prontuario, busca });
+    const laudos = await listarLaudos({ data, de, ate, prontuario, busca });
     return NextResponse.json({
       ok: true,
       total: laudos.length,

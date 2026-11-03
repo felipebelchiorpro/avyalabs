@@ -1,4 +1,4 @@
-﻿// Execução dinâmica sem cache estático no Vercel Serverless
+// Execução dinâmica sem cache estático no Vercel Serverless
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -99,10 +99,11 @@ export async function POST(request: NextRequest) {
 
     const resultado = processarMatrizLinhasBancada(rows, filtrarApenasRealizado);
 
-    // Salvar automaticamente a partição Triagem EDTA no banco/memória se houver tubos
+    // Salvar incrementalmente a partição Triagem EDTA (Merge / Upsert sem perder triados)
+    let resultadoMergeEdta = null;
     if (resultado.pacientesEdta && resultado.pacientesEdta.length > 0) {
       try {
-        await salvarTriagemEdta(resultado.pacientesEdta, true);
+        resultadoMergeEdta = await salvarTriagemEdta(resultado.pacientesEdta, false);
       } catch (edtaErr) {
         console.warn("Aviso ao salvar Triagem EDTA extraída:", edtaErr);
       }
@@ -112,6 +113,7 @@ export async function POST(request: NextRequest) {
       ok: true,
       fileName: file.name,
       pacientes: resultado.pacientesUnificados,
+      resultadoMergeEdta,
       ...resultado,
     });
   } catch (err: any) {

@@ -220,3 +220,4 @@ export const ModalSelecionarOperador: React.FC<ModalSelecionarOperadorProps> = (
     </div>
   );
 };
+

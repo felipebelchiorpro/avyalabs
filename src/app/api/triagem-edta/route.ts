@@ -1,4 +1,4 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
@@ -10,7 +10,7 @@ import {
   obterSinalImpressaoEdta,
   consumirSinalImpressaoEdta,
 } from "@/lib/googleSheets";
-import { formatarProntuario } from "@/lib/extratorBancada";
+import { formatarProntuario, normalizarProntuario } from "@/lib/extratorBancada";
 import { ItemTriagemEdta } from "@/types/urinalise";
 
 export async function GET(request: NextRequest) {
@@ -38,10 +38,13 @@ export async function GET(request: NextRequest) {
 
     if (prontuario) {
       const pBusca = formatarProntuario(prontuario).toLowerCase();
+      const pNorm = normalizarProntuario(prontuario).toLowerCase();
       const item = itens.find(
         (i) =>
           formatarProntuario(i.prontuario).toLowerCase() === pBusca ||
-          i.prontuario.toLowerCase() === pBusca
+          i.prontuario.toLowerCase() === pBusca ||
+          (i.prontuario_normalizado && i.prontuario_normalizado.toLowerCase() === pNorm) ||
+          normalizarProntuario(i.prontuario).toLowerCase() === pNorm
       );
       return NextResponse.json({ ok: true, item: item || null });
     }
@@ -122,9 +125,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Default: Salvar lista completa
+    // Default: Salvar lista com lógica de Merge / Upsert incremental
     const itens: ItemTriagemEdta[] = body.itens || [];
-    const substituir = body.substituir !== false;
+    const substituir = body.substituir === true;
 
     if (!Array.isArray(itens) || itens.length === 0) {
       return NextResponse.json(

@@ -10,7 +10,13 @@ import {
   TipoEdtaDestino,
   StatusTriagemEdta,
 } from "@/types/urinalise";
-import { aplicarFlagsExamesNoItem, formatarProntuario } from "./extratorBancada";
+import {
+  aplicarFlagsExamesNoItem,
+  formatarProntuario,
+  normalizarProntuario,
+  formatarDataNascimento,
+  normalizarDigitosData,
+} from "./extratorBancada";
 
 export type { LaudoUrina, RotinaItem, StatusLaudo, ItemTriagemEdta, TipoEdtaDestino, StatusTriagemEdta };
 export type ItemRotina = RotinaItem;
@@ -61,6 +67,8 @@ export const CABECALHO_TRIAGEM_EDTA = [
   "id",
   "data",
   "prontuario",
+  "prontuario_normalizado",
+  "data_nascimento",
   "nome_paciente",
   "tipo_destino",
   "status",
@@ -70,6 +78,11 @@ export const CABECALHO_TRIAGEM_EDTA = [
   "exames",
   "solicitante",
   "urgencia",
+  "tem_vhs",
+  "coletado_dois_tubos",
+  "qtd_tubos_coletados",
+  "enviar_hemograma_hoje",
+  "data_liberacao_apoio",
 ];
 
 export const CABECALHO_LAUDOS = [
@@ -415,7 +428,7 @@ export async function ensureSheetsExist(): Promise<{ ok: boolean; message: strin
     if (!existingTitles.includes(SHEET_NAME_TRIAGEM_EDTA)) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: sheetId,
-        range: `${SHEET_NAME_TRIAGEM_EDTA}!A1:L1`,
+        range: `${SHEET_NAME_TRIAGEM_EDTA}!A1:S1`,
         valueInputOption: "RAW",
         requestBody: { values: [CABECALHO_TRIAGEM_EDTA] },
       });
@@ -693,10 +706,24 @@ export async function salvarOuAtualizarLaudo(
  * Retorna os laudos de uma determinada data (YYYY-MM-DD) ou filtrados por objeto
  */
 export async function listarLaudos(
-  filtro?: string | { prontuario?: string; data?: string; busca?: string }
+  filtro?:
+    | string
+    | {
+        prontuario?: string;
+        data?: string;
+        de?: string;
+        ate?: string;
+        dataInicio?: string;
+        dataFim?: string;
+        busca?: string;
+      }
 ): Promise<LaudoUrina[]> {
   const dataFiltro =
     typeof filtro === "string" ? normalizarDataIso(filtro) : normalizarDataIso(filtro?.data);
+  const dataDe =
+    typeof filtro === "object" ? normalizarDataIso(filtro?.de || filtro?.dataInicio) : "";
+  const dataAte =
+    typeof filtro === "object" ? normalizarDataIso(filtro?.ate || filtro?.dataFim) : "";
   const prontFiltro =
     typeof filtro === "object" && filtro?.prontuario
       ? formatarProntuario(filtro.prontuario).toLowerCase()
@@ -729,6 +756,8 @@ export async function listarLaudos(
 
           const rowDate = normalizarDataIso((r[offset] || "").toString());
           if (dataFiltro && rowDate !== dataFiltro) continue;
+          if (dataDe && rowDate < dataDe) continue;
+          if (dataAte && rowDate > dataAte) continue;
 
           const rawCor = (r[offset + 3] || "").toString().trim();
           const rawAsp = (r[offset + 4] || "").toString().trim();
@@ -984,7 +1013,17 @@ export async function salvarRotinaDia(
 /**
  * Retorna os pacientes da rotina do dia com todas as flags de exames reconstruídas e em ordem alfabética (1, 2, 3, 4, 5, 6...)
  */
-export async function listarRotinaDia(dataFiltro?: string): Promise<RotinaItem[]> {
+export async function listarRotinaDia(
+  dataFiltro?:
+    | string
+    | {
+        de?: string;
+        ate?: string;
+        dataInicio?: string;
+        dataFim?: string;
+        data?: string;
+      }
+): Promise<RotinaItem[]> {
   const gClient = getGoogleSheetsClient();
   let rotina: RotinaItem[] = [];
 
@@ -1062,10 +1101,24 @@ export async function listarRotinaDia(dataFiltro?: string): Promise<RotinaItem[]
   }
 
   if (dataFiltro) {
-    const alvo = normalizarDataIso(dataFiltro);
-    const filtrada = rotina.filter((r) => normalizarDataIso(r.data || r.data_rotina) === alvo);
-    if (filtrada.length > 0) {
-      rotina = filtrada;
+    if (typeof dataFiltro === "string") {
+      const alvo = normalizarDataIso(dataFiltro);
+      const filtrada = rotina.filter((r) => normalizarDataIso(r.data || r.data_rotina) === alvo);
+      if (filtrada.length > 0) {
+        rotina = filtrada;
+      }
+    } else {
+      const de = normalizarDataIso(dataFiltro.de || dataFiltro.dataInicio || dataFiltro.data);
+      const ate = normalizarDataIso(dataFiltro.ate || dataFiltro.dataFim || dataFiltro.data);
+      const filtrada = rotina.filter((r) => {
+        const d = normalizarDataIso(r.data || r.data_rotina);
+        if (de && d < de) return false;
+        if (ate && d > ate) return false;
+        return true;
+      });
+      if (filtrada.length > 0) {
+        rotina = filtrada;
+      }
     }
   }
 
@@ -1117,52 +1170,163 @@ export async function buscarPacientePorProntuario(
  * =========================================================================
  */
 
+export interface ResultadoSalvarTriagemEdta {
+  ok: boolean;
+  count: number;
+  total: number;
+  novosAdicionados: number;
+  jaTriadosPreservados: number;
+  atualizadosPendentes: number;
+  message: string;
+  itens: ItemTriagemEdta[];
+}
+
 export async function salvarTriagemEdta(
   itens: ItemTriagemEdta[],
-  substituirExistente = true
-): Promise<{ ok: boolean; count: number; total: number; message: string }> {
+  substituirExistente = false
+): Promise<ResultadoSalvarTriagemEdta> {
   const hojeIso = new Date().toISOString().split("T")[0];
 
-  const itensNormalizados: ItemTriagemEdta[] = itens
-    .map((item) => ({
+  // Normalizar os itens vindos da planilha
+  const itensNovosNormalizados: ItemTriagemEdta[] = (itens || []).map((item) => {
+    const pFormatado = formatarProntuario(item.prontuario);
+    const pNorm = item.prontuario_normalizado || normalizarProntuario(pFormatado);
+    const dtNasc = item.data_nascimento || "";
+    const dtNascDigitos = item.data_nascimento_digitos || normalizarDigitosData(dtNasc);
+
+    return {
       ...item,
-      id: item.id || `edta-${normalizarDataIso(item.data) || hojeIso}-${formatarProntuario(item.prontuario)}`,
+      id: item.id || `edta-${normalizarDataIso(item.data) || hojeIso}-${pNorm}`,
       data: normalizarDataIso(item.data) || hojeIso,
-      prontuario: formatarProntuario(item.prontuario),
+      prontuario: pFormatado,
+      prontuario_normalizado: pNorm,
+      data_nascimento: dtNasc,
+      data_nascimento_digitos: dtNascDigitos,
       nome_paciente: (item.nome_paciente || "").trim().toUpperCase(),
       tipo_destino: item.tipo_destino || "apenas_hemograma",
-      status: item.status || "pendente",
-      fracionado_glicada: Boolean(item.fracionado_glicada),
-      colocado_grade: Boolean(item.colocado_grade),
-      horario_bipado: item.horario_bipado || "",
+      status: "pendente",
+      fracionado_glicada: false,
+      colocado_grade: false,
+      horario_bipado: "",
       solicitante: item.solicitante || "Dr(a). Clínico(a) Geral / UBS",
       urgencia: Boolean(item.urgencia),
       exames_originais: item.exames_originais || [],
-    }))
-    .sort((a, b) => a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR"));
+    };
+  });
 
-  if (substituirExistente) {
-    globalForStore.localMemoryTriagemEdta = [...itensNormalizados];
-  } else {
-    const mapa = new Map<string, ItemTriagemEdta>();
-    for (const r of globalForStore.localMemoryTriagemEdta) {
-      mapa.set(`${formatarProntuario(r.prontuario)}_${r.nome_paciente}`, r);
-    }
-    for (const novo of itensNormalizados) {
-      mapa.set(`${novo.prontuario}_${novo.nome_paciente}`, novo);
-    }
-    globalForStore.localMemoryTriagemEdta = Array.from(mapa.values()).sort((a, b) =>
+  // Obter lista atual em memória/servidor
+  const listaAtual = [...(globalForStore.localMemoryTriagemEdta || [])];
+
+  let listaFinal: ItemTriagemEdta[] = [];
+  let novosAdicionados = 0;
+  let jaTriadosPreservados = 0;
+  let atualizadosPendentes = 0;
+
+  if (substituirExistente || listaAtual.length === 0) {
+    // Primeiro upload ou substituição forçada
+    listaFinal = [...itensNovosNormalizados].sort((a, b) =>
       a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR")
     );
+    novosAdicionados = listaFinal.length;
+  } else {
+    // LÓGICA DE MERGE / UPSERT INCREMENTAL (Chave primária: prontuário normalizado)
+    listaFinal = [...listaAtual];
+    const mapaIndices = new Map<string, number>();
+
+    listaFinal.forEach((item, idx) => {
+      const chave = normalizarProntuario(item.prontuario).toLowerCase();
+      mapaIndices.set(chave, idx);
+    });
+
+    for (const itemNovo of itensNovosNormalizados) {
+      const chaveNovo = normalizarProntuario(itemNovo.prontuario).toLowerCase();
+
+      if (mapaIndices.has(chaveNovo)) {
+        const idxExistente = mapaIndices.get(chaveNovo)!;
+        const existente = listaFinal[idxExistente];
+
+        const jaFoiBipadoOuTriado =
+          existente.status !== "pendente" ||
+          existente.colocado_grade ||
+          existente.fracionado_glicada ||
+          Boolean(existente.horario_bipado);
+
+        if (jaFoiBipadoOuTriado) {
+          // 1. Pacientes já existentes que já foram bipados/triados:
+          // Mantêm rigorosamente seu status atual e respectivos timestamps/histórico de triagem.
+          jaTriadosPreservados++;
+
+          listaFinal[idxExistente] = {
+            ...itemNovo,
+            ...existente,
+            // Complementa eventuais dados cadastrais que faltavam sem perder o estado de triagem
+            data_nascimento: existente.data_nascimento || itemNovo.data_nascimento || "",
+            data_nascimento_digitos:
+              existente.data_nascimento_digitos || itemNovo.data_nascimento_digitos || "",
+            exames_originais: Array.from(
+              new Set([...(existente.exames_originais || []), ...(itemNovo.exames_originais || [])])
+            ),
+          };
+        } else {
+          // 3. Pacientes já existentes que continuavam com status pendente:
+          // Atualiza apenas eventuais dados cadastrais complementares da planilha sem perder a ordem.
+          atualizadosPendentes++;
+
+          listaFinal[idxExistente] = {
+            ...existente,
+            ...itemNovo,
+            status: "pendente",
+            fracionado_glicada: false,
+            colocado_grade: false,
+            horario_bipado: "",
+            data_nascimento: itemNovo.data_nascimento || existente.data_nascimento || "",
+            data_nascimento_digitos:
+              itemNovo.data_nascimento_digitos || existente.data_nascimento_digitos || "",
+          };
+        }
+      } else {
+        // 2. Pacientes novos (não presentes na lista atual):
+        // Inseridos no final da lista com o status padrão pendente.
+        novosAdicionados++;
+        const novoParaInserir: ItemTriagemEdta = {
+          ...itemNovo,
+          status: "pendente",
+          fracionado_glicada: false,
+          colocado_grade: false,
+          horario_bipado: "",
+        };
+        listaFinal.push(novoParaInserir);
+        mapaIndices.set(chaveNovo, listaFinal.length - 1);
+      }
+    }
+  }
+
+  // Atualizar memória do servidor
+  globalForStore.localMemoryTriagemEdta = listaFinal;
+
+  // Mensagem padronizada informativa
+  let mensagemToast = "";
+  if (jaTriadosPreservados > 0 || atualizadosPendentes > 0) {
+    if (novosAdicionados > 0) {
+      mensagemToast = `Lista atualizada com sucesso! ${novosAdicionados} novos pacientes adicionados. ${jaTriadosPreservados} pacientes já triados foram preservados.`;
+    } else {
+      mensagemToast = `Lista atualizada com sucesso! Nenhum novo paciente detectado na planilha. ${jaTriadosPreservados} pacientes já triados foram preservados.`;
+    }
+  } else {
+    mensagemToast = `Lista carregada com sucesso! ${novosAdicionados} novos pacientes adicionados à triagem.`;
   }
 
   const gClient = getGoogleSheetsClient();
   if (!gClient) {
     return {
       ok: true,
-      count: globalForStore.localMemoryTriagemEdta.length,
-      total: globalForStore.localMemoryTriagemEdta.length,
-      message: `${globalForStore.localMemoryTriagemEdta.length} tubos EDTA sincronizados em memória.`,
+      count: listaFinal.length,
+      total: listaFinal.length,
+      novosAdicionados,
+      jaTriadosPreservados,
+      atualizadosPendentes,
+      message: mensagemToast,
+      itens: listaFinal,
     };
   }
 
@@ -1173,18 +1337,21 @@ export async function salvarTriagemEdta(
 
     await sheets.spreadsheets.values.clear({
       spreadsheetId: sheetId,
-      range: `${SHEET_NAME_TRIAGEM_EDTA}!A:L`,
+      range: `${SHEET_NAME_TRIAGEM_EDTA}!A:S`,
     });
 
     const values = [
       CABECALHO_TRIAGEM_EDTA,
       ...globalForStore.localMemoryTriagemEdta.map((item, idx) => {
         const itemData = item.data || hojeIso;
-        const itemId = item.id || `EDTA-${itemData}-${item.prontuario || idx + 1}`;
+        const pNorm = item.prontuario_normalizado || normalizarProntuario(item.prontuario);
+        const itemId = item.id || `EDTA-${itemData}-${pNorm || idx + 1}`;
         return [
           itemId,
           itemData,
           item.prontuario,
+          pNorm,
+          item.data_nascimento || "",
           item.nome_paciente,
           item.tipo_destino,
           item.status,
@@ -1194,6 +1361,11 @@ export async function salvarTriagemEdta(
           (item.exames_originais || []).join(" + "),
           item.solicitante || "Dr(a). Clínico(a) Geral / UBS",
           item.urgencia ? "SIM" : "NAO",
+          item.tem_vhs ? "SIM" : "NAO",
+          item.coletado_dois_tubos !== false ? "SIM" : "NAO",
+          item.qtd_tubos_coletados || (item.coletado_dois_tubos !== false ? 2 : 1),
+          item.enviar_hemograma_hoje !== false ? "SIM" : "NAO",
+          item.data_liberacao_apoio || "",
         ];
       }),
     ];
@@ -1207,17 +1379,25 @@ export async function salvarTriagemEdta(
 
     return {
       ok: true,
-      count: globalForStore.localMemoryTriagemEdta.length,
-      total: globalForStore.localMemoryTriagemEdta.length,
-      message: `${globalForStore.localMemoryTriagemEdta.length} tubos EDTA sincronizados com sucesso na aba Triagem_EDTA!`,
+      count: listaFinal.length,
+      total: listaFinal.length,
+      novosAdicionados,
+      jaTriadosPreservados,
+      atualizadosPendentes,
+      message: mensagemToast,
+      itens: listaFinal,
     };
   } catch (err: any) {
     console.error("Erro ao salvar Triagem EDTA no Google Sheets:", err);
     return {
       ok: true,
-      count: globalForStore.localMemoryTriagemEdta.length,
-      total: globalForStore.localMemoryTriagemEdta.length,
-      message: `Triagem EDTA salva na memória do servidor (${err.message}).`,
+      count: listaFinal.length,
+      total: listaFinal.length,
+      novosAdicionados,
+      jaTriadosPreservados,
+      atualizadosPendentes,
+      message: mensagemToast,
+      itens: listaFinal,
     };
   }
 }
@@ -1233,7 +1413,7 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
     try {
       const res = await sheets.spreadsheets.values.get({
         spreadsheetId: sheetId,
-        range: `${SHEET_NAME_TRIAGEM_EDTA}!A:L`,
+        range: `${SHEET_NAME_TRIAGEM_EDTA}!A:S`,
       });
 
       const rows = res.data.values || [];
@@ -1242,8 +1422,14 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
           (h || "").toString().toLowerCase().trim()
         );
         const idxId = headerRow.indexOf("id");
-        const idxData = headerRow.findIndex((h: string) => h.includes("data"));
-        const idxPront = headerRow.findIndex((h: string) => h.includes("pront"));
+        const idxData = headerRow.findIndex((h: string) => h.includes("data") && !h.includes("nasc") && !h.includes("liberacao"));
+        const idxPront = headerRow.findIndex((h: string) => h === "prontuario" || (h.includes("pront") && !h.includes("norm")));
+        const idxProntNorm = headerRow.findIndex(
+          (h: string) => h.includes("pront") && h.includes("norm")
+        );
+        const idxNasc = headerRow.findIndex(
+          (h: string) => h.includes("nasc") || h.includes("dn")
+        );
         const idxNome = headerRow.findIndex(
           (h: string) => h.includes("nome") || h.includes("paciente")
         );
@@ -1259,6 +1445,11 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
         const idxUrgencia = headerRow.findIndex(
           (h: string) => h.includes("urgenc") || h.includes("prioridade")
         );
+        const idxVhs = headerRow.findIndex((h: string) => h.includes("vhs"));
+        const idxDoisTubos = headerRow.findIndex((h: string) => h.includes("dois_tubos") || h.includes("coletado_dois"));
+        const idxQtdTubos = headerRow.findIndex((h: string) => h.includes("qtd_tubos"));
+        const idxEnviarHoje = headerRow.findIndex((h: string) => h.includes("enviar_hemograma_hoje") || h.includes("enviar_hoje"));
+        const idxDataLib = headerRow.findIndex((h: string) => h.includes("data_liberacao"));
 
         itens = [];
         for (let i = 1; i < rows.length; i++) {
@@ -1272,6 +1463,13 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
           const rowDate = normalizarDataIso(
             (idxData >= 0 ? r[idxData] : r[0] || "").toString().trim()
           );
+
+          const dataNasc = idxNasc >= 0 && r[idxNasc] ? formatarDataNascimento(r[idxNasc]) : "";
+          const dataNascDigitos = normalizarDigitosData(dataNasc);
+          const prontNorm =
+            idxProntNorm >= 0 && r[idxProntNorm]
+              ? String(r[idxProntNorm]).trim()
+              : normalizarProntuario(prontuario);
 
           const tipoRaw = (idxTipo >= 0 ? r[idxTipo] : "").toString().trim() as TipoEdtaDestino;
           const statusRaw = (idxStatus >= 0 ? r[idxStatus] : "pendente").toString().trim() as StatusTriagemEdta;
@@ -1287,10 +1485,21 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
           const temGlicada =
             tipoRaw === "apenas_glicada" || tipoRaw === "hemograma_glicada";
 
+          const temVhs = idxVhs >= 0 && (r[idxVhs] === "SIM" || r[idxVhs] === "TRUE");
+          const coletadoDois = idxDoisTubos >= 0 ? (r[idxDoisTubos] === "SIM" || r[idxDoisTubos] === "TRUE") : temVhs;
+          const qtdTubos = idxQtdTubos >= 0 && r[idxQtdTubos] ? Number(r[idxQtdTubos]) : (coletadoDois ? 2 : 1);
+          const enviarHoje = idxEnviarHoje >= 0 && r[idxEnviarHoje] !== undefined && r[idxEnviarHoje] !== ""
+            ? (r[idxEnviarHoje] === "SIM" || r[idxEnviarHoje] === "TRUE")
+            : (statusRaw !== "retido_envio_posterior" && statusRaw !== "retido_bancada");
+          const dataLiberacao = idxDataLib >= 0 && r[idxDataLib] ? String(r[idxDataLib]).trim() : undefined;
+
           itens.push({
             id: idxId >= 0 ? r[idxId] : `edta-row-${i}`,
             data: rowDate || new Date().toISOString().split("T")[0],
             prontuario,
+            prontuario_normalizado: prontNorm,
+            data_nascimento: dataNasc,
+            data_nascimento_digitos: dataNascDigitos,
             nome_paciente: (idxNome >= 0 ? r[idxNome] : r[2] || "").toString().trim().toUpperCase(),
             tipo_destino: tipoRaw || "apenas_hemograma",
             status: statusRaw || "pendente",
@@ -1301,6 +1510,11 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
             urgencia: urgenciaRaw === "SIM" || urgenciaRaw === "TRUE",
             tem_hemograma: temHemograma,
             tem_glicada: temGlicada,
+            tem_vhs: temVhs,
+            coletado_dois_tubos: coletadoDois,
+            qtd_tubos_coletados: qtdTubos,
+            enviar_hemograma_hoje: enviarHoje,
+            data_liberacao_apoio: dataLiberacao,
             exames_originais: idxExames >= 0 && r[idxExames] ? r[idxExames].split(" + ") : [],
           });
         }
@@ -1330,11 +1544,14 @@ export async function atualizarStatusItemEdta(
   updates: Partial<ItemTriagemEdta>
 ): Promise<ItemTriagemEdta | null> {
   const prontFormatado = formatarProntuario(prontuario).toLowerCase();
+  const prontNorm = normalizarProntuario(prontuario).toLowerCase();
   const lista = await listarTriagemEdta();
   const index = lista.findIndex(
     (item) =>
       formatarProntuario(item.prontuario).toLowerCase() === prontFormatado ||
-      item.prontuario.toLowerCase() === prontFormatado
+      item.prontuario.toLowerCase() === prontFormatado ||
+      (item.prontuario_normalizado && item.prontuario_normalizado.toLowerCase() === prontNorm) ||
+      normalizarProntuario(item.prontuario).toLowerCase() === prontNorm
   );
 
   if (index === -1) {
@@ -1357,7 +1574,7 @@ export async function atualizarStatusItemEdta(
       const { sheets, sheetId } = gClient;
       const res = await sheets.spreadsheets.values.get({
         spreadsheetId: sheetId,
-        range: `${SHEET_NAME_TRIAGEM_EDTA}!A:L`,
+        range: `${SHEET_NAME_TRIAGEM_EDTA}!A:S`,
       });
       const rows = res.data.values || [];
       if (rows.length > 1) {
@@ -1365,6 +1582,7 @@ export async function atualizarStatusItemEdta(
           (h || "").toString().toLowerCase().trim()
         );
         const idxPront = headerRow.findIndex((h) => h.includes("pront"));
+        const idxNasc = headerRow.findIndex((h) => h.includes("nasc") || h.includes("dn"));
         const idxStatus = headerRow.findIndex((h) => h.includes("status"));
         const idxFrac = headerRow.findIndex((h) => h.includes("frac"));
         const idxGrade = headerRow.findIndex((h) => h.includes("grade"));
@@ -1375,12 +1593,26 @@ export async function atualizarStatusItemEdta(
         const idxUrg = headerRow.findIndex(
           (h) => h.includes("urg") || h.includes("prioridade")
         );
+        const idxVhs = headerRow.findIndex((h) => h.includes("vhs"));
+        const idxDoisTubos = headerRow.findIndex((h) => h.includes("dois_tubos") || h.includes("coletado_dois"));
+        const idxQtdTubos = headerRow.findIndex((h) => h.includes("qtd_tubos"));
+        const idxEnviarHoje = headerRow.findIndex((h) => h.includes("enviar_hemograma_hoje") || h.includes("enviar_hoje"));
+        const idxDataLib = headerRow.findIndex((h) => h.includes("data_liberacao"));
 
         if (idxPront >= 0) {
           for (let ri = 1; ri < rows.length; ri++) {
             const rowPront = formatarProntuario(rows[ri][idxPront] || "").toLowerCase();
             if (rowPront === prontFormatado) {
               const rowNum = ri + 1;
+              if (idxNasc >= 0 && updates.data_nascimento !== undefined) {
+                const colLetter = String.fromCharCode(65 + idxNasc);
+                await sheets.spreadsheets.values.update({
+                  spreadsheetId: sheetId,
+                  range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}${rowNum}`,
+                  valueInputOption: "RAW",
+                  requestBody: { values: [[updates.data_nascimento || ""]] },
+                });
+              }
               if (idxStatus >= 0 && updates.status) {
                 const colLetter = String.fromCharCode(65 + idxStatus);
                 await sheets.spreadsheets.values.update({
@@ -1433,6 +1665,51 @@ export async function atualizarStatusItemEdta(
                   range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}${rowNum}`,
                   valueInputOption: "RAW",
                   requestBody: { values: [[updates.urgencia ? "SIM" : "NAO"]] },
+                });
+              }
+              if (idxVhs >= 0 && updates.tem_vhs !== undefined) {
+                const colLetter = String.fromCharCode(65 + idxVhs);
+                await sheets.spreadsheets.values.update({
+                  spreadsheetId: sheetId,
+                  range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}${rowNum}`,
+                  valueInputOption: "RAW",
+                  requestBody: { values: [[updates.tem_vhs ? "SIM" : "NAO"]] },
+                });
+              }
+              if (idxDoisTubos >= 0 && updates.coletado_dois_tubos !== undefined) {
+                const colLetter = String.fromCharCode(65 + idxDoisTubos);
+                await sheets.spreadsheets.values.update({
+                  spreadsheetId: sheetId,
+                  range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}${rowNum}`,
+                  valueInputOption: "RAW",
+                  requestBody: { values: [[updates.coletado_dois_tubos ? "SIM" : "NAO"]] },
+                });
+              }
+              if (idxQtdTubos >= 0 && updates.qtd_tubos_coletados !== undefined) {
+                const colLetter = String.fromCharCode(65 + idxQtdTubos);
+                await sheets.spreadsheets.values.update({
+                  spreadsheetId: sheetId,
+                  range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}${rowNum}`,
+                  valueInputOption: "RAW",
+                  requestBody: { values: [[updates.qtd_tubos_coletados]] },
+                });
+              }
+              if (idxEnviarHoje >= 0 && updates.enviar_hemograma_hoje !== undefined) {
+                const colLetter = String.fromCharCode(65 + idxEnviarHoje);
+                await sheets.spreadsheets.values.update({
+                  spreadsheetId: sheetId,
+                  range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}${rowNum}`,
+                  valueInputOption: "RAW",
+                  requestBody: { values: [[updates.enviar_hemograma_hoje ? "SIM" : "NAO"]] },
+                });
+              }
+              if (idxDataLib >= 0 && updates.data_liberacao_apoio !== undefined) {
+                const colLetter = String.fromCharCode(65 + idxDataLib);
+                await sheets.spreadsheets.values.update({
+                  spreadsheetId: sheetId,
+                  range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}${rowNum}`,
+                  valueInputOption: "RAW",
+                  requestBody: { values: [[updates.data_liberacao_apoio || ""]] },
                 });
               }
               break;

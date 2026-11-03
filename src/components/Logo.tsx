@@ -48,7 +48,7 @@ export const Logo: React.FC<LogoProps> = ({ compact = false }) => {
       <div className="flex flex-col">
         <div className="flex items-center gap-1.5">
           <span className="font-black text-slate-900 tracking-tight text-base sm:text-lg flex items-center">
-            <span>Uro</span>
+            <span>Bancada</span>
             <span className="bg-gradient-to-r from-sky-600 to-teal-600 bg-clip-text text-transparent">
               Lab
             </span>

@@ -58,6 +58,67 @@ export function formatarProntuario(valor: any): string {
 }
 
 /**
+ * Normaliza o prontuário removendo zeros à esquerda (ex: "0024087" -> "24087")
+ */
+export function normalizarProntuario(valor: any): string {
+  const limpo = String(valor ?? "").trim().replace(/^['"]+|['"]+$/g, "");
+  if (!limpo) return "";
+  const semZeros = limpo.replace(/^0+/, "");
+  return semZeros || "0";
+}
+
+/**
+ * Normaliza data de nascimento no formato DD/MM/AAAA
+ */
+export function formatarDataNascimento(valor: any): string {
+  if (!valor) return "";
+  const str = String(valor).trim();
+  if (!str) return "";
+
+  // Se já for DD/MM/AAAA
+  const matchBr = str.match(/^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})$/);
+  if (matchBr) {
+    return `${matchBr[1].padStart(2, "0")}/${matchBr[2].padStart(2, "0")}/${matchBr[3]}`;
+  }
+
+  // Se for YYYY-MM-DD
+  const matchIso = str.match(/^(\d{4})[\/\.\-](\d{1,2})[\/\.\-](\d{1,2})/);
+  if (matchIso) {
+    return `${matchIso[3].padStart(2, "0")}/${matchIso[2].padStart(2, "0")}/${matchIso[1]}`;
+  }
+
+  // Se for DD/MM/AA (ano com 2 dígitos)
+  const matchAno2 = str.match(/^(\d{1,2})[\/\.\-](\d{1,2})[\/\-](\d{2})$/);
+  if (matchAno2) {
+    const anoNum = parseInt(matchAno2[3], 10);
+    const anoCompleto = anoNum > 26 ? `19${matchAno2[3]}` : `20${matchAno2[3]}`;
+    return `${matchAno2[1].padStart(2, "0")}/${matchAno2[2].padStart(2, "0")}/${anoCompleto}`;
+  }
+
+  // Se for número serial de data do Excel
+  if (/^\d{5}$/.test(str)) {
+    const serial = parseInt(str, 10);
+    const date = new Date((serial - 25569) * 86400 * 1000);
+    if (!isNaN(date.getTime())) {
+      const dia = String(date.getUTCDate()).padStart(2, "0");
+      const mes = String(date.getUTCMonth() + 1).padStart(2, "0");
+      const ano = date.getUTCFullYear();
+      return `${dia}/${mes}/${ano}`;
+    }
+  }
+
+  return str;
+}
+
+/**
+ * Normaliza data para apenas dígitos (ex: "23/12/2025" -> "23122025")
+ */
+export function normalizarDigitosData(valor: any): string {
+  if (!valor) return "";
+  return String(valor).replace(/\D/g, "");
+}
+
+/**
  * Identifica se um procedimento/exame do Conecta SUS pertence à TRIAGEM EDTA (Tubo Tampa Roxa)
  * Filtra UNICAMENTE exames contendo: HEMOGRAMA, HEMO, ERITRO, GLICADA, HBA1C, A1C.
  */
@@ -532,6 +593,7 @@ export function extrairExamesBancadaConectaSUS(
   let idxExame = -1;
   let idxStatus = -1;
   let idxSolicitante = -1;
+  let idxNascimento = -1;
   let linhaCabecalho = -1;
 
   for (let r = 0; r < Math.min(10, rows.length); r++) {
@@ -565,7 +627,13 @@ export function extrairExamesBancadaConectaSUS(
       idxPront = posProntuario;
       idxExame = posExameExato !== -1 ? posExameExato : posProcedimento;
       idxProcedimento = posProcedimento !== -1 ? posProcedimento : posExameExato;
-      idxData = normCells.findIndex((h) => h.includes("DATA"));
+      idxData = normCells.findIndex((h) => h.includes("DATA") && !h.includes("NASC"));
+      idxNascimento = normCells.findIndex(
+        (h) =>
+          (h.includes("NASC") || h.includes("DN") || h.includes("ANIVERSARIO")) &&
+          !h.includes("CIDADE") &&
+          !h.endsWith(":")
+      );
       idxStatus = normCells.findIndex(
         (h) => (h.includes("STATUS") || h.includes("SITUACAO")) && !h.includes("DATA")
       );
@@ -612,6 +680,9 @@ export function extrairExamesBancadaConectaSUS(
       examesOriginais: Set<string>;
     }
   >();
+
+  // Rastreio de pacientes com VHS solicitado no dia (para alerta de 2 tubos EDTA)
+  const pacientesComVhs = new Set<string>();
 
   const startRow = linhaCabecalho !== -1 ? linhaCabecalho + 1 : 0;
 
@@ -676,23 +747,42 @@ export function extrairExamesBancadaConectaSUS(
     totalLinhasBrutas++;
 
     const prontuarioFinal = prontRaw || `S/P-${totalLinhasBrutas}`;
+    const prontuarioNormalizado = normalizarProntuario(prontuarioFinal);
     const nomePacienteLimpo = nomeRaw.toUpperCase().trim();
+    const dataNascRaw = idxNascimento !== -1 ? String(row[idxNascimento] ?? "").trim() : "";
+    const dataNascimentoLimpa = formatarDataNascimento(dataNascRaw);
+    const dataNascDigitos = normalizarDigitosData(dataNascimentoLimpa);
     const solicitanteRaw =
       idxSolicitante !== -1 && row[idxSolicitante] && String(row[idxSolicitante]).trim() !== ""
         ? String(row[idxSolicitante]).trim()
         : "Dr(a). Clínico(a) Geral / UBS";
 
+    // Rastrear se a linha atual contém VHS para indicar colheita de 2 tubos EDTA
+    const combTexto = normalizarTexto(`${procRaw} | ${exameRaw}`);
+    const ehVhsLinha =
+      combTexto.includes("VHS") ||
+      combTexto.includes("HEMOSSEDIMENTA") ||
+      combTexto.includes("VELOCIDADE DE HEMOSSEDIMENTACAO");
+
+    if (ehVhsLinha) {
+      pacientesComVhs.add(prontuarioNormalizado);
+    }
+
     // 1. Processar Partição Triagem EDTA (Hemograma e/ou Hemoglobina Glicada)
+    // Agrupa estritamente por paciente único (prontuário e dataNascimento)
     const edtaInfo = identificarExameEdta(procRaw, exameRaw);
     if (edtaInfo.ehEdta) {
-      const chaveEdta = `${prontuarioFinal}_${nomePacienteLimpo}`;
+      const chaveEdta = `${prontuarioNormalizado}_${dataNascimentoLimpa || nomePacienteLimpo}`;
       if (!mapaEdta.has(chaveEdta)) {
         mapaEdta.set(chaveEdta, {
           item: {
-            id: `edta-${dataLinha}-${prontuarioFinal}`,
+            id: `edta-${dataLinha}-${prontuarioNormalizado}`,
             data: dataLinha,
             prontuario: prontuarioFinal,
+            prontuario_normalizado: prontuarioNormalizado,
             nome_paciente: nomePacienteLimpo,
+            data_nascimento: dataNascimentoLimpa,
+            data_nascimento_digitos: dataNascDigitos,
             idade_sexo: "SUS",
             posto_unidade: "Conecta SUS",
             solicitante: solicitanteRaw,
@@ -709,6 +799,10 @@ export function extrairExamesBancadaConectaSUS(
       const regEdta = mapaEdta.get(chaveEdta)!;
       if (edtaInfo.temHemograma) regEdta.item.tem_hemograma = true;
       if (edtaInfo.temGlicada) regEdta.item.tem_glicada = true;
+      if (dataNascimentoLimpa && !regEdta.item.data_nascimento) {
+        regEdta.item.data_nascimento = dataNascimentoLimpa;
+        regEdta.item.data_nascimento_digitos = dataNascDigitos;
+      }
       if (solicitanteRaw && regEdta.item.solicitante === "Dr(a). Clínico(a) Geral / UBS") {
         regEdta.item.solicitante = solicitanteRaw;
       }
@@ -830,9 +924,15 @@ export function extrairExamesBancadaConectaSUS(
         tipo_destino = "apenas_glicada";
       }
 
+      const pNorm = item.prontuario_normalizado || normalizarProntuario(item.prontuario);
+      const temVhs = pacientesComVhs.has(pNorm);
+
       return {
         ...item,
         tipo_destino,
+        tem_vhs: temVhs,
+        coletado_dois_tubos: temVhs ? true : false,
+        qtd_tubos_coletados: temVhs ? 2 : 1,
         exames_originais: Array.from(examesOriginais),
       };
     })

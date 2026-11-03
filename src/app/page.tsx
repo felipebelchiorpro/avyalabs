@@ -7,7 +7,11 @@ import { LaudoUrina, ItemRotina, StatusLaudo } from "@/lib/googleSheets";
 import { formatarProntuario } from "@/lib/extratorBancada";
 import { MapaBancadaPrintView } from "@/components/MapaBancadaPrintView";
 import { RelatorioBancadaDiaPrintView } from "@/components/RelatorioBancadaDiaPrintView";
-import { baixarXmlUrinalise, gerarStringXmlUrinalise } from "@/lib/exportadorXmlExtensao";
+import {
+  baixarXmlUrinalise,
+  baixarXlsxUrinalise,
+  gerarStringXmlUrinalise,
+} from "@/lib/exportadorXmlExtensao";
 import {
   Search,
   CheckCircle2,
@@ -115,6 +119,8 @@ export default function BancadaOperacionalPage() {
   const [rotinaDia, setRotinaDia] = useState<ItemRotina[]>([]);
   const [laudosDia, setLaudosDia] = useState<LaudoUrina[]>([]);
   const [dataHoje, setDataHoje] = useState<string>("");
+  const [dataFimPeriodo, setDataFimPeriodo] = useState<string>("");
+  const [modoFiltroData, setModoFiltroData] = useState<"dia" | "periodo">("dia");
   const [mostrarSugestoes, setMostrarSugestoes] = useState<boolean>(false);
 
   // Seleção Rápida de Bancada Ativa no Celular
@@ -243,13 +249,28 @@ export default function BancadaOperacionalPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const carregarDadosSincronizados = async (silencioso = false, dataFiltro?: string) => {
+  const carregarDadosSincronizados = async (
+    silencioso = false,
+    dataFiltro?: string,
+    dataFimFiltro?: string
+  ) => {
     if (!silencioso) setIsSyncing(true);
     try {
-      const dataAlvo = dataFiltro || dataHoje || new Date().toISOString().split("T")[0];
+      const dataAlvo =
+        dataFiltro !== undefined ? dataFiltro : dataHoje || new Date().toISOString().split("T")[0];
+      const fim =
+        dataFimFiltro !== undefined
+          ? dataFimFiltro
+          : modoFiltroData === "periodo"
+          ? dataFimPeriodo
+          : "";
+
+      const urlParams =
+        fim && fim !== dataAlvo ? `de=${dataAlvo}&ate=${fim}` : `data=${dataAlvo}`;
+
       const [resRotina, resLaudos] = await Promise.all([
-        fetch(`/api/rotina?data=${dataAlvo}`, { cache: "no-store" }),
-        fetch(`/api/laudos?data=${dataAlvo}`, { cache: "no-store" }),
+        fetch(`/api/rotina?${urlParams}`, { cache: "no-store" }),
+        fetch(`/api/laudos?${urlParams}`, { cache: "no-store" }),
       ]);
       const dataRotina = await resRotina.json();
       const dataLaudos = await resLaudos.json();
@@ -1227,12 +1248,38 @@ export default function BancadaOperacionalPage() {
     };
   }, [rotinaDoDia, rotinaDia, laudosDia]);
 
+  const handleBaixarXlsx = () => {
+    try {
+      const dataAlvo = dataHoje || new Date().toISOString().split("T")[0];
+      const fim = modoFiltroData === "periodo" ? dataFimPeriodo : undefined;
+      const res = baixarXlsxUrinalise(dataAlvo, rotinaDoDia, laudosDoDia, fim);
+      const rotuloData =
+        fim && fim !== dataAlvo
+          ? `período ${dataAlvo.split("-").reverse().join("/")} a ${fim.split("-").reverse().join("/")}`
+          : `data ${dataAlvo.split("-").reverse().join("/")}`;
+      setToast({
+        message: `Planilha ${res.nomeArquivo} gerada com sucesso! (${res.totalItens} exames para a extensão, ${rotuloData}).`,
+        type: "success",
+      });
+    } catch (err: any) {
+      setToast({
+        message: `Erro ao gerar Planilha: ${err?.message || "Falha desconhecida"}`,
+        type: "error",
+      });
+    }
+  };
+
   const handleBaixarXml = () => {
     try {
       const dataAlvo = dataHoje || new Date().toISOString().split("T")[0];
-      const res = baixarXmlUrinalise(dataAlvo, rotinaDoDia, laudosDoDia);
+      const fim = modoFiltroData === "periodo" ? dataFimPeriodo : undefined;
+      const res = baixarXmlUrinalise(dataAlvo, rotinaDoDia, laudosDoDia, fim);
+      const rotuloData =
+        fim && fim !== dataAlvo
+          ? `período ${dataAlvo.split("-").reverse().join("/")} a ${fim.split("-").reverse().join("/")}`
+          : `data ${dataAlvo.split("-").reverse().join("/")}`;
       setToast({
-        message: `Arquivo ${res.nomeArquivo} gerado com sucesso! (${res.totalItens} exames com trava da data ${dataAlvo.split("-").reverse().join("/")}).`,
+        message: `Arquivo ${res.nomeArquivo} gerado com sucesso! (${res.totalItens} exames, ${rotuloData}).`,
         type: "success",
       });
     } catch (err: any) {
@@ -1245,7 +1292,8 @@ export default function BancadaOperacionalPage() {
 
   const handleAbrirPreviaXml = () => {
     const dataAlvo = dataHoje || new Date().toISOString().split("T")[0];
-    const xml = gerarStringXmlUrinalise(dataAlvo, rotinaDoDia, laudosDoDia);
+    const fim = modoFiltroData === "periodo" ? dataFimPeriodo : undefined;
+    const xml = gerarStringXmlUrinalise(dataAlvo, rotinaDoDia, laudosDoDia, fim);
     setConteudoXmlPreview(xml);
     setModalXmlAberto(true);
   };
@@ -1287,12 +1335,12 @@ export default function BancadaOperacionalPage() {
           {/* 1. CENTRAL DE TIRAGEM DO DIA E IMPRESSÃO */}
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-              {/* Esquerda: Identidade UroLab e Status da Sincronização */}
+              {/* Esquerda: Identidade BancadaLab e Status da Sincronização */}
               <div className="space-y-2.5 max-w-xl">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
                     <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
-                    UroLab Conectado • Modo Produção Ativo
+                    BancadaLab Conectado • Modo Produção Ativo
                   </div>
                   <span className="text-[11px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
                     SUS • Conecta SUS Integrado
@@ -1304,67 +1352,170 @@ export default function BancadaOperacionalPage() {
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                   Suba o arquivo bruto de coletas do <b>Conecta SUS</b>. O sistema descarta automaticamente os bioquímicos, unifica os exames de bancada no formato oficial da <b>Tiragem do Dia</b> (com a Urina 1, 2, 3, 4, 5, 6... em ordem alfabética) e envia a mesma fila para o <b>celular</b> realizar as contagens.
                 </p>
-                <div className="pt-2 flex flex-wrap items-center gap-2.5">
-                  <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 p-1 rounded-xl text-xs">
-                    <Calendar className="w-3.5 h-3.5 text-slate-500 ml-1.5" />
-                    <span className="font-black text-slate-700">Data da Rotina:</span>
-                    <input
-                      type="date"
-                      value={dataHoje}
-                      onChange={(e) => {
-                        const nova = e.target.value;
-                        setDataHoje(nova);
-                        carregarDadosSincronizados(false, nova);
-                      }}
-                      className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                    />
+                <div className="pt-2 flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* SELETOR DE MODO: DIA ÚNICO vs PERÍODO / SEMANA */}
+                    <div className="inline-flex p-0.5 bg-slate-200/80 rounded-xl text-xs font-bold border border-slate-300">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModoFiltroData("dia");
+                          setDataFimPeriodo("");
+                          carregarDadosSincronizados(false, dataHoje, "");
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition cursor-pointer ${
+                          modoFiltroData === "dia"
+                            ? "bg-white text-slate-900 shadow-2xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        📅 Dia Único
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModoFiltroData("periodo");
+                          const h = new Date().toISOString().split("T")[0];
+                          const seteDiasAtras = new Date(Date.now() - 6 * 86400000)
+                            .toISOString()
+                            .split("T")[0];
+                          setDataHoje(seteDiasAtras);
+                          setDataFimPeriodo(h);
+                          carregarDadosSincronizados(false, seteDiasAtras, h);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition cursor-pointer ${
+                          modoFiltroData === "periodo"
+                            ? "bg-violet-700 text-white shadow-2xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        🗓️ Período / Semana
+                      </button>
+                    </div>
+
+                    {/* SELEÇÃO SE DIA ÚNICO */}
+                    {modoFiltroData === "dia" ? (
+                      <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 p-1 rounded-xl text-xs">
+                        <Calendar className="w-3.5 h-3.5 text-slate-500 ml-1.5" />
+                        <span className="font-black text-slate-700">Data:</span>
+                        <input
+                          type="date"
+                          value={dataHoje}
+                          onChange={(e) => {
+                            const nova = e.target.value;
+                            setDataHoje(nova);
+                            carregarDadosSincronizados(false, nova, "");
+                          }}
+                          className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const h = new Date().toISOString().split("T")[0];
+                            setDataHoje(h);
+                            carregarDadosSincronizados(false, h, "");
+                          }}
+                          className={`px-2 py-1 rounded-lg text-[11px] font-black transition cursor-pointer ${
+                            dataHoje === new Date().toISOString().split("T")[0]
+                              ? "bg-sky-700 text-white shadow-2xs"
+                              : "bg-white hover:bg-slate-200 text-slate-700 border border-slate-200"
+                          }`}
+                        >
+                          Hoje
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const o = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+                            setDataHoje(o);
+                            carregarDadosSincronizados(false, o, "");
+                          }}
+                          className={`px-2 py-1 rounded-lg text-[11px] font-black transition cursor-pointer ${
+                            dataHoje === new Date(Date.now() - 86400000).toISOString().split("T")[0]
+                              ? "bg-sky-700 text-white shadow-2xs"
+                              : "bg-white hover:bg-slate-200 text-slate-700 border border-slate-200"
+                          }`}
+                        >
+                          Ontem
+                        </button>
+                      </div>
+                    ) : (
+                      /* SELEÇÃO SE PERÍODO (DE -> ATÉ) */
+                      <div className="flex flex-wrap items-center gap-1.5 bg-violet-50/80 border border-violet-200 p-1 rounded-xl text-xs">
+                        <span className="font-bold text-violet-900 ml-1">De:</span>
+                        <input
+                          type="date"
+                          value={dataHoje}
+                          onChange={(e) => {
+                            const nova = e.target.value;
+                            setDataHoje(nova);
+                            carregarDadosSincronizados(false, nova, dataFimPeriodo);
+                          }}
+                          className="bg-white border border-violet-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900"
+                        />
+                        <span className="font-bold text-violet-900">Até:</span>
+                        <input
+                          type="date"
+                          value={dataFimPeriodo}
+                          onChange={(e) => {
+                            const nova = e.target.value;
+                            setDataFimPeriodo(nova);
+                            carregarDadosSincronizados(false, dataHoje, nova);
+                          }}
+                          className="bg-white border border-violet-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const h = new Date().toISOString().split("T")[0];
+                            const seteDias = new Date(Date.now() - 6 * 86400000)
+                              .toISOString()
+                              .split("T")[0];
+                            setDataHoje(seteDias);
+                            setDataFimPeriodo(h);
+                            carregarDadosSincronizados(false, seteDias, h);
+                          }}
+                          className="px-2 py-1 bg-white hover:bg-violet-100 text-violet-900 border border-violet-300 rounded-lg text-[11px] font-black transition cursor-pointer"
+                        >
+                          7 Dias (Semana)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const h = new Date().toISOString().split("T")[0];
+                            const quinzeDias = new Date(Date.now() - 14 * 86400000)
+                              .toISOString()
+                              .split("T")[0];
+                            setDataHoje(quinzeDias);
+                            setDataFimPeriodo(h);
+                            carregarDadosSincronizados(false, quinzeDias, h);
+                          }}
+                          className="px-2 py-1 bg-white hover:bg-violet-100 text-violet-900 border border-violet-300 rounded-lg text-[11px] font-black transition cursor-pointer"
+                        >
+                          15 Dias
+                        </button>
+                      </div>
+                    )}
+
                     <button
                       type="button"
-                      onClick={() => {
-                        const h = new Date().toISOString().split("T")[0];
-                        setDataHoje(h);
-                        carregarDadosSincronizados(false, h);
-                      }}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-black transition ${
-                        dataHoje === new Date().toISOString().split("T")[0]
-                          ? "bg-sky-700 text-white shadow-2xs"
-                          : "bg-white hover:bg-slate-200 text-slate-700 border border-slate-200"
-                      }`}
+                      onClick={() => carregarDadosSincronizados(false)}
+                      disabled={isSyncing}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
                     >
-                      Hoje
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const o = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-                        setDataHoje(o);
-                        carregarDadosSincronizados(false, o);
-                      }}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-black transition ${
-                        dataHoje === new Date(Date.now() - 86400000).toISOString().split("T")[0]
-                          ? "bg-sky-700 text-white shadow-2xs"
-                          : "bg-white hover:bg-slate-200 text-slate-700 border border-slate-200"
-                      }`}
-                    >
-                      Ontem
+                      <RefreshCw
+                        className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-sky-600" : ""}`}
+                      />
+                      <span>{isSyncing ? "Sincronizando..." : "Atualizar"}</span>
                     </button>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => carregarDadosSincronizados(false)}
-                    disabled={isSyncing}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-sky-600" : ""}`} />
-                    <span>{isSyncing ? "Sincronizando..." : "Atualizar"}</span>
-                  </button>
                 </div>
               </div>
             </div>
 
             {/* CARDS DE PRODUÇÃO: 1. TIRAGEM | 2. TRIAGEM EDTA | 3. CANHOTOS FINAIS | 4. EXPORTAR XML EXTENSÃO */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-5 border-t border-slate-100">
+            {/* Responsivo para telas menores: 2 colunas amplas em monitores de bancada (1366x768 / 1280x800) e 4 colunas em telas widescreen */}
+            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-4 mt-6 pt-5 border-t border-slate-100">
               {/* CARD 1: FOLHA DE TIRAGEM DA BANCADA (INÍCIO DO DIA) */}
               <div className="relative overflow-hidden rounded-2xl border-2 border-sky-400/80 bg-gradient-to-br from-sky-50/60 via-white to-sky-50/30 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
                 <div className="absolute top-0 right-0 bg-sky-600 text-white text-[9.5px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
@@ -1571,60 +1722,77 @@ export default function BancadaOperacionalPage() {
                 </div>
               </div>
 
-              {/* CARD 3: EXPORTAÇÃO XML PARA A EXTENSÃO (LAUDO AUTOMÁTICO) */}
-              <div className="relative overflow-hidden rounded-2xl border-2 border-violet-400/80 bg-gradient-to-br from-violet-50/60 via-white to-violet-50/30 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-                <div className="absolute top-0 right-0 bg-violet-600 text-white text-[9.5px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
-                  Extensão Chrome
+              {/* CARD 4: EXPORTAÇÃO PLANILHA .XLSX / XML PARA A EXTENSÃO (LAUDO AUTOMÁTICO) */}
+              <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/80 bg-gradient-to-br from-emerald-50/60 via-white to-violet-50/30 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[9.5px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
+                  Extensão Chrome / Auto-Laudo
                 </div>
                 <div>
                   <div className="flex items-center gap-2.5 mb-2">
-                    <div className="w-9 h-9 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-md shadow-violet-600/30">
-                      <FileCode className="w-5 h-5" />
+                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/30">
+                      <FileSpreadsheet className="w-5 h-5" />
                     </div>
                     <div>
                       <h3 className="text-base font-black text-slate-900">
-                        4. Exportar XML (Extensão)
+                        4. Exportar p/ Extensão
                       </h3>
-                      <p className="text-[11px] font-bold text-violet-700">
-                        Trava de Segurança: {dataHoje ? dataHoje.split("-").reverse().join("/") : "Data do Dia"}
+                      <p className="text-[11px] font-bold text-emerald-700">
+                        {modoFiltroData === "periodo" && dataFimPeriodo
+                          ? `Período: ${dataHoje.split("-").reverse().join("/")} a ${dataFimPeriodo.split("-").reverse().join("/")}`
+                          : `Data: ${dataHoje ? dataHoje.split("-").reverse().join("/") : "Hoje"}`}
                       </p>
                     </div>
                   </div>
 
                   <p className="text-xs text-slate-600 mb-2 leading-relaxed">
-                    Gera o arquivo XML da rotina de urinálise com trava estrita de data. Sua extensão lê esse arquivo e digita o laudo automaticamente pelo <b>Prontuário + Data</b>.
+                    Baixe o arquivo padronizado para a extensão ler e digitar os laudos <b>automaticamente (um atrás do outro)</b> no sistema oficial por <b>Prontuário + Data</b>.
                   </p>
                 </div>
 
-                <div className="space-y-2 pt-3 border-t border-violet-200/80">
+                <div className="space-y-2 pt-3 border-t border-slate-200">
                   <div className="flex items-center justify-between text-xs text-slate-600">
-                    <span>Urina com resultado pronto:</span>
-                    <span className="font-bold font-mono text-violet-900 bg-white px-2 py-0.5 rounded border border-violet-200">
+                    <span>Urina pronta no período:</span>
+                    <span className="font-bold font-mono text-emerald-900 bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded">
                       {concluidosCount} pacientes prontos
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-1">
+                  {/* BOTÕES DE DOWNLOAD: EXCEL (.XLSX) COMO PRINCIPAL E XML COMO COMPLEMENTAR */}
+                  <div className="flex flex-col gap-1.5 pt-1">
                     <button
                       type="button"
-                      onClick={handleBaixarXml}
+                      onClick={handleBaixarXlsx}
                       disabled={rotinaDia.length === 0 && laudosDia.length === 0}
-                      className="flex-1 py-3 px-4 bg-violet-700 hover:bg-violet-800 active:bg-violet-900 disabled:opacity-40 text-white font-black text-xs sm:text-sm rounded-xl shadow-md shadow-violet-700/20 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                      className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-40 text-white font-black text-xs sm:text-sm rounded-xl shadow-md shadow-emerald-700/20 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                      title="Baixar planilha Excel (.xlsx) para a extensão ler e digitar os pacientes"
                     >
-                      <FileCode className="w-4 h-4" />
-                      <span>Baixar XML</span>
+                      <FileSpreadsheet className="w-4 h-4" />
+                      <span>Baixar Planilha (.xlsx)</span>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={handleAbrirPreviaXml}
-                      disabled={rotinaDia.length === 0 && laudosDia.length === 0}
-                      className="py-3 px-3.5 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                      title="Ver prévia e copiar o XML"
-                    >
-                      <Eye className="w-4 h-4 text-slate-600" />
-                      <span className="hidden sm:inline">Prévia</span>
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleBaixarXml}
+                        disabled={rotinaDia.length === 0 && laudosDia.length === 0}
+                        className="flex-1 py-2 px-3 bg-violet-700 hover:bg-violet-800 active:bg-violet-900 disabled:opacity-40 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+                        title="Baixar em formato XML"
+                      >
+                        <FileCode className="w-3.5 h-3.5" />
+                        <span>Baixar .XML</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleAbrirPreviaXml}
+                        disabled={rotinaDia.length === 0 && laudosDia.length === 0}
+                        className="py-2 px-3 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                        title="Ver prévia dos dados"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-slate-600" />
+                        <span>Prévia</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
