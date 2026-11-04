@@ -47,11 +47,10 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
   );
 
   const totalFracionados = tubosLaboratorio.filter(
-    (item) => item.tipo_destino === "hemograma_glicada" || item.fracionado_glicada
+    (item) => item.tipo_destino === "hemograma_glicada" || item.fracionado_glicada || (item.tem_hemograma && item.tem_glicada)
   ).length;
 
   const totalComVhs = tubosLaboratorio.filter((item) => item.tem_vhs).length;
-  const totalDoisTubos = tubosLaboratorio.filter((item) => item.coletado_dois_tubos !== false).length;
 
   const formatarData = (dStr: string) => {
     if (!dStr) return new Date().toLocaleDateString("pt-BR");
@@ -72,7 +71,7 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
       <img
         src="/logo-caconde.jpg"
         alt="Prefeitura Municipal da Estância Climática de Caconde"
-        className="h-14 w-auto object-contain mx-auto mb-1"
+        className="h-12 w-auto object-contain mx-auto mb-1"
       />
       <h1 className="text-[12px] font-black uppercase tracking-tight text-slate-900 leading-tight">
         {labConfig.nomeInstituicao || "PREFEITURA MUNICIPAL DE CACONDE"}
@@ -87,53 +86,63 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
   );
 
   // =========================================================================
-  // 1. GUIA APOIO (RELAÇÃO DE REMESSA EXTERNA PARA O FATURAMENTO DA TARDE)
-  // Contém Nome, Data de Nascimento, Exame, Fracionado e Check [✓] p/ o Apoio
+  // 1. RELATÓRIO DE ENVIO PARA O APOIO (FATURAMENTO)
+  // Layout limpo e otimizado em modo PAISAGEM (landscape) para acompanhar os tubos.
+  // Colunas obrigatórias na tabela:
+  // 1. Nº Sequencial
+  // 2. Nome Completo do Paciente
+  // 3. Data de Nascimento
+  // 4. Médico Solicitante (com suporte à edição manual feita na bancada)
+  // *Nota: O prontuário interno e a indicação de glicada/fracionamento NÃO devem aparecer neste relatório.
   // =========================================================================
   const renderGuiaApoio = () => (
     <div className="w-full">
-      <div className="border-b-2 border-slate-900 pb-2 mb-3">
+      <div className="border-b-2 border-slate-900 pb-2 mb-2">
         {renderCabecalhoInstitucional()}
 
         <div className="text-center bg-slate-100 py-1.5 border border-slate-300 rounded">
           <h2 className="text-[13px] font-black text-slate-900 tracking-wider uppercase">
-            GUIA APOIO
+            RELAÇÃO DE REMESSA DE TUBOS EDTA • LABORATÓRIO DE APOIO (FATURAMENTO)
           </h2>
         </div>
       </div>
 
-      {/* METADADOS DA REMESSA DO APOIO (SEM DADOS INTERNOS DE FRACIONAMENTO) */}
-      <div className="grid grid-cols-3 gap-2 text-[9.5px] bg-slate-50 p-2 border border-slate-300 rounded mb-3">
+      {/* METADADOS DA REMESSA DO APOIO (SEM PRONTUÁRIO INTERNO E SEM FRACIONAMENTO) */}
+      <div className="grid grid-cols-4 gap-2 text-[9.5px] bg-slate-50 p-2 border border-slate-300 rounded mb-3">
         <div>
           <span className="font-bold text-slate-500 uppercase block">Data da Remessa:</span>
-          <span className="font-black text-slate-900 text-[10.5px]">{formatarData(dataReferencia)}</span>
+          <span className="font-black text-slate-900 text-[11px]">{formatarData(dataReferencia)}</span>
         </div>
         <div>
           <span className="font-bold text-slate-500 uppercase block">Horário de Fechamento:</span>
-          <span className="font-black text-slate-900 text-[10.5px]">{horaFinal}</span>
+          <span className="font-black text-slate-900 text-[11px]">{horaFinal}</span>
+        </div>
+        <div>
+          <span className="font-bold text-slate-500 uppercase block">Exame dos Tubos:</span>
+          <span className="font-black text-blue-900 text-[11px]">HEMOGRAMA COMPLETO</span>
         </div>
         <div>
           <span className="font-bold text-slate-500 uppercase block">Total de Tubos na Grade:</span>
-          <span className="font-black text-slate-900 text-[10.5px]">{tubosApoio.length} amostras</span>
+          <span className="font-black text-slate-900 text-[11px]">{tubosApoio.length} amostras</span>
         </div>
       </div>
 
-      {/* TABELA GUIA APOIO: APENAS DADOS DA REMESSA E CHECK P/ O APOIO */}
-      <table className="w-full border-collapse border border-slate-400 text-[10px] mb-4">
+      {/* TABELA DE APOIO: Nº, NOME COMPLETO, DATA DE NASCIMENTO, MÉDICO SOLICITANTE E CHECK */}
+      <table className="w-full border-collapse border border-slate-400 text-[10px] mb-3">
         <thead>
           <tr className="bg-slate-200 text-slate-900 border-b border-slate-400">
-            <th className="py-2 px-1.5 border-r border-slate-300 text-center w-10 font-black">Nº</th>
+            <th className="py-2 px-2 border-r border-slate-300 text-center w-12 font-black">Nº</th>
             <th className="py-2 px-3 border-r border-slate-300 text-left font-black">Nome Completo do Paciente</th>
-            <th className="py-2 px-2 border-r border-slate-300 text-center w-32 font-black">Data de Nascimento</th>
-            <th className="py-2 px-2 border-r border-slate-300 text-center w-36 font-black">Exame Solicitado</th>
-            <th className="py-2 px-1.5 border-slate-400 text-center w-16 font-black">Check [✓]</th>
+            <th className="py-2 px-2 border-r border-slate-300 text-center w-36 font-black">Data de Nascimento</th>
+            <th className="py-2 px-3 border-r border-slate-300 text-left font-black">Médico Solicitante</th>
+            <th className="py-2 px-2 border-slate-400 text-center w-16 font-black">Check [✓]</th>
           </tr>
         </thead>
         <tbody>
           {tubosApoio.length === 0 ? (
             <tr>
-              <td colSpan={5} className="py-6 text-center text-slate-500 italic">
-                Nenhum hemograma a ser enviado ao apoio nesta data.
+              <td colSpan={5} className="py-8 text-center text-slate-500 italic text-[11px]">
+                Nenhum tubo de hemograma a ser enviado ao apoio nesta data.
               </td>
             </tr>
           ) : (
@@ -144,6 +153,10 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
                   : ""
               );
               const dnFormatada = rawDn ? formatarDataNascimento(rawDn) : "—";
+              const medicoSolicitante =
+                item.solicitante && item.solicitante.trim()
+                  ? item.solicitante.trim()
+                  : "Dr(a). Clínico(a) Geral / UBS";
 
               return (
                 <tr
@@ -152,11 +165,11 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
                     index % 2 === 1 ? "bg-slate-100/70" : "bg-white"
                   }`}
                 >
-                  <td className="py-1.5 px-1.5 border-r border-slate-300 text-center font-bold text-slate-700">
+                  <td className="py-1.5 px-2 border-r border-slate-300 text-center font-bold text-slate-700">
                     {String(index + 1).padStart(2, "0")}
                   </td>
 
-                  <td className="py-1.5 px-3 border-r border-slate-300 font-bold uppercase text-slate-900">
+                  <td className="py-1.5 px-3 border-r border-slate-300 font-bold uppercase text-slate-900 text-[10.5px]">
                     {item.urgencia && (
                       <span className="inline-block bg-rose-600 text-white font-black text-[9px] px-1.5 py-0.2 rounded mr-1.5 tracking-wide border border-rose-700">
                         🚨 URGÊNCIA
@@ -165,16 +178,16 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
                     <span>{item.nome_paciente}</span>
                   </td>
 
-                  <td className="py-1.5 px-2 border-r border-slate-300 text-center font-black text-slate-950 font-mono text-[10.5px]">
+                  <td className="py-1.5 px-2 border-r border-slate-300 text-center font-black text-slate-950 font-mono text-[11px]">
                     {dnFormatada}
                   </td>
 
-                  <td className="py-1.5 px-2 border-r border-slate-300 text-center font-bold text-slate-800">
-                    HEMOGRAMA
+                  <td className="py-1.5 px-3 border-r border-slate-300 font-semibold uppercase text-slate-800 text-[10px]">
+                    {medicoSolicitante}
                   </td>
 
-                  {/* Campo para o Lab Apoio fazer o Check */}
-                  <td className="py-1.5 px-1.5 text-center">
+                  {/* Campo para o Lab Apoio fazer o Check do Tubo Físico */}
+                  <td className="py-1.5 px-2 text-center">
                     <span className="inline-block w-4 h-4 border-2 border-slate-900 rounded bg-white" />
                   </td>
                 </tr>
@@ -185,16 +198,16 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
       </table>
 
       {/* RODAPÉ GUIA APOIO: APENAS CONFERÊNCIA E NOME */}
-      <div className="border border-slate-300 bg-slate-50 rounded p-3 mt-4">
-        <div className="flex items-center justify-between text-[11px]">
+      <div className="border border-slate-300 bg-slate-50 rounded p-2.5 mt-2">
+        <div className="flex items-center justify-between text-[10.5px]">
           <div>
-            <span className="font-bold text-slate-600 uppercase">Conferência: </span>
+            <span className="font-bold text-slate-600 uppercase">Conferência / Responsável do Envio: </span>
             <span className="font-black text-slate-900 uppercase">
               {responsavelNome || "Operador Responsável"}
             </span>
           </div>
-          <div className="text-slate-600 text-[10.5px]">
-            <span>Data da Conferência: </span>
+          <div className="text-slate-600">
+            <span>Data e Hora da Remessa: </span>
             <span className="font-black text-slate-900">
               {formatarData(dataReferencia)} às {horaFinal}
             </span>
@@ -205,23 +218,30 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
   );
 
   // =========================================================================
-  // 2. GUIA LAB (CONTROLE INTERNO DE BANCADA, VHS E 2 TUBOS)
-  // Contém Prontuário, VHS, 2 Tubos Coletados e Caixinha de [ ] Check Físico
+  // 2. RELATÓRIO INTERNO DO LABORATÓRIO (CONTROLE DE BANCADA)
+  // Layout para uso interno da equipe.
+  // Colunas obrigatórias na tabela:
+  // 1. Nº Sequencial
+  // 2. Prontuário
+  // 3. Nome Completo do Paciente
+  // 4. Data de Nascimento
+  // 5. Indicativo de Fracionamento / Glicada (Sim/Não)
+  // *Nota: O médico solicitante NÃO deve aparecer neste relatório.
   // =========================================================================
   const renderGuiaLaboratorio = () => (
     <div className="w-full">
-      <div className="border-b-2 border-slate-900 pb-2 mb-3">
+      <div className="border-b-2 border-slate-900 pb-2 mb-2">
         {renderCabecalhoInstitucional()}
 
         <div className="text-center bg-slate-100 py-1.5 border border-slate-300 rounded">
           <h2 className="text-[13px] font-black text-slate-900 tracking-wide uppercase">
-            GUIA LAB
+            CONTROLE INTERNO DE BANCADA • TRIAGEM EDTA E FRACIONAMENTO
           </h2>
         </div>
       </div>
 
       {/* METADADOS DA BANCADA INTERNA */}
-      <div className="grid grid-cols-5 gap-2 text-[9px] bg-slate-50 p-2 border border-slate-300 rounded mb-3">
+      <div className="grid grid-cols-4 gap-2 text-[9px] bg-slate-50 p-2 border border-slate-300 rounded mb-3">
         <div>
           <span className="font-bold text-slate-500 uppercase block">Data da Rotina:</span>
           <span className="font-black text-slate-900 text-[10px]">{formatarData(dataReferencia)}</span>
@@ -231,57 +251,60 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
           <span className="font-black text-slate-900 text-[10px]">{horaFinal}</span>
         </div>
         <div>
-          <span className="font-bold text-slate-500 uppercase block">Amostras c/ VHS:</span>
-          <span className="font-black text-slate-900 text-[10px]">
-            {totalComVhs} pac. ({totalDoisTubos} c/ 2 tubos)
-          </span>
-        </div>
-        <div>
           <span className="font-bold text-slate-500 uppercase block">Glicadas Fracionadas:</span>
           <span className="font-black text-purple-900 text-[10px]">
-            {totalFracionados} alíquotas
+            {totalFracionados} alíquotas (500 µL)
           </span>
         </div>
         <div>
-          <span className="font-bold text-slate-500 uppercase block">Total Bancada:</span>
+          <span className="font-bold text-slate-500 uppercase block">Total Bancada EDTA:</span>
           <span className="font-black text-emerald-900 text-[10px]">
             {tubosLaboratorio.length} pacientes
           </span>
         </div>
       </div>
 
-      {/* TABELA INTERNA DO LABORATÓRIO: COM PRONTUÁRIO, VHS, 2 TUBOS E CAIXINHA DE CHECK */}
-      <table className="w-full border-collapse border border-slate-400 text-[9.5px] mb-4">
+      {/* TABELA INTERNA DO LABORATÓRIO:
+          1. Nº Sequencial
+          2. Prontuário
+          3. Nome Completo do Paciente
+          4. Data de Nascimento
+          5. Indicativo de Fracionamento / Glicada (Sim/Não)
+          (Sem médico solicitante)
+      */}
+      <table className="w-full border-collapse border border-slate-400 text-[9.5px] mb-3">
         <thead>
           <tr className="bg-slate-200 text-slate-900 border-b border-slate-400">
             <th className="py-2 px-1 border-r border-slate-300 text-center w-8 font-black">Nº</th>
-            <th className="py-2 px-2 border-r border-slate-300 text-center w-20 font-black">Prontuário</th>
-            <th className="py-2 px-2 border-r border-slate-300 text-left font-black">Nome do Paciente</th>
-            <th className="py-2 px-1.5 border-r border-slate-300 text-center w-24 font-black">Data Nasc.</th>
-            <th className="py-2 px-1.5 border-r border-slate-300 text-center w-14 font-black">VHS?</th>
-            <th className="py-2 px-1.5 border-r border-slate-300 text-center w-20 font-black">Coleta</th>
-            <th className="py-2 px-1.5 border-r border-slate-300 text-center w-22 font-black">Fracionado?</th>
-            <th className="py-2 px-1.5 border-slate-400 text-center w-14 font-black">Check [✓]</th>
+            <th className="py-2 px-2 border-r border-slate-300 text-center w-24 font-black">Prontuário</th>
+            <th className="py-2 px-2 border-r border-slate-300 text-left font-black">Nome Completo do Paciente</th>
+            <th className="py-2 px-1.5 border-r border-slate-300 text-center w-28 font-black">Data de Nascimento</th>
+            <th className="py-2 px-2 border-r border-slate-300 text-center w-36 font-black">
+              Fracionamento / Glicada
+            </th>
+            <th className="py-2 px-1 border-slate-400 text-center w-12 font-black">Check [✓]</th>
           </tr>
         </thead>
         <tbody>
           {tubosLaboratorio.length === 0 ? (
             <tr>
-              <td colSpan={8} className="py-6 text-center text-slate-500 italic">
+              <td colSpan={6} className="py-8 text-center text-slate-500 italic text-[11px]">
                 Nenhum tubo EDTA registrado na rotina de hoje.
               </td>
             </tr>
           ) : (
             tubosLaboratorio.map((item, index) => {
-              const foiFracionado =
-                item.tipo_destino === "hemograma_glicada" || item.fracionado_glicada;
+              const temGlicada =
+                item.tipo_destino === "hemograma_glicada" ||
+                item.fracionado_glicada ||
+                (item.tem_hemograma && item.tem_glicada);
+
               const rawDn = (item.data_nascimento && item.data_nascimento.trim()) || (
                 item.data_nascimento_digitos && item.data_nascimento_digitos.length === 8
                   ? `${item.data_nascimento_digitos.slice(0, 2)}/${item.data_nascimento_digitos.slice(2, 4)}/${item.data_nascimento_digitos.slice(4)}`
                   : ""
               );
               const dnFormatada = rawDn ? formatarDataNascimento(rawDn) : "—";
-              const coletouDois = item.coletado_dois_tubos !== false;
 
               return (
                 <tr
@@ -294,7 +317,7 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
                     {String(index + 1).padStart(2, "0")}
                   </td>
 
-                  <td className="py-1.5 px-2 border-r border-slate-300 text-center font-mono font-bold text-slate-800">
+                  <td className="py-1.5 px-2 border-r border-slate-300 text-center font-mono font-bold text-slate-900 text-[10px]">
                     {item.prontuario}
                   </td>
 
@@ -305,40 +328,32 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
                       </span>
                     )}
                     <span>{item.nome_paciente}</span>
+                    {item.tem_vhs && (
+                      <span className="ml-1.5 inline-block text-[8px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1 rounded">
+                        VHS
+                      </span>
+                    )}
                   </td>
 
-                  <td className="py-1.5 px-1.5 border-r border-slate-300 text-center font-mono font-bold text-slate-950 text-[10px]">
+                  <td className="py-1.5 px-1.5 border-r border-slate-300 text-center font-mono font-bold text-slate-950 text-[10.5px]">
                     {dnFormatada}
                   </td>
 
-                  <td className="py-1.5 px-1.5 border-r border-slate-300 text-center font-bold">
-                    {item.tem_vhs ? (
-                      <span className="inline-block bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded text-[8.5px] font-black">
-                        SIM
+                  {/* Indicativo de Fracionamento / Glicada (Sim / Não) */}
+                  <td className="py-1.5 px-2 border-r border-slate-300 text-center font-bold">
+                    {temGlicada ? (
+                      <span className="inline-block bg-purple-100 text-purple-900 border border-purple-300 px-2 py-0.5 rounded text-[9px] font-black">
+                        SIM (500 µL)
                       </span>
                     ) : (
-                      <span className="text-slate-400 text-[8.5px]">—</span>
-                    )}
-                  </td>
-
-                  <td className="py-1.5 px-1.5 border-r border-slate-300 text-center font-bold">
-                    {coletouDois ? (
-                      <span className="text-emerald-700 font-black text-[9px]">2 Tubos</span>
-                    ) : (
-                      <span className="text-amber-800 font-bold text-[9px]">1 Tubo</span>
-                    )}
-                  </td>
-
-                  <td className="py-1.5 px-1.5 border-r border-slate-300 text-center font-bold">
-                    {foiFracionado ? (
-                      <span className="text-purple-900 font-black text-[9px]">SIM (500 µL)</span>
-                    ) : (
-                      <span className="text-slate-500 text-[9px]">Integral</span>
+                      <span className="inline-block bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[9px] font-bold">
+                        NÃO (Integral)
+                      </span>
                     )}
                   </td>
 
                   {/* Caixinha de conferência física à caneta para o operador */}
-                  <td className="py-1.5 px-1.5 text-center">
+                  <td className="py-1.5 px-1 text-center">
                     <span className="inline-block w-4 h-4 border-2 border-slate-900 rounded bg-white" />
                   </td>
                 </tr>
@@ -349,16 +364,16 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
       </table>
 
       {/* RODAPÉ GUIA LAB: APENAS CONFERÊNCIA E NOME */}
-      <div className="border border-slate-300 bg-slate-50 rounded p-3 mt-4">
-        <div className="flex items-center justify-between text-[11px]">
+      <div className="border border-slate-300 bg-slate-50 rounded p-2.5 mt-2">
+        <div className="flex items-center justify-between text-[10.5px]">
           <div>
-            <span className="font-bold text-slate-600 uppercase">Conferência: </span>
+            <span className="font-bold text-slate-600 uppercase">Operador Responsável da Bancada: </span>
             <span className="font-black text-slate-900 uppercase">
               {responsavelNome || "Operador Responsável"}
             </span>
           </div>
-          <div className="text-slate-600 text-[10.5px]">
-            <span>Data da Conferência: </span>
+          <div className="text-slate-600">
+            <span>Data e Hora de Fechamento: </span>
             <span className="font-black text-slate-900">
               {formatarData(dataReferencia)} às {horaFinal}
             </span>
@@ -369,21 +384,75 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
   );
 
   return (
-    <div className="hidden print:block w-full max-w-[210mm] mx-auto bg-white text-black p-4 font-sans text-xs">
-      {tipoGuia === "apoio" && renderGuiaApoio()}
+    <>
+      {/* Injeção dinâmica de CSS @page para respeitar modo paisagem no Apoio e retrato no Lab */}
+      {tipoGuia === "apoio" && (
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              @media print {
+                @page {
+                  size: A4 landscape !important;
+                  margin: 8mm 10mm 10mm 10mm !important;
+                }
+              }
+            `,
+          }}
+        />
+      )}
 
-      {tipoGuia === "laboratorio" && renderGuiaLaboratorio()}
+      {tipoGuia === "laboratorio" && (
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              @media print {
+                @page {
+                  size: A4 portrait !important;
+                  margin: 10mm 12mm 12mm 12mm !important;
+                }
+              }
+            `,
+          }}
+        />
+      )}
 
       {tipoGuia === "ambas" && (
-        <>
-          {renderGuiaApoio()}
-          <div
-            className="hidden print:block break-before-page page-break-before my-8"
-            style={{ pageBreakBefore: "always" }}
-          />
-          {renderGuiaLaboratorio()}
-        </>
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              @media print {
+                @page {
+                  size: A4 landscape !important;
+                  margin: 8mm 10mm 10mm 10mm !important;
+                }
+              }
+            `,
+          }}
+        />
       )}
-    </div>
+
+      <div
+        className={`hidden print:block w-full mx-auto bg-white text-black font-sans text-xs ${
+          tipoGuia === "apoio" || tipoGuia === "ambas"
+            ? "max-w-[297mm] p-2"
+            : "max-w-[210mm] p-4"
+        }`}
+      >
+        {tipoGuia === "apoio" && renderGuiaApoio()}
+
+        {tipoGuia === "laboratorio" && renderGuiaLaboratorio()}
+
+        {tipoGuia === "ambas" && (
+          <>
+            {renderGuiaApoio()}
+            <div
+              className="hidden print:block break-before-page page-break-before my-8"
+              style={{ pageBreakBefore: "always" }}
+            />
+            {renderGuiaLaboratorio()}
+          </>
+        )}
+      </div>
+    </>
   );
 };

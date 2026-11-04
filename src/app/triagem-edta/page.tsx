@@ -81,6 +81,12 @@ export default function TriagemEdtaPage() {
   const [tuboAtivo, setTuboAtivo] = useState<ItemTriagemEdta | null>(null);
   const [isUrgente, setIsUrgente] = useState<boolean>(false);
 
+  // Temporizador de 5 a 6 segundos para conferência visual de bancada antes de auto-avançar
+  const [tempoRestante, setTempoRestante] = useState<number>(5);
+  const [autoAvancoPausado, setAutoAvancoPausado] = useState<boolean>(false);
+  const [editandoMedico, setEditandoMedico] = useState<boolean>(false);
+  const autoAvancoTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Conferência e Ajuste da Data de Nascimento (Destaque Visual p/ Bater o Olho)
   const [dataNascConferencia, setDataNascConferencia] = useState<string>("");
   const [editandoDataNasc, setEditandoDataNasc] = useState<boolean>(false);
@@ -529,31 +535,7 @@ export default function TriagemEdtaPage() {
           }
         }
 
-        // CASO A: PACIENTE COM GLICADA NO MODO RETER P/ AMANHÃ (AUTO-CONFIRMAÇÃO DIRETO P/ A GAVETA)
-        if (temGlicada && modoGlicadaPlantao === "amanha" && bipagemContinuaAuto) {
-          tocarSomHemogramaGlicada();
-          salvarItemEdtaAutomatico(encontrado, "retido_envio_posterior", false, dataNascBruta);
-          setManualProntuario("");
-          setManualDataNasc("");
-          return;
-        }
-
-        // CASO B: PACIENTE COM APENAS HEMOGRAMA NO MODO CONTÍNUO (AUTO-CONFIRMAÇÃO DIRETO P/ O APOIO)
-        if (ehApenasHemograma && bipagemContinuaAuto) {
-          tocarSomApenasHemograma();
-          salvarItemEdtaAutomatico(encontrado, "pronto_grade", true, dataNascBruta);
-          setManualProntuario("");
-          setManualDataNasc("");
-          return;
-        }
-
-        // CASO C: ABERTURA DO CARD DE AÇÃO PARA CONFERÊNCIA MANUAL
-        setScannerPausado(true);
-        setTuboAtivo(encontrado);
-        setIsUrgente(Boolean(encontrado.urgencia));
-        setToastSemEdta(null);
-
-        // Se o tubo estava retido de dia anterior, pré-seleciona envio HOJE para liberação imediata
+        // Configuração de envio do Hemograma:
         if (encontrado.status === "retido_envio_posterior") {
           setEnviarHemogramaHoje(true);
         } else {
@@ -570,6 +552,7 @@ export default function TriagemEdtaPage() {
         );
         setDataNascConferencia(dataNascDetectada);
         setEditandoDataNasc(false);
+        setEditandoMedico(false);
 
         // Se o paciente tem VHS ou se já foi registrado status de 2 tubos
         if (encontrado.tem_vhs) {
@@ -586,6 +569,12 @@ export default function TriagemEdtaPage() {
         } else if (encontrado.tipo_destino === "apenas_glicada") {
           tocarSomApenasGlicada();
         }
+
+        // TRAVAR O CARD DE DECISÃO NA TELA POR 5 A 6 SEGUNDOS PARA CONFERÊNCIA VISUAL
+        setScannerPausado(true);
+        setTuboAtivo(encontrado);
+        setIsUrgente(Boolean(encontrado.urgencia));
+        setToastSemEdta(null);
       } else {
         // CASO 3: FOLHA SEM EDTA / NÃO LOCALIZADA (Urina, Fezes, Bioquímica)
         exibirToastSemEdta("ℹ️ Sem exames de EDTA (Avançar folha)");
@@ -624,10 +613,80 @@ export default function TriagemEdtaPage() {
     processarIdentificacaoPaciente(manualProntuario, manualDataNasc);
   };
 
+  // Limpeza de timer de auto-avanço
+  const limparTimerAutoAvanco = useCallback(() => {
+    if (autoAvancoTimerRef.current) {
+      clearInterval(autoAvancoTimerRef.current);
+      autoAvancoTimerRef.current = null;
+    }
+  }, []);
+
+  // Iniciar contagem regressiva de 5 a 6 segundos toda vez que um tubo for ativado na tela
+  useEffect(() => {
+    if (!tuboAtivo) {
+      limparTimerAutoAvanco();
+      setTempoRestante(5);
+      setAutoAvancoPausado(false);
+      setEditandoMedico(false);
+      return;
+    }
+
+    setTempoRestante(5);
+    setAutoAvancoPausado(false);
+
+    limparTimerAutoAvanco();
+    autoAvancoTimerRef.current = setInterval(() => {
+      setTempoRestante((prev) => {
+        if (prev <= 1) {
+          limparTimerAutoAvanco();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      limparTimerAutoAvanco();
+    };
+  }, [tuboAtivo, limparTimerAutoAvanco]);
+
+  // Executar auto-avanço quando o tempo esgotar (se não estiver pausado para edição de dados)
+  useEffect(() => {
+    if (tuboAtivo && tempoRestante === 0 && !autoAvancoPausado && !isSyncing) {
+      confirmarAcaoTubo();
+    }
+  }, [tempoRestante, tuboAtivo, autoAvancoPausado, isSyncing]);
+
+  // Atalhos de teclado para agilidade na bancada: Enter/Espaço confirma, Esc fecha
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!tuboAtivo) return;
+      const target = e.target as HTMLElement | null;
+      const isInput =
+        target &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT");
+      if (isInput) return;
+
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        limparTimerAutoAvanco();
+        confirmarAcaoTubo();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        limparTimerAutoAvanco();
+        fecharCardConferencia();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [tuboAtivo, limparTimerAutoAvanco]);
+
   // CONFIRMAÇÃO DO CARD DE AÇÃO (CASO 1 / CASO 2 / BANCADA / RETIDO)
   const confirmarAcaoTubo = async () => {
     if (!tuboAtivo) return;
 
+    limparTimerAutoAvanco();
     tocarSomConfirmado();
     setIsSyncing(true);
 
@@ -767,12 +826,14 @@ export default function TriagemEdtaPage() {
       console.warn("Aviso ao salvar status no servidor:", e);
     } finally {
       setIsSyncing(false);
+      limparTimerAutoAvanco();
       // Limpa o card e reativa a câmera instantaneamente
       setTuboAtivo(null);
       setDataNascConferencia("");
       setMedicoDetectadoFolha("");
       setCpfDetectadoFolha("");
       setEditandoDataNasc(false);
+      setEditandoMedico(false);
       setManualProntuario("");
       setManualDataNasc("");
       setScannerPausado(false);
@@ -784,11 +845,13 @@ export default function TriagemEdtaPage() {
 
   // CANCELAR / FECHAR O CARD DE CONFERÊNCIA SEM SALVAR
   const fecharCardConferencia = () => {
+    limparTimerAutoAvanco();
     setTuboAtivo(null);
     setDataNascConferencia("");
     setMedicoDetectadoFolha("");
     setCpfDetectadoFolha("");
     setEditandoDataNasc(false);
+    setEditandoMedico(false);
     setScannerPausado(false);
   };
 
@@ -1099,236 +1162,407 @@ export default function TriagemEdtaPage() {
     }
   };
 
-  // BLOCO DE CONFERÊNCIA EM DESTAQUE (DATA DE NASCIMENTO MAIORZINHA, MÉDICO SOLICITANTE E TUBOS)
-  // CARD SUTIL, ELEGANTE E DIRETO DE CONFERÊNCIA DO PACIENTE
-  const renderCardConferencia = (tubo: ItemTriagemEdta) => (
-    <div className="bg-white text-slate-900 rounded-2xl p-4 sm:p-5 shadow-lg border border-slate-200 animate-in zoom-in-95 duration-150 space-y-3">
-      {/* CABEÇALHO DO CARD COM BADGE SUTIL E BOTÃO FECHAR */}
-      <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-        <div className="flex items-center gap-2">
-          {tubo.status === "retido_envio_posterior" ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300">
-              <Clock className="w-3.5 h-3.5 text-amber-700" />
-              <span>Amostra Retida (Glicada já dosada)</span>
-            </span>
-          ) : tubo.tipo_destino === "hemograma_glicada" || (tubo.tem_hemograma && tubo.tem_glicada) ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-900 border border-purple-200">
-              <AlertTriangle className="w-3.5 h-3.5 text-purple-700" />
-              <span>Tem Glicada (Fracionar 500 µL)</span>
-            </span>
-          ) : tubo.tipo_destino === "apenas_glicada" ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200">
-              <FlaskConical className="w-3.5 h-3.5 text-amber-700" />
-              <span>Apenas Glicada (Bancada Local)</span>
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-900 border border-blue-200">
-              <CheckCircle2 className="w-3.5 h-3.5 text-blue-700" />
-              <span>Apenas Hemograma (Apoio)</span>
-            </span>
-          )}
-        </div>
+  // CARD DE DECISÃO EM DESTAQUE (ROXO P/ FRACIONAR / AZUL P/ APOIO)
+  // PAUSA DE 5 A 6 SEGUNDOS PARA CONFERÊNCIA VISUAL DE BANCADA COM EDIÇÃO MANUAL DE MÉDICO
+  const renderCardConferencia = (tubo: ItemTriagemEdta) => {
+    const temGlicada =
+      tubo.tipo_destino === "hemograma_glicada" ||
+      (tubo.tem_hemograma && tubo.tem_glicada);
+    const ehApenasHemograma =
+      tubo.tipo_destino === "apenas_hemograma" ||
+      (tubo.tem_hemograma && !tubo.tem_glicada);
+    const ehRetido = tubo.status === "retido_envio_posterior";
+    const ehApenasGlicada = tubo.tipo_destino === "apenas_glicada";
 
-        <button
-          type="button"
-          onClick={fecharCardConferencia}
-          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
-          title="Fechar conferência"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+    // Definição das cores do card: Roxo para Fracionar / Azul para Apoio / Âmbar para outros
+    const cardBorderClass = ehRetido
+      ? "border-2 border-amber-500 shadow-xl shadow-amber-500/15"
+      : temGlicada
+      ? "border-2 border-purple-500 shadow-xl shadow-purple-500/15"
+      : ehApenasHemograma
+      ? "border-2 border-blue-500 shadow-xl shadow-blue-500/15"
+      : "border-2 border-amber-500 shadow-xl shadow-amber-500/15";
 
-      {/* DADOS DO PACIENTE */}
-      <div className="space-y-1">
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight leading-snug">
-            {tubo.nome_paciente}
-          </h2>
-          {tubo.urgencia && (
-            <span className="bg-rose-100 text-rose-800 border border-rose-300 font-bold text-[10px] px-2 py-0.5 rounded-full uppercase shrink-0">
-              🚨 Urgência
-            </span>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
-          <span>
-            Prontuário: <strong className="text-slate-800 font-mono font-bold text-sm">#{tubo.prontuario}</strong>
-          </span>
-          {cpfDetectadoFolha && (
-            <span>
-              CPF: <strong className="text-slate-800 font-mono">{cpfDetectadoFolha}</strong>
-            </span>
-          )}
-        </div>
-      </div>
+    const bannerBgClass = ehRetido
+      ? "bg-gradient-to-r from-amber-600 via-amber-700 to-orange-800 text-white"
+      : temGlicada
+      ? "bg-gradient-to-r from-purple-700 via-purple-800 to-indigo-900 text-white"
+      : ehApenasHemograma
+      ? "bg-gradient-to-r from-blue-700 via-blue-800 to-sky-900 text-white"
+      : "bg-gradient-to-r from-amber-600 via-amber-700 to-yellow-800 text-white";
 
-      {/* DATA DE NASCIMENTO (EM DESTAQUE, SUTIL E LEGÍVEL) */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3 flex items-center justify-between">
-        <div className="space-y-0.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-            Data de Nascimento
-          </span>
-          {editandoDataNasc ? (
-            <div className="flex items-center gap-2 pt-1">
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={10}
-                value={dataNascConferencia}
-                onChange={(e) => setDataNascConferencia(aplicarMascaraData(e.target.value))}
-                placeholder="DD/MM/AAAA"
-                className="w-36 px-2.5 py-1.5 bg-white text-slate-900 rounded-lg text-lg font-mono font-bold border border-slate-300 focus:outline-purple-600"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={() => setEditandoDataNasc(false)}
-                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg cursor-pointer"
-              >
-                OK
-              </button>
+    return (
+      <div
+        className={`bg-white text-slate-900 rounded-2xl p-4 sm:p-5 shadow-2xl ${cardBorderClass} animate-in zoom-in-95 duration-150 space-y-3`}
+      >
+        {/* BANNER SUPERIOR DE ALTO IMPACTO (ROXO P/ FRACIONAR / AZUL P/ APOIO) */}
+        <div className={`${bannerBgClass} rounded-xl p-3 sm:p-3.5 shadow-md flex items-center justify-between gap-2`}>
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-white/20 rounded-xl backdrop-blur-xs shrink-0">
+              {ehRetido ? (
+                <Clock className="w-5 h-5 text-amber-200" />
+              ) : temGlicada ? (
+                <AlertTriangle className="w-5 h-5 text-amber-300" />
+              ) : ehApenasHemograma ? (
+                <CheckCircle2 className="w-5 h-5 text-sky-200" />
+              ) : (
+                <FlaskConical className="w-5 h-5 text-amber-200" />
+              )}
             </div>
-          ) : (
-            <span className="text-xl sm:text-2xl font-black font-mono tracking-tight text-slate-900">
-              {formatarDataNascimento(dataNascConferencia || tubo.data_nascimento || "") || "NÃO INFORMADA"}
-            </span>
-          )}
-        </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs sm:text-sm font-black tracking-wider uppercase text-white">
+                  {ehRetido
+                    ? "⏳ AMOSTRA RETIDA (Glicada já dosada)"
+                    : temGlicada
+                    ? (modoGlicadaPlantao === "amanha"
+                        ? "🧪 TEM GLICADA — RETIDA AUTOMATICAMENTE (ABA RETIDAS)"
+                        : "🧪 TEM GLICADA — FRACIONAR 500 µL")
+                    : ehApenasHemograma
+                    ? "📦 APENAS HEMOGRAMA — ENVIAR AO APOIO"
+                    : "🔬 APENAS GLICADA — BANCADA LOCAL"}
+                </span>
+              </div>
+              <p className="text-[11px] text-white/90 font-medium leading-tight">
+                {ehRetido
+                  ? "Liberar este tubo para envio na remessa de hoje?"
+                  : temGlicada
+                  ? (modoGlicadaPlantao === "amanha"
+                      ? "Amostra retida para dosagem local. O envio ao apoio será liberado no computador."
+                      : "Separar 500 µL no microtubo roxo e enviar tubo integral ao apoio hoje.")
+                  : ehApenasHemograma
+                  ? "Tubo integral direto para a grade do apoio (faturamento)"
+                  : "Tubo retido no laboratório para dosagem local (não enviar ao apoio)"}
+              </p>
+            </div>
+          </div>
 
-        {!editandoDataNasc && (
           <button
             type="button"
-            onClick={() => setEditandoDataNasc(true)}
-            className="text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-lg cursor-pointer transition"
+            onClick={fecharCardConferencia}
+            className="p-1.5 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition cursor-pointer"
+            title="Fechar conferência (Esc)"
           >
-            ✏️ Ajustar
+            <X className="w-5 h-5" />
           </button>
-        )}
-      </div>
+        </div>
 
-      {/* MÉDICO SOLICITANTE */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2">
-        <div className="truncate space-y-0.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-            Médico Solicitante
-          </span>
-          <div className="flex items-center gap-2">
-            <p className="text-xs sm:text-sm font-bold text-slate-800 uppercase truncate">
-              {medicoSelecionado || tubo.solicitante || "Dr(a). Clínico(a) Geral / UBS"}
-            </p>
-            {medicoDetectadoFolha && (
-              <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.2 rounded shrink-0">
-                Lido da Folha
+        {/* TEMPO DE PAUSA DE 5 A 6 SEGUNDOS PARA CONFERÊNCIA VISUAL DE BANCADA */}
+        <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200 space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5 font-bold text-slate-700">
+              <Clock className="w-3.5 h-3.5 text-purple-700 shrink-0" />
+              <span>
+                {autoAvancoPausado ? (
+                  <span className="text-amber-800 font-black">⏸️ Timer pausado para conferência / edição</span>
+                ) : (
+                  <span>
+                    Conferência visual: avanço automático em{" "}
+                    <strong className="text-purple-900 font-mono font-black text-sm">
+                      {tempoRestante}s
+                    </strong>
+                  </span>
+                )}
+              </span>
+            </div>
+            {!autoAvancoPausado ? (
+              <button
+                type="button"
+                onClick={() => setAutoAvancoPausado(true)}
+                className="text-[10.5px] font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-300 hover:bg-slate-100 px-2 py-0.5 rounded-lg shadow-2xs transition cursor-pointer"
+              >
+                Pausar
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAutoAvancoPausado(false)}
+                className="text-[10.5px] font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 px-2 py-0.5 rounded-lg shadow-2xs transition cursor-pointer"
+              >
+                Retomar
+              </button>
+            )}
+          </div>
+          {/* Barra de Progresso Visual */}
+          <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-300 ${
+                autoAvancoPausado
+                  ? "bg-amber-500"
+                  : temGlicada
+                  ? "bg-purple-600"
+                  : "bg-blue-600"
+              }`}
+              style={{ width: `${(tempoRestante / 5) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        {/* DADOS DO PACIENTE */}
+        <div className="space-y-1">
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight leading-snug">
+              {tubo.nome_paciente}
+            </h2>
+            {tubo.urgencia && (
+              <span className="bg-rose-100 text-rose-800 border border-rose-300 font-bold text-[10px] px-2 py-0.5 rounded-full uppercase shrink-0">
+                🚨 Urgência
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
+            <span>
+              Prontuário: <strong className="text-slate-800 font-mono font-bold text-sm">#{tubo.prontuario}</strong>
+            </span>
+            {cpfDetectadoFolha && (
+              <span>
+                CPF: <strong className="text-slate-800 font-mono">{cpfDetectadoFolha}</strong>
               </span>
             )}
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setMostrarModalMedicos(true)}
-          className="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg cursor-pointer transition shrink-0"
-        >
-          Trocar
-        </button>
-      </div>
 
-      {/* OPÇÃO DE VHS (2 TUBOS) */}
-      <label className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100/70 p-2.5 rounded-xl cursor-pointer select-none transition">
-        <input
-          type="checkbox"
-          checked={coletadoDoisTubos}
-          onChange={(e) => setColetadoDoisTubos(e.target.checked)}
-          className="w-4 h-4 rounded text-purple-600 border-slate-300 focus:ring-purple-500 accent-purple-600 cursor-pointer shrink-0"
-        />
-        <div className="text-xs">
-          <span className="font-bold text-slate-800">
-            {coletadoDoisTubos
-              ? "Coletado 2 tubos EDTA (1 Apoio + 1 VHS Local)"
-              : "Coletado apenas 1 tubo EDTA"}
-          </span>
-          {tubo.tem_vhs && (
-            <span className="ml-1.5 inline-block text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded">
-              VHS Solicitado
+        {/* DATA DE NASCIMENTO (EM DESTAQUE, SUTIL E LEGÍVEL) */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3 flex items-center justify-between">
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+              Data de Nascimento
             </span>
+            {editandoDataNasc ? (
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={dataNascConferencia}
+                  onChange={(e) => setDataNascConferencia(aplicarMascaraData(e.target.value))}
+                  placeholder="DD/MM/AAAA"
+                  className="w-36 px-2.5 py-1.5 bg-white text-slate-900 rounded-lg text-lg font-mono font-bold border border-slate-300 focus:outline-purple-600"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setEditandoDataNasc(false)}
+                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg cursor-pointer"
+                >
+                  OK
+                </button>
+              </div>
+            ) : (
+              <span className="text-xl sm:text-2xl font-black font-mono tracking-tight text-slate-900">
+                {formatarDataNascimento(dataNascConferencia || tubo.data_nascimento || "") || "NÃO INFORMADA"}
+              </span>
+            )}
+          </div>
+
+          {!editandoDataNasc && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditandoDataNasc(true);
+                setAutoAvancoPausado(true);
+              }}
+              className="text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-lg cursor-pointer transition"
+            >
+              ✏️ Ajustar
+            </button>
           )}
         </div>
-      </label>
 
-      {/* DESTINO / SELEÇÃO DE ENVIO DO HEMOGRAMA (SE TEM GLICADA OU SE ESTAVA RETIDO) */}
-      {(tubo.tem_glicada ||
-        tubo.tipo_destino === "hemograma_glicada" ||
-        tubo.status === "retido_envio_posterior") && (
-        <div className="space-y-1.5 pt-0.5">
-          <span className="text-[11px] font-bold text-slate-600 block">
-            {tubo.status === "retido_envio_posterior"
-              ? "Liberar este tubo para envio hoje?"
-              : "Envio do Hemograma:"}
-          </span>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setEnviarHemogramaHoje(true)}
-              className={`py-2 px-3 text-xs font-bold rounded-xl border transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                enviarHemogramaHoje
-                  ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-              }`}
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>{tubo.status === "retido_envio_posterior" ? "Sim, Enviar Hoje" : "Enviar Hoje"}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setEnviarHemogramaHoje(false)}
-              className={`py-2 px-3 text-xs font-bold rounded-xl border transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                !enviarHemogramaHoje
-                  ? "bg-amber-500 text-slate-950 border-amber-500 shadow-xs"
-                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>{tubo.status === "retido_envio_posterior" ? "Manter Retido" : "Reter p/ Outro Dia"}</span>
-            </button>
+        {/* MÉDICO SOLICITANTE COM SUPORTE À EDIÇÃO MANUAL DIRETA NO CARD */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+              Médico Solicitante (Guia de Envio ao Apoio)
+            </span>
+            {!editandoMedico && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditandoMedico(true);
+                    setAutoAvancoPausado(true);
+                  }}
+                  className="text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-lg cursor-pointer transition flex items-center gap-1"
+                >
+                  ✏️ Editar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostrarModalMedicos(true);
+                    setAutoAvancoPausado(true);
+                  }}
+                  className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg cursor-pointer transition"
+                  title="Ver lista de médicos cadastrados"
+                >
+                  Lista
+                </button>
+              </div>
+            )}
           </div>
+
+          {editandoMedico ? (
+            <div className="space-y-1.5 pt-0.5">
+              <div className="flex items-center gap-1.5">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    list="sugestoes-medicos-card"
+                    value={medicoSelecionado}
+                    onChange={(e) => setMedicoSelecionado(e.target.value)}
+                    placeholder="Dr(a). Nome do Médico Solicitante"
+                    className="w-full px-3 py-2 bg-white text-slate-900 rounded-lg text-xs sm:text-sm font-bold border border-purple-400 focus:outline-purple-600 focus:ring-1 focus:ring-purple-600 shadow-2xs"
+                    autoFocus
+                  />
+                  <datalist id="sugestoes-medicos-card">
+                    {medicosCadastrados.map((med) => (
+                      <option key={med} value={med} />
+                    ))}
+                  </datalist>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditandoMedico(false);
+                    const nomeL = medicoSelecionado.trim();
+                    if (nomeL && !medicosCadastrados.some((m) => m.toLowerCase() === nomeL.toLowerCase())) {
+                      adicionarMedico(nomeL);
+                      setMedicosCadastrados((prev) => [...prev, nomeL]);
+                    }
+                  }}
+                  className="px-3 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-lg cursor-pointer transition shrink-0"
+                >
+                  OK
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditandoMedico(false)}
+                  className="px-2.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-lg cursor-pointer transition shrink-0"
+                >
+                  Cancelar
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-500 italic">
+                💡 Edite livremente ou selecione uma opção da lista. O nome será gravado para o envio do Apoio.
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <p className="text-xs sm:text-sm font-black text-slate-900 uppercase truncate">
+                {medicoSelecionado || tubo.solicitante || "Dr(a). Clínico(a) Geral / UBS"}
+              </p>
+              {medicoDetectadoFolha && (
+                <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 border border-emerald-200">
+                  Lido da Folha
+                </span>
+              )}
+            </div>
+          )}
         </div>
-      )}
 
-      {/* BOTÕES DE AÇÃO PRINCIPAIS (SUTIS E DIRETOS) */}
-      <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-        <button
-          type="button"
-          disabled={isSyncing}
-          onClick={confirmarAcaoTubo}
-          className={`flex-1 py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl shadow-xs transition active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer ${
-            !enviarHemogramaHoje
-              ? "bg-amber-500 hover:bg-amber-600 text-slate-950"
-              : "bg-emerald-600 hover:bg-emerald-700 text-white"
-          }`}
-        >
-          <Check className="w-4 h-4 stroke-[2.5]" />
-          <span>
-            {tubo.status === "retido_envio_posterior"
-              ? (enviarHemogramaHoje ? "Liberar Tubo p/ Hoje" : "Confirmar Manter Retido")
-              : (!enviarHemogramaHoje
-                  ? "Reter Tubo na Gradinha"
-                  : tubo.tipo_destino === "apenas_glicada"
-                  ? "Confirmar Bancada Local"
-                  : "Confirmar Tubo na Grade")}
-          </span>
-        </button>
+        {/* OPÇÃO DE VHS (2 TUBOS) */}
+        <label className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100/70 p-2.5 rounded-xl cursor-pointer select-none transition">
+          <input
+            type="checkbox"
+            checked={coletadoDoisTubos}
+            onChange={(e) => setColetadoDoisTubos(e.target.checked)}
+            className="w-4 h-4 rounded text-purple-600 border-slate-300 focus:ring-purple-500 accent-purple-600 cursor-pointer shrink-0"
+          />
+          <div className="text-xs">
+            <span className="font-bold text-slate-800">
+              {coletadoDoisTubos
+                ? "Coletado 2 tubos EDTA (1 Apoio + 1 VHS Local)"
+                : "Coletado apenas 1 tubo EDTA"}
+            </span>
+            {tubo.tem_vhs && (
+              <span className="ml-1.5 inline-block text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded">
+                VHS Solicitado
+              </span>
+            )}
+          </div>
+        </label>
 
-        <button
-          type="button"
-          onClick={fecharCardConferencia}
-          className="py-2.5 px-3.5 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
-        >
-          Cancelar
-        </button>
+        {/* DESTINO AUTOMÁTICO DO HEMOGRAMA CONFORME REGRA DO PLANTÃO ATIVA */}
+        {ehRetido ? (
+          <div className="bg-amber-50 border border-amber-300 rounded-xl p-2.5 flex items-center gap-2.5 text-xs">
+            <div className="p-1.5 bg-amber-200/70 rounded-lg text-amber-900 shrink-0">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div className="leading-tight">
+              <span className="font-black text-amber-950 uppercase text-[11px] block">
+                📦 Amostra Retida (Glicada já dosada)
+              </span>
+              <span className="text-amber-900 text-[10.5px]">
+                A ativação para envio ao apoio é feita diretamente no computador na <strong>aba Retidos Glicada</strong>.
+              </span>
+            </div>
+          </div>
+        ) : temGlicada && modoGlicadaPlantao === "amanha" ? (
+          <div className="bg-amber-50 border border-amber-300 rounded-xl p-2.5 flex items-center gap-2.5 text-xs">
+            <div className="p-1.5 bg-amber-200/70 rounded-lg text-amber-900 shrink-0">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div className="leading-tight">
+              <span className="font-black text-amber-950 uppercase text-[11px] block">
+                📦 Destino Automático: Aba Retidos Glicada
+              </span>
+              <span className="text-amber-900 text-[10.5px]">
+                Configuração ativa: <strong>Reter p/ Amanhã</strong>. O tubo vai direto para a aba de retidos e será liberado no computador.
+              </span>
+            </div>
+          </div>
+        ) : temGlicada && modoGlicadaPlantao === "hoje" ? (
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-2.5 flex items-center gap-2.5 text-xs">
+            <div className="p-1.5 bg-purple-200/70 rounded-lg text-purple-900 shrink-0">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+            <div className="leading-tight">
+              <span className="font-black text-purple-950 uppercase text-[11px] block">
+                ⚡ Destino: Fracionamento & Grade de Hoje
+              </span>
+              <span className="text-purple-900 text-[10.5px]">
+                Fracionar 500 µL para a bancada local e colocar o tubo integral na grade do apoio de hoje.
+              </span>
+            </div>
+          </div>
+        ) : null}
+
+        {/* BOTÕES DE AÇÃO PRINCIPAIS: BOTÃO VERDE DE CONFIRMAÇÃO IMEDIATA E CANCELAR */}
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+          <button
+            type="button"
+            disabled={isSyncing}
+            onClick={() => {
+              limparTimerAutoAvanco();
+              confirmarAcaoTubo();
+            }}
+            className="flex-1 py-3 px-4 font-black text-xs sm:text-sm rounded-xl shadow-md transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            <Check className="w-4 h-4 stroke-[3]" />
+            <span>
+              {ehRetido
+                ? "Manter Amostra Retida"
+                : !enviarHemogramaHoje
+                ? "Confirmar Amostra Retida"
+                : tubo.tipo_destino === "apenas_glicada"
+                ? "Confirmar Bancada Local"
+                : "Confirmar Tubo na Grade"}
+              {!autoAvancoPausado && tempoRestante > 0 ? ` (${tempoRestante}s)` : ""}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={fecharCardConferencia}
+            className="py-3 px-3.5 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
+          >
+            Cancelar
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <>
@@ -1956,30 +2190,30 @@ export default function TriagemEdtaPage() {
               type="button"
               onClick={() => dispararImpressao("apoio")}
               className="flex-1 py-3 px-2 sm:px-3 bg-purple-700 hover:bg-purple-800 active:bg-purple-900 text-white font-black text-xs sm:text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
-              title="Imprimir Guia Apoio"
+              title="Imprimir Relação de Remessa para o Apoio (Paisagem / Faturamento)"
             >
               <Printer className="w-4 h-4 text-purple-200 shrink-0" />
-              <span className="truncate">📦 Guia Apoio</span>
+              <span className="truncate">📦 Guia Apoio (Paisagem)</span>
             </button>
 
             <button
               type="button"
               onClick={() => dispararImpressao("laboratorio")}
               className="flex-1 py-3 px-2 sm:px-3 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-black text-xs sm:text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
-              title="Imprimir Guia Lab"
+              title="Imprimir Relatório Interno do Laboratório (Controle de Bancada)"
             >
               <Printer className="w-4 h-4 text-emerald-200 shrink-0" />
-              <span className="truncate">🔬 Guia Lab</span>
+              <span className="truncate">🔬 Guia Lab (Bancada)</span>
             </button>
 
             <button
               type="button"
               onClick={() => dispararImpressao("ambas")}
               className="py-3 px-3 sm:px-4 bg-slate-950 hover:bg-slate-900 active:bg-black text-white font-black text-xs sm:text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 shrink-0"
-              title="Imprimir ambas as guias (Apoio + Lab)"
+              title="Imprimir ambas as guias (Apoio Paisagem + Lab Retrato)"
             >
               <Printer className="w-4 h-4 text-amber-300 shrink-0" />
-              <span className="hidden sm:inline">🖨️ Ambas as Guias</span>
+              <span className="hidden sm:inline">🖨️ Ambas</span>
               <span className="sm:hidden">Ambas</span>
             </button>
           </div>
