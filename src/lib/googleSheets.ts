@@ -168,6 +168,16 @@ export function extractSpreadsheetId(rawId?: string): string {
   return trimmed.replace(/^["']|["']$/g, "");
 }
 
+export function indexParaColunaA1(index: number): string {
+  let result = "";
+  let temp = index;
+  while (temp >= 0) {
+    result = String.fromCharCode(65 + (temp % 26)) + result;
+    temp = Math.floor(temp / 26) - 1;
+  }
+  return result;
+}
+
 export function extractPrivateKey(rawKey?: string): string {
   if (!rawKey) return "";
   let key = rawKey.trim();
@@ -434,6 +444,30 @@ export async function ensureSheetsExist(): Promise<{ ok: boolean; message: strin
         valueInputOption: "RAW",
         requestBody: { values: [CABECALHO_TRIAGEM_EDTA] },
       });
+    } else {
+      // Garantir que a aba Triagem_EDTA existente possua a coluna de data_nascimento
+      try {
+        const headerRes = await sheets.spreadsheets.values.get({
+          spreadsheetId: sheetId,
+          range: `${SHEET_NAME_TRIAGEM_EDTA}!A1:Z1`,
+        });
+        const headerRow = (headerRes.data.values?.[0] || []).map((h: any) =>
+          (h || "").toString().toLowerCase().trim()
+        );
+        if (headerRow.length > 0) {
+          const temNasc = headerRow.some((h) => h.includes("nasc") || h.includes("dn"));
+          if (!temNasc) {
+            const proxColIndex = headerRow.length;
+            const colLetter = indexParaColunaA1(proxColIndex);
+            await sheets.spreadsheets.values.update({
+              spreadsheetId: sheetId,
+              range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}1`,
+              valueInputOption: "RAW",
+              requestBody: { values: [["data_nascimento"]] },
+            });
+          }
+        }
+      } catch (_) {}
     }
 
     if (!existingTitles.includes(SHEET_NAME_MEDICOS)) {
@@ -1689,8 +1723,26 @@ export async function atualizarStatusItemEdta(
 
           // Preencher campos atualizados
           const temColNasc = idxNasc >= 0 || (headerRow[4] && (headerRow[4].includes("nasc") || headerRow[4].includes("dn")));
-          const colNasc = idxNasc >= 0 ? idxNasc : (temColNasc ? 4 : -1);
+          let colNasc = idxNasc >= 0 ? idxNasc : (temColNasc ? 4 : -1);
+          if (colNasc === -1 && dataNascAtualizada) {
+            colNasc = headerRow.length;
+            headerRow.push("data_nascimento");
+            const colLetter = indexParaColunaA1(colNasc);
+            try {
+              await sheets.spreadsheets.values.update({
+                spreadsheetId: sheetId,
+                range: `${SHEET_NAME_TRIAGEM_EDTA}!${colLetter}1`,
+                valueInputOption: "RAW",
+                requestBody: { values: [["data_nascimento"]] },
+              });
+            } catch (headErr) {
+              console.warn("Aviso ao adicionar coluna data_nascimento no cabeçalho:", headErr);
+            }
+          }
           if (colNasc >= 0 && dataNascAtualizada) {
+            while (updatedRowValues.length <= colNasc) {
+              updatedRowValues.push("");
+            }
             updatedRowValues[colNasc] = dataNascAtualizada;
           }
           if (idxStatus >= 0 && updates.status) {
@@ -1728,9 +1780,10 @@ export async function atualizarStatusItemEdta(
           }
 
           // Atualização atômica em 1 única chamada
+          const ultimaCol = indexParaColunaA1(Math.max(updatedRowValues.length - 1, CABECALHO_TRIAGEM_EDTA.length - 1));
           await sheets.spreadsheets.values.update({
             spreadsheetId: sheetId,
-            range: `${SHEET_NAME_TRIAGEM_EDTA}!A${rowNum}:S${rowNum}`,
+            range: `${SHEET_NAME_TRIAGEM_EDTA}!A${rowNum}:${ultimaCol}${rowNum}`,
             valueInputOption: "RAW",
             requestBody: { values: [updatedRowValues] },
           });
