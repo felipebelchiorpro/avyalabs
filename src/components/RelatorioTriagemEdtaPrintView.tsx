@@ -46,7 +46,7 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
         item.tipo_destino === "hemograma_glicada")
   );
 
-  const totalFracionados = tubosApoio.filter(
+  const totalFracionados = tubosLaboratorio.filter(
     (item) => item.tipo_destino === "hemograma_glicada" || item.fracionado_glicada
   ).length;
 
@@ -102,8 +102,8 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
         </div>
       </div>
 
-      {/* METADADOS DA REMESSA DO APOIO */}
-      <div className="grid grid-cols-4 gap-2 text-[9.5px] bg-slate-50 p-2 border border-slate-300 rounded mb-3">
+      {/* METADADOS DA REMESSA DO APOIO (SEM DADOS INTERNOS DE FRACIONAMENTO) */}
+      <div className="grid grid-cols-3 gap-2 text-[9.5px] bg-slate-50 p-2 border border-slate-300 rounded mb-3">
         <div>
           <span className="font-bold text-slate-500 uppercase block">Data da Remessa:</span>
           <span className="font-black text-slate-900 text-[10.5px]">{formatarData(dataReferencia)}</span>
@@ -116,35 +116,28 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
           <span className="font-bold text-slate-500 uppercase block">Total de Tubos na Grade:</span>
           <span className="font-black text-slate-900 text-[10.5px]">{tubosApoio.length} amostras</span>
         </div>
-        <div>
-          <span className="font-bold text-slate-500 uppercase block">Glicadas Fracionadas:</span>
-          <span className="font-black text-purple-900 text-[10.5px]">{totalFracionados} alíquotas</span>
-        </div>
       </div>
 
-      {/* TABELA GUIA APOIO: COM DATA DE NASCIMENTO E CAMPO DE CHECK P/ O APOIO */}
+      {/* TABELA GUIA APOIO: APENAS DADOS DA REMESSA E CHECK P/ O APOIO */}
       <table className="w-full border-collapse border border-slate-400 text-[10px] mb-4">
         <thead>
           <tr className="bg-slate-200 text-slate-900 border-b border-slate-400">
             <th className="py-2 px-1.5 border-r border-slate-300 text-center w-10 font-black">Nº</th>
             <th className="py-2 px-3 border-r border-slate-300 text-left font-black">Nome Completo do Paciente</th>
             <th className="py-2 px-2 border-r border-slate-300 text-center w-32 font-black">Data de Nascimento</th>
-            <th className="py-2 px-2 border-r border-slate-300 text-center w-28 font-black">Exame Solicitado</th>
-            <th className="py-2 px-2 border-r border-slate-300 text-center w-32 font-black">Fracionado p/ Glicada?</th>
+            <th className="py-2 px-2 border-r border-slate-300 text-center w-36 font-black">Exame Solicitado</th>
             <th className="py-2 px-1.5 border-slate-400 text-center w-16 font-black">Check [✓]</th>
           </tr>
         </thead>
         <tbody>
           {tubosApoio.length === 0 ? (
             <tr>
-              <td colSpan={6} className="py-6 text-center text-slate-500 italic">
+              <td colSpan={5} className="py-6 text-center text-slate-500 italic">
                 Nenhum hemograma a ser enviado ao apoio nesta data.
               </td>
             </tr>
           ) : (
             tubosApoio.map((item, index) => {
-              const foiFracionado =
-                item.tipo_destino === "hemograma_glicada" || item.fracionado_glicada;
               const rawDn = (item.data_nascimento && item.data_nascimento.trim()) || (
                 item.data_nascimento_digitos && item.data_nascimento_digitos.length === 8
                   ? `${item.data_nascimento_digitos.slice(0, 2)}/${item.data_nascimento_digitos.slice(2, 4)}/${item.data_nascimento_digitos.slice(4)}`
@@ -178,16 +171,6 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
 
                   <td className="py-1.5 px-2 border-r border-slate-300 text-center font-bold text-slate-800">
                     HEMOGRAMA
-                  </td>
-
-                  <td className="py-1.5 px-2 border-r border-slate-300 text-center font-bold">
-                    {foiFracionado ? (
-                      <span className="inline-block bg-purple-100 text-purple-900 border border-purple-300 px-2 py-0.5 rounded text-[9px] font-black">
-                        SIM (500 µL)
-                      </span>
-                    ) : (
-                      <span className="text-slate-600 text-[9.5px]">NÃO (Integral)</span>
-                    )}
                   </td>
 
                   {/* Campo para o Lab Apoio fazer o Check */}
@@ -238,24 +221,30 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
       </div>
 
       {/* METADADOS DA BANCADA INTERNA */}
-      <div className="grid grid-cols-4 gap-2 text-[9.5px] bg-slate-50 p-2 border border-slate-300 rounded mb-3">
+      <div className="grid grid-cols-5 gap-2 text-[9px] bg-slate-50 p-2 border border-slate-300 rounded mb-3">
         <div>
           <span className="font-bold text-slate-500 uppercase block">Data da Rotina:</span>
-          <span className="font-black text-slate-900 text-[10.5px]">{formatarData(dataReferencia)}</span>
+          <span className="font-black text-slate-900 text-[10px]">{formatarData(dataReferencia)}</span>
         </div>
         <div>
-          <span className="font-bold text-slate-500 uppercase block">Horário de Fechamento:</span>
-          <span className="font-black text-slate-900 text-[10.5px]">{horaFinal}</span>
+          <span className="font-bold text-slate-500 uppercase block">Horário Fechamento:</span>
+          <span className="font-black text-slate-900 text-[10px]">{horaFinal}</span>
         </div>
         <div>
           <span className="font-bold text-slate-500 uppercase block">Amostras c/ VHS:</span>
-          <span className="font-black text-slate-900 text-[10.5px]">
-            {totalComVhs} pacientes ({totalDoisTubos} c/ 2 tubos)
+          <span className="font-black text-slate-900 text-[10px]">
+            {totalComVhs} pac. ({totalDoisTubos} c/ 2 tubos)
           </span>
         </div>
         <div>
-          <span className="font-bold text-slate-500 uppercase block">Total Geral na Bancada:</span>
-          <span className="font-black text-emerald-900 text-[10.5px]">
+          <span className="font-bold text-slate-500 uppercase block">Glicadas Fracionadas:</span>
+          <span className="font-black text-purple-900 text-[10px]">
+            {totalFracionados} alíquotas
+          </span>
+        </div>
+        <div>
+          <span className="font-bold text-slate-500 uppercase block">Total Bancada:</span>
+          <span className="font-black text-emerald-900 text-[10px]">
             {tubosLaboratorio.length} pacientes
           </span>
         </div>
