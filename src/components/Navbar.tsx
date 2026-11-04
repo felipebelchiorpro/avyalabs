@@ -32,6 +32,7 @@ import {
   Boxes,
   Layers,
   ArrowRight,
+  Clock,
 } from "lucide-react";
 
 interface ItemMenu {
@@ -149,10 +150,20 @@ export const Navbar: React.FC = () => {
         {
           id: "lote_vdrl",
           href: "/vdrl",
-          label: "Lote VDRL",
+          label: "VDRL em Lote",
           sublabel: "Lançamento Coletivo",
           icon: Package,
-          badge: "Imuno",
+          badge: "Lote",
+          color: "text-amber-600",
+          activeBg: "bg-amber-50 text-amber-950 border-amber-300 font-black",
+        },
+        {
+          id: "retidos_glicada",
+          href: "/retidos-glicada",
+          label: "Tubos Retidos Glicada",
+          sublabel: "Gradinha Local / Envio",
+          icon: Clock,
+          badge: "Apoio",
           color: "text-amber-600",
           activeBg: "bg-amber-50 text-amber-950 border-amber-300 font-black",
         },

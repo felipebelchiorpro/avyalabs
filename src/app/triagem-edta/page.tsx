@@ -50,6 +50,7 @@ import {
   UploadCloud,
   Clock,
   ArrowRight,
+  ChevronRight,
   ShieldCheck,
   UserCheck,
   FlaskConical,
@@ -864,6 +865,7 @@ export default function TriagemEdtaPage() {
         subtitulo: `Paciente incluído com sucesso no relatório de faturamento/apoio.`,
       });
       setTimeout(() => setMensagemSucesso(null), 3000);
+      await carregarDadosEdta(true);
     } catch (e) {
       console.warn("Aviso ao liberar tubo retido:", e);
     } finally {
@@ -876,7 +878,7 @@ export default function TriagemEdtaPage() {
     const retidos = itens.filter(
       (i) =>
         i.status === "retido_envio_posterior" ||
-        (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada")
+        (i.enviar_hemograma_hoje === false && (i.tipo_destino === "hemograma_glicada" || i.tem_glicada))
     );
     if (retidos.length === 0) return;
 
@@ -937,6 +939,7 @@ export default function TriagemEdtaPage() {
         subtitulo: "Todos os tubos entraram imediatamente na relação oficial para a remessa da tarde.",
       });
       setTimeout(() => setMensagemSucesso(null), 4000);
+      await carregarDadosEdta(true);
     } catch (e) {
       console.warn("Aviso ao liberar retidos em lote:", e);
     } finally {
@@ -1763,116 +1766,47 @@ export default function TriagemEdtaPage() {
           {/* ======================================================================= */}
           {/* GAVETA SUTIL: TUBOS RETIDOS NA GRADINHA LOCAL (ENVIO POSTERIOR)        */}
           {/* ======================================================================= */}
+          {/* SINALIZADOR DISCRETO DE TUBOS RETIDOS (SEM BLOCO GIGANTE TRAVANDO A TELA) */}
           {itens.some(
             (i) =>
               i.status === "retido_envio_posterior" ||
-              (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada")
+              (i.enviar_hemograma_hoje === false && (i.tipo_destino === "hemograma_glicada" || i.tem_glicada))
           ) && (
-            <div ref={gavetaRetidosRef} className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-3.5 shadow-xs space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded-lg bg-amber-100 text-amber-800">
-                    <Clock className="w-4 h-4" />
-                  </span>
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-xs sm:text-sm flex items-center gap-1.5">
-                      <span>Tubos Retidos na Gradinha</span>
-                      <span className="bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.2 rounded-full text-[10px] font-bold">
-                        {
-                          itens.filter(
-                            (i) =>
-                              i.status === "retido_envio_posterior" ||
-                              (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada")
-                          ).length
-                        }
-                      </span>
-                    </h3>
-                    <p className="text-[11px] text-slate-500">
-                      Glicada feita • Aguardando envio do hemograma
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setGavetaRetidosAberta(!gavetaRetidosAberta)}
-                    className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition cursor-pointer"
-                  >
-                    {gavetaRetidosAberta ? "Recolher" : "Ver lista"}
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isSyncing}
-                    onClick={liberarTodosRetidosHoje}
-                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-lg transition cursor-pointer"
-                    title="Liberar todos os retidos para a grade de hoje"
-                  >
-                    Liberar Todos
-                  </button>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="p-1.5 rounded-lg bg-amber-200/80 text-amber-900 shrink-0">
+                  <Clock className="w-4 h-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-amber-950 truncate">
+                    {itens.filter((i) => i.status === "retido_envio_posterior" || (i.enviar_hemograma_hoje === false && (i.tipo_destino === "hemograma_glicada" || i.tem_glicada))).length} tubos retidos de glicada na gradinha
+                  </p>
+                  <p className="text-[11px] text-amber-800/80 hidden sm:block">
+                    Amostras aguardando liberação do hemograma para o Apoio.
+                  </p>
                 </div>
               </div>
 
-              {gavetaRetidosAberta && (
-                <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden pt-1">
-                  {itens
-                    .filter(
-                      (i) =>
-                        i.status === "retido_envio_posterior" ||
-                        (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada")
-                    )
-                    .map((item) => (
-                      <div
-                        key={item.id || item.prontuario}
-                        className="p-2.5 flex items-center justify-between gap-2 hover:bg-slate-50 transition"
-                      >
-                        <div className="truncate">
-                          <p className="text-xs font-bold text-slate-900 uppercase truncate">
-                            {item.nome_paciente}
-                          </p>
-                          <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                            <span className="font-mono">#{item.prontuario}</span>
-                            {item.data_nascimento && (
-                              <span>• DN: {item.data_nascimento}</span>
-                            )}
-                            {item.tem_vhs && (
-                              <span className="bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded text-[9px]">
-                                VHS
-                              </span>
-                            )}
-                          </div>
-                        </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  disabled={isSyncing}
+                  onClick={liberarTodosRetidosHoje}
+                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-lg transition shadow-xs cursor-pointer flex items-center gap-1"
+                  title="Liberar todos os tubos retidos para o envio de hoje"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Liberar Todos</span>
+                </button>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTuboAtivo(item);
-                              const dataNasc = formatarDataNascimento(item.data_nascimento || "");
-                              setDataNascConferencia(dataNasc);
-                              setEditandoDataNasc(false);
-                              setEnviarHemogramaHoje(true);
-                              setScannerPausado(true);
-                            }}
-                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition cursor-pointer"
-                          >
-                            Conferir
-                          </button>
-
-                          <button
-                            type="button"
-                            disabled={isSyncing}
-                            onClick={() => liberarTuboRetidoHoje(item)}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition cursor-pointer"
-                          >
-                            Liberar Hoje
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              )}
+                <Link
+                  href="/retidos-glicada"
+                  className="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-xs rounded-lg border border-amber-300 transition flex items-center gap-1"
+                >
+                  <span>Aba Retidos</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
           )}
 

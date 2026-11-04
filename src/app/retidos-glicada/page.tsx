@@ -1,0 +1,500 @@
+"use client";
+
+import React, { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { ItemTriagemEdta } from "@/types/urinalise";
+import { formatarProntuario, formatarDataNascimento, normalizarTexto } from "@/lib/extratorBancada";
+import {
+  Clock,
+  Search,
+  RefreshCw,
+  CheckCircle2,
+  ArrowLeft,
+  Sparkles,
+  Inbox,
+  AlertCircle,
+  CheckSquare,
+  Square,
+  Send,
+  Calendar,
+  Layers,
+  FlaskConical,
+} from "lucide-react";
+
+export default function RetidosGlicadaPage() {
+  const [itens, setItens] = useState<ItemTriagemEdta[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [busca, setBusca] = useState<string>("");
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState<{ message: string; type: "success" | "warning" | "error" } | null>(null);
+
+  const mostrarNotificacao = (message: string, type: "success" | "warning" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((prev) => (prev?.message === message ? null : prev));
+    }, 4000);
+  };
+
+  const carregarDados = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/triagem-edta");
+      const data = await res.json();
+      if (data.ok && Array.isArray(data.itens)) {
+        setItens(data.itens);
+      }
+    } catch (err: any) {
+      console.error("Erro ao carregar tubos retidos:", err);
+      mostrarNotificacao("Erro ao conectar com a base de dados EDTA.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    carregarDados();
+  }, []);
+
+  // Filtrar apenas amostras com glicada retidas na gradinha local
+  const listaRetidos = useMemo(() => {
+    return itens.filter((i) => {
+      const ehRetido =
+        i.status === "retido_envio_posterior" ||
+        (i.enviar_hemograma_hoje === false && (i.tipo_destino === "hemograma_glicada" || i.tem_glicada));
+      return ehRetido;
+    });
+  }, [itens]);
+
+  // Filtro de busca por nome, prontuário ou data de nascimento
+  const listaFiltrada = useMemo(() => {
+    if (!busca.trim()) return listaRetidos;
+    const termo = normalizarTexto(busca.trim());
+    const termoDigits = busca.replace(/\D/g, "");
+
+    return listaRetidos.filter((i) => {
+      const nome = normalizarTexto(i.nome_paciente || "");
+      const pront = String(i.prontuario || "").replace(/\D/g, "");
+      const dn = (i.data_nascimento || "").replace(/\D/g, "");
+      return (
+        nome.includes(termo) ||
+        (termoDigits && pront.includes(termoDigits)) ||
+        (termoDigits && dn.includes(termoDigits))
+      );
+    });
+  }, [listaRetidos, busca]);
+
+  const toggleSelecionar = (prontuario: string) => {
+    setSelecionados((prev) => {
+      const novo = new Set(prev);
+      if (novo.has(prontuario)) {
+        novo.delete(prontuario);
+      } else {
+        novo.add(prontuario);
+      }
+      return novo;
+    });
+  };
+
+  const toggleSelecionarTodos = () => {
+    if (selecionados.size === listaFiltrada.length) {
+      setSelecionados(new Set());
+    } else {
+      setSelecionados(new Set(listaFiltrada.map((i) => i.prontuario)));
+    }
+  };
+
+  // Liberar 1 tubo retido para a grade de hoje
+  const liberarItem = async (item: ItemTriagemEdta) => {
+    setIsProcessing(true);
+    const agora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const hojeIso = new Date().toISOString().split("T")[0];
+
+    // Atualização otimista na tela
+    setItens((prev) =>
+      prev.map((i) =>
+        i.prontuario === item.prontuario
+          ? {
+              ...i,
+              status: "pronto_grade",
+              colocado_grade: true,
+              enviar_hemograma_hoje: true,
+              data_liberacao_apoio: hojeIso,
+              horario_bipado: agora,
+            }
+          : i
+      )
+    );
+
+    try {
+      const res = await fetch("/api/triagem-edta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          acao: "atualizar_item",
+          prontuario: item.prontuario,
+          updates: {
+            nome_paciente: item.nome_paciente,
+            data_nascimento: item.data_nascimento,
+            status: "pronto_grade",
+            colocado_grade: true,
+            enviar_hemograma_hoje: true,
+            data_liberacao_apoio: hojeIso,
+            horario_bipado: agora,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        mostrarNotificacao(`🚀 Tubo de ${item.nome_paciente} liberado para envio ao Apoio hoje!`, "success");
+        setSelecionados((prev) => {
+          const novo = new Set(prev);
+          novo.delete(item.prontuario);
+          return novo;
+        });
+      } else {
+        throw new Error(data.error || "Erro ao salvar liberação no servidor");
+      }
+    } catch (err: any) {
+      console.error("Erro ao liberar tubo:", err);
+      mostrarNotificacao(`Erro ao liberar tubo: ${err.message}`, "error");
+      carregarDados();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Liberar múltiplos tubos selecionados ou todos
+  const liberarEmLote = async (itensParaLiberar: ItemTriagemEdta[]) => {
+    if (itensParaLiberar.length === 0) return;
+    setIsProcessing(true);
+    const agora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const hojeIso = new Date().toISOString().split("T")[0];
+    const prontsSet = new Set(itensParaLiberar.map((i) => i.prontuario));
+
+    // Atualização otimista
+    setItens((prev) =>
+      prev.map((i) =>
+        prontsSet.has(i.prontuario)
+          ? {
+              ...i,
+              status: "pronto_grade",
+              colocado_grade: true,
+              enviar_hemograma_hoje: true,
+              data_liberacao_apoio: hojeIso,
+              horario_bipado: agora,
+            }
+          : i
+      )
+    );
+
+    let sucessos = 0;
+    for (const item of itensParaLiberar) {
+      try {
+        await fetch("/api/triagem-edta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            acao: "atualizar_item",
+            prontuario: item.prontuario,
+            updates: {
+              nome_paciente: item.nome_paciente,
+              data_nascimento: item.data_nascimento,
+              status: "pronto_grade",
+              colocado_grade: true,
+              enviar_hemograma_hoje: true,
+              data_liberacao_apoio: hojeIso,
+              horario_bipado: agora,
+            },
+          }),
+        });
+        sucessos++;
+      } catch (e) {
+        console.warn("Erro ao liberar item em lote:", item.prontuario, e);
+      }
+    }
+
+    setSelecionados(new Set());
+    setIsProcessing(false);
+    mostrarNotificacao(`🚀 ${sucessos} tubos foram liberados com sucesso para a Grade de Hoje!`, "success");
+    carregarDados();
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-16">
+      {/* TOAST FLUTUANTE */}
+      {toast && (
+        <div className="fixed top-5 right-5 z-50 animate-bounce">
+          <div
+            className={`px-4 py-3 rounded-xl shadow-lg border text-sm font-bold flex items-center gap-2 ${
+              toast.type === "success"
+                ? "bg-emerald-600 text-white border-emerald-700"
+                : toast.type === "warning"
+                ? "bg-amber-500 text-white border-amber-600"
+                : "bg-rose-600 text-white border-rose-700"
+            }`}
+          >
+            {toast.type === "success" && <CheckCircle2 className="w-5 h-5 shrink-0" />}
+            {toast.type === "warning" && <AlertCircle className="w-5 h-5 shrink-0" />}
+            {toast.type === "error" && <AlertCircle className="w-5 h-5 shrink-0" />}
+            <span>{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* CABEÇALHO */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/triagem-edta"
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+              title="Voltar para Triagem EDTA"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-amber-100 text-amber-800">
+                  <Clock className="w-5 h-5" />
+                </span>
+                <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                  Tubos Retidos Glicada
+                </h1>
+                <span className="bg-amber-100 text-amber-900 border border-amber-300 font-black text-xs px-2.5 py-0.5 rounded-full">
+                  {listaRetidos.length} {listaRetidos.length === 1 ? "tubo" : "tubos"}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 hidden sm:block">
+                Glicada dosada na bancada local • Amostras retidas na gradinha aguardando envio do hemograma ao Apoio
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={carregarDados}
+              disabled={isLoading || isProcessing}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+              title="Atualizar dados"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            </button>
+
+            <Link
+              href="/triagem-edta"
+              className="px-3.5 py-2 rounded-xl border border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-900 font-bold text-xs flex items-center gap-1.5 transition"
+            >
+              <Sparkles className="w-4 h-4 text-purple-700" />
+              <span>Bancada EDTA</span>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* CONTEÚDO PRINCIPAL */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-5">
+        {/* BARRA DE AÇÕES & BUSCA */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="relative flex-1 min-w-[240px] max-w-md">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar por nome, prontuário ou data de nascimento..."
+              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            {selecionados.size > 0 && (
+              <button
+                type="button"
+                disabled={isProcessing}
+                onClick={() =>
+                  liberarEmLote(listaRetidos.filter((i) => selecionados.has(i.prontuario)))
+                }
+                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+                <span>Liberar {selecionados.size} Selecionados</span>
+              </button>
+            )}
+
+            {listaRetidos.length > 0 && (
+              <button
+                type="button"
+                disabled={isProcessing}
+                onClick={() => liberarEmLote(listaRetidos)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                title="Libera todos os tubos retidos para irem na grade do apoio hoje"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Liberar Todos ({listaRetidos.length})</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* LISTAGEM DE TUBOS RETIDOS */}
+        {isLoading ? (
+          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-xs">
+            <RefreshCw className="w-8 h-8 animate-spin text-amber-600 mx-auto mb-3" />
+            <p className="font-bold text-slate-700">Carregando tubos retidos da gradinha...</p>
+          </div>
+        ) : listaFiltrada.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-xs">
+            <div className="w-14 h-14 bg-amber-50 text-amber-700 border border-amber-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <Inbox className="w-7 h-7" />
+            </div>
+            <h3 className="font-black text-slate-800 text-base mb-1">
+              {busca ? "Nenhum tubo retido encontrado na busca" : "Gradinha Vazia!"}
+            </h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto mb-4">
+              {busca
+                ? "Verifique o termo digitado ou limpe a busca para ver todas as amostras."
+                : "Não há tubos de glicada retidos na bancada no momento. Todos os hemogramas estão liberados ou já foram enviados ao Apoio."}
+            </p>
+            <Link
+              href="/triagem-edta"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition"
+            >
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              <span>Ir para a Triagem EDTA</span>
+            </Link>
+          </div>
+        ) : (
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-100/80 border-b border-slate-200 text-[11px] font-black uppercase text-slate-600 tracking-wider">
+                    <th className="py-3 px-3 w-10 text-center">
+                      <button
+                        type="button"
+                        onClick={toggleSelecionarTodos}
+                        className="cursor-pointer text-slate-600 hover:text-slate-900"
+                        title="Selecionar todos"
+                      >
+                        {selecionados.size === listaFiltrada.length ? (
+                          <CheckSquare className="w-4 h-4 text-amber-600" />
+                        ) : (
+                          <Square className="w-4 h-4" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="py-3 px-2 w-12 text-center">Nº</th>
+                    <th className="py-3 px-3 w-28 text-center">Prontuário</th>
+                    <th className="py-3 px-3">Nome do Paciente</th>
+                    <th className="py-3 px-3 w-32 text-center">Data Nasc.</th>
+                    <th className="py-3 px-3 w-40 text-center">Exames</th>
+                    <th className="py-3 px-2 w-20 text-center">VHS?</th>
+                    <th className="py-3 px-3 w-32 text-center">Data Retenção</th>
+                    <th className="py-3 px-4 w-36 text-center">Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {listaFiltrada.map((item, index) => {
+                    const isSel = selecionados.has(item.prontuario);
+                    const rawDn = item.data_nascimento || "";
+                    const dnFormatada = rawDn ? formatarDataNascimento(rawDn) : "—";
+
+                    return (
+                      <tr
+                        key={item.id || item.prontuario || index}
+                        className={`hover:bg-amber-50/50 transition ${
+                          isSel ? "bg-amber-50/70" : index % 2 === 1 ? "bg-slate-50/40" : "bg-white"
+                        }`}
+                      >
+                        <td className="py-3 px-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => toggleSelecionar(item.prontuario)}
+                            className="cursor-pointer text-slate-500 hover:text-slate-900"
+                          >
+                            {isSel ? (
+                              <CheckSquare className="w-4 h-4 text-amber-600" />
+                            ) : (
+                              <Square className="w-4 h-4" />
+                            )}
+                          </button>
+                        </td>
+
+                        <td className="py-3 px-2 text-center font-bold text-slate-500">
+                          {String(index + 1).padStart(2, "0")}
+                        </td>
+
+                        <td className="py-3 px-3 text-center font-mono font-bold text-slate-900">
+                          #{formatarProntuario(item.prontuario)}
+                        </td>
+
+                        <td className="py-3 px-3 font-black text-slate-900 uppercase">
+                          <div className="flex items-center gap-1.5">
+                            {item.urgencia && (
+                              <span className="bg-rose-600 text-white font-black text-[9px] px-1.5 py-0.2 rounded border border-rose-700">
+                                URG
+                              </span>
+                            )}
+                            <span>{item.nome_paciente}</span>
+                          </div>
+                        </td>
+
+                        <td className="py-3 px-3 text-center font-mono font-bold text-slate-800">
+                          {dnFormatada}
+                        </td>
+
+                        <td className="py-3 px-3 text-center">
+                          <span className="inline-block bg-purple-100 text-purple-900 border border-purple-200 px-2 py-0.5 rounded-md font-bold text-[10px]">
+                            Glicada + Hemograma
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-2 text-center">
+                          {item.tem_vhs ? (
+                            <span className="inline-block bg-amber-100 text-amber-900 font-bold px-1.5 py-0.5 rounded text-[10px] border border-amber-200">
+                              SIM
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-[10px]">—</span>
+                          )}
+                        </td>
+
+                        <td className="py-3 px-3 text-center text-slate-500 text-[11px] font-medium">
+                          {item.data || "—"}
+                        </td>
+
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            type="button"
+                            disabled={isProcessing}
+                            onClick={() => liberarItem(item)}
+                            className="w-full px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center justify-center gap-1 cursor-pointer"
+                            title="Liberar para envio na grade de hoje"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>Liberar Hoje</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex items-center justify-between">
+              <span>
+                Mostrando {listaFiltrada.length} de {listaRetidos.length} tubos retidos
+              </span>
+              <span className="text-[11px] italic">
+                Ao clicar em &quot;Liberar Hoje&quot;, o tubo entra automaticamente no relatório de envio do Apoio.
+              </span>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
