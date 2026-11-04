@@ -87,24 +87,18 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
   );
 
   // =========================================================================
-  // 1. GUIA DO APOIO (RELAÇÃO DE REMESSA EXTERNA PARA O FATURAMENTO DA TARDE)
-  // Sem coluna de visto/check; Foco em Nome, Data de Nascimento, Exame e Fracionado
+  // 1. GUIA APOIO (RELAÇÃO DE REMESSA EXTERNA PARA O FATURAMENTO DA TARDE)
+  // Contém Nome, Data de Nascimento, Exame, Fracionado e Check [✓] p/ o Apoio
   // =========================================================================
   const renderGuiaApoio = () => (
     <div className="w-full">
       <div className="border-b-2 border-slate-900 pb-2 mb-3">
         {renderCabecalhoInstitucional()}
 
-        <div className="text-center bg-slate-100 py-1.5 border border-slate-300 rounded relative">
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase bg-purple-900 text-white px-2 py-0.5 rounded">
-            Apoio / Remessa
-          </span>
-          <h2 className="text-[12px] font-black text-slate-900 tracking-wide uppercase">
-            RELAÇÃO DE HEMOGRAMAS PARA FATURAMENTO E ENVIO AO APOIO
+        <div className="text-center bg-slate-100 py-1.5 border border-slate-300 rounded">
+          <h2 className="text-[13px] font-black text-slate-900 tracking-wider uppercase">
+            GUIA APOIO
           </h2>
-          <p className="text-[9px] font-semibold text-slate-700">
-            Triagem de Tubos EDTA (Tampa Roxa) • Remessa da Tarde para Processamento Externo
-          </p>
         </div>
       </div>
 
@@ -128,21 +122,22 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
         </div>
       </div>
 
-      {/* TABELA OFICIAL DO APOIO: SEM CHECK, COM DATA DE NASCIMENTO EM DESTAQUE */}
+      {/* TABELA GUIA APOIO: COM DATA DE NASCIMENTO E CAMPO DE CHECK P/ O APOIO */}
       <table className="w-full border-collapse border border-slate-400 text-[10px] mb-4">
         <thead>
           <tr className="bg-slate-200 text-slate-900 border-b border-slate-400">
             <th className="py-2 px-1.5 border-r border-slate-300 text-center w-10 font-black">Nº</th>
             <th className="py-2 px-3 border-r border-slate-300 text-left font-black">Nome Completo do Paciente</th>
-            <th className="py-2 px-2 border-r border-slate-300 text-center w-36 font-black">Data de Nascimento</th>
-            <th className="py-2 px-2 border-r border-slate-300 text-center w-32 font-black">Exame Solicitado</th>
-            <th className="py-2 px-2 border-slate-400 text-center w-36 font-black">Fracionado p/ Glicada?</th>
+            <th className="py-2 px-2 border-r border-slate-300 text-center w-32 font-black">Data de Nascimento</th>
+            <th className="py-2 px-2 border-r border-slate-300 text-center w-28 font-black">Exame Solicitado</th>
+            <th className="py-2 px-2 border-r border-slate-300 text-center w-32 font-black">Fracionado p/ Glicada?</th>
+            <th className="py-2 px-1.5 border-slate-400 text-center w-16 font-black">Check [✓]</th>
           </tr>
         </thead>
         <tbody>
           {tubosApoio.length === 0 ? (
             <tr>
-              <td colSpan={5} className="py-6 text-center text-slate-500 italic">
+              <td colSpan={6} className="py-6 text-center text-slate-500 italic">
                 Nenhum hemograma a ser enviado ao apoio nesta data.
               </td>
             </tr>
@@ -185,7 +180,7 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
                     HEMOGRAMA
                   </td>
 
-                  <td className="py-1.5 px-2 text-center font-bold">
+                  <td className="py-1.5 px-2 border-r border-slate-300 text-center font-bold">
                     {foiFracionado ? (
                       <span className="inline-block bg-purple-100 text-purple-900 border border-purple-300 px-2 py-0.5 rounded text-[9px] font-black">
                         SIM (500 µL)
@@ -194,6 +189,11 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
                       <span className="text-slate-600 text-[9.5px]">NÃO (Integral)</span>
                     )}
                   </td>
+
+                  {/* Campo para o Lab Apoio fazer o Check */}
+                  <td className="py-1.5 px-1.5 text-center">
+                    <span className="inline-block w-4 h-4 border-2 border-slate-900 rounded bg-white" />
+                  </td>
                 </tr>
               );
             })
@@ -201,49 +201,28 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
         </tbody>
       </table>
 
-      {/* RODAPÉ COM ASSINATURAS DO APOIO */}
+      {/* RODAPÉ GUIA APOIO: APENAS CONFERÊNCIA E NOME */}
       <div className="border border-slate-300 bg-slate-50 rounded p-3 mt-4">
-        <div className="grid grid-cols-2 gap-8">
-          <div className="text-center pt-8 border-t border-slate-400">
-            <p className="font-black uppercase text-[10px] text-slate-900">
-              Responsável pela Triagem (Laboratório Municipal)
-            </p>
-            <p className="text-[9.5px] text-slate-700 font-bold uppercase mt-0.5">
-              {responsavelNome || "Responsável Técnico / Operador"}
-            </p>
-            <p className="text-[8.5px] text-slate-500 mt-1">
-              Data: {formatarData(dataReferencia)} às {horaFinal}
-            </p>
-            <p className="text-[9px] text-slate-600 font-semibold mt-2">
-              Assinatura: _________________________________________
-            </p>
+        <div className="flex items-center justify-between text-[11px]">
+          <div>
+            <span className="font-bold text-slate-600 uppercase">Conferência: </span>
+            <span className="font-black text-slate-900 uppercase">
+              {responsavelNome || "Operador Responsável"}
+            </span>
           </div>
-
-          <div className="text-center pt-8 border-t border-slate-400">
-            <p className="font-black uppercase text-[10px] text-slate-900">
-              Recebedor da Tarde (Faturamento / Apoio)
-            </p>
-            <p className="text-[9px] text-slate-600">
-              Conferência de Grade e Tubos Recebidos
-            </p>
-            <p className="text-[8.5px] text-slate-500 mt-1">
-              Data do Recebimento: ____/____/________
-            </p>
-            <p className="text-[9px] text-slate-600 font-semibold mt-2">
-              Assinatura / Matrícula: _______________________________
-            </p>
+          <div className="text-slate-600 text-[10.5px]">
+            <span>Data da Conferência: </span>
+            <span className="font-black text-slate-900">
+              {formatarData(dataReferencia)} às {horaFinal}
+            </span>
           </div>
-        </div>
-
-        <div className="mt-3 pt-2 border-t border-slate-200 text-center text-[8px] text-slate-500">
-          Guia de Remessa Externa • Laboratório Municipal de Caconde • SUS • Sistema de Automação de Bancada
         </div>
       </div>
     </div>
   );
 
   // =========================================================================
-  // 2. GUIA DO LABORATÓRIO (CONTROLE INTERNO DE BANCADA, VHS E 2 TUBOS)
+  // 2. GUIA LAB (CONTROLE INTERNO DE BANCADA, VHS E 2 TUBOS)
   // Contém Prontuário, VHS, 2 Tubos Coletados e Caixinha de [ ] Check Físico
   // =========================================================================
   const renderGuiaLaboratorio = () => (
@@ -251,16 +230,10 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
       <div className="border-b-2 border-slate-900 pb-2 mb-3">
         {renderCabecalhoInstitucional()}
 
-        <div className="text-center bg-slate-100 py-1.5 border border-slate-300 rounded relative">
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase bg-emerald-800 text-white px-2 py-0.5 rounded">
-            Controle Interno / Bancada
-          </span>
-          <h2 className="text-[12px] font-black text-slate-900 tracking-wide uppercase">
-            GUIA INTERNA DE CONFERÊNCIA DE BANCADA • TRIAGEM EDTA
+        <div className="text-center bg-slate-100 py-1.5 border border-slate-300 rounded">
+          <h2 className="text-[13px] font-black text-slate-900 tracking-wide uppercase">
+            GUIA LAB
           </h2>
-          <p className="text-[9px] font-semibold text-slate-700">
-            Conferência Física de Tubos EDTA, Fracionamento de Glicada e Controle de Coleta de VHS
-          </p>
         </div>
       </div>
 
@@ -386,36 +359,21 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
         </tbody>
       </table>
 
-      {/* RODAPÉ DA BANCADA INTERNA */}
+      {/* RODAPÉ GUIA LAB: APENAS CONFERÊNCIA E NOME */}
       <div className="border border-slate-300 bg-slate-50 rounded p-3 mt-4">
-        <div className="grid grid-cols-2 gap-8">
-          <div className="text-center pt-8 border-t border-slate-400">
-            <p className="font-black uppercase text-[10px] text-slate-900">
-              Operador Técnico da Bancada de Hematologia
-            </p>
-            <p className="text-[9.5px] text-slate-700 font-bold uppercase mt-0.5">
-              {responsavelNome || "Responsável Técnico / Operador"}
-            </p>
-            <p className="text-[8.5px] text-slate-500 mt-1">
-              Data: {formatarData(dataReferencia)} às {horaFinal}
-            </p>
-            <p className="text-[9px] text-slate-600 font-semibold mt-2">
-              Assinatura: _________________________________________
-            </p>
+        <div className="flex items-center justify-between text-[11px]">
+          <div>
+            <span className="font-bold text-slate-600 uppercase">Conferência: </span>
+            <span className="font-black text-slate-900 uppercase">
+              {responsavelNome || "Operador Responsável"}
+            </span>
           </div>
-
-          <div className="text-left pt-2 border-t border-slate-400">
-            <p className="font-black uppercase text-[10px] text-slate-900 mb-1">
-              Observações da Bancada / Ocorrências:
-            </p>
-            <div className="w-full h-14 border border-dashed border-slate-300 rounded bg-white p-1 text-[8.5px] text-slate-400">
-              (Anotações de amostras lipêmicas, hemolisadas, recoletas ou tubos únicos por falta de material)
-            </div>
+          <div className="text-slate-600 text-[10.5px]">
+            <span>Data da Conferência: </span>
+            <span className="font-black text-slate-900">
+              {formatarData(dataReferencia)} às {horaFinal}
+            </span>
           </div>
-        </div>
-
-        <div className="mt-3 pt-2 border-t border-slate-200 text-center text-[8px] text-slate-500">
-          Guia de Controle Interno • Bancada de Hematologia & Triagem EDTA • Laboratório Municipal de Caconde • SUS
         </div>
       </div>
     </div>

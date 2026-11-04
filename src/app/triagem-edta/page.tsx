@@ -1060,8 +1060,8 @@ export default function TriagemEdtaPage() {
 
       tocarSomConfirmado();
       const titulos = {
-        apoio: "📦 Guia do Apoio enviada para impressão!",
-        laboratorio: "🔬 Guia do Laboratório enviada para impressão!",
+        apoio: "📦 Guia Apoio enviada para impressão!",
+        laboratorio: "🔬 Guia Lab enviada para impressão!",
         ambas: "🖨️ Ambas as Guias (Apoio + Lab) enviadas para impressão!",
       };
       setMensagemSucesso({
@@ -2022,27 +2022,27 @@ export default function TriagemEdtaPage() {
               type="button"
               onClick={() => dispararImpressao("apoio")}
               className="flex-1 py-3 px-2 sm:px-3 bg-purple-700 hover:bg-purple-800 active:bg-purple-900 text-white font-black text-xs sm:text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
-              title="Imprimir somente a Guia de Remessa e Faturamento do Apoio"
+              title="Imprimir Guia Apoio"
             >
               <Printer className="w-4 h-4 text-purple-200 shrink-0" />
-              <span className="truncate">📦 Guia do Apoio</span>
+              <span className="truncate">📦 Guia Apoio</span>
             </button>
 
             <button
               type="button"
               onClick={() => dispararImpressao("laboratorio")}
               className="flex-1 py-3 px-2 sm:px-3 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-black text-xs sm:text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
-              title="Imprimir somente a Guia Interna de Bancada (com prontuário, VHS, 2 tubos e vistos)"
+              title="Imprimir Guia Lab"
             >
               <Printer className="w-4 h-4 text-emerald-200 shrink-0" />
-              <span className="truncate">🔬 Guia do Laboratório</span>
+              <span className="truncate">🔬 Guia Lab</span>
             </button>
 
             <button
               type="button"
               onClick={() => dispararImpressao("ambas")}
               className="py-3 px-3 sm:px-4 bg-slate-950 hover:bg-slate-900 active:bg-black text-white font-black text-xs sm:text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 shrink-0"
-              title="Imprimir ambas as guias em lote (Apoio + Bancada do Lab)"
+              title="Imprimir ambas as guias (Apoio + Lab)"
             >
               <Printer className="w-4 h-4 text-amber-300 shrink-0" />
               <span className="hidden sm:inline">🖨️ Ambas as Guias</span>
