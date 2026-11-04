@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
 import React from "react";
-import { ItemRotina, LaudoUrina } from "@/lib/googleSheets";
+import { ItemRotina, LaudoUrina, normalizarDataIso } from "@/lib/googleSheets";
 import { formatarProntuario } from "@/lib/extratorBancada";
 
 interface MapaBancadaPrintViewProps {
@@ -24,16 +24,26 @@ export const MapaBancadaPrintView: React.FC<MapaBancadaPrintViewProps> = ({
   laudos = [],
   dataRotina,
 }) => {
-  const dataFormatada = dataRotina
-    ? dataRotina.split("-").reverse().join("/")
-    : new Date().toLocaleDateString("pt-BR");
+  const dataFormatada = React.useMemo(() => {
+    if (!dataRotina) return new Date().toLocaleDateString("pt-BR");
+    try {
+      const iso = normalizarDataIso(dataRotina);
+      if (iso) {
+        const [ano, mes, dia] = iso.split("-");
+        return `${dia}/${mes}/${ano}`;
+      }
+      return dataRotina;
+    } catch {
+      return dataRotina;
+    }
+  }, [dataRotina]);
 
   // Filtrar pacientes e laudos rigorosamente pela data caso dataRotina esteja preenchida
   const pacientesFiltrados = React.useMemo(() => {
     if (!dataRotina) return pacientes;
-    const alvo = dataRotina.trim();
+    const alvo = normalizarDataIso(dataRotina);
     const filtrados = pacientes.filter((p) => {
-      const d = (p.data || p.data_rotina || "").split("T")[0];
+      const d = normalizarDataIso(p.data || p.data_rotina);
       return !d || d === alvo;
     });
     return filtrados.length > 0 ? filtrados : pacientes;
@@ -42,8 +52,9 @@ export const MapaBancadaPrintView: React.FC<MapaBancadaPrintViewProps> = ({
   // Mapa rápido de laudos por prontuário para preencher a coluna Resultado caso já tenha sido contado no celular
   const mapaLaudos = new Map<string, LaudoUrina>();
   laudos.forEach((l) => {
-    const d = (l.data_hora || "").split("T")[0];
-    if (!dataRotina || !d || d === dataRotina) {
+    const d = normalizarDataIso(l.data_hora);
+    const alvo = normalizarDataIso(dataRotina);
+    if (!alvo || !d || d === alvo) {
       mapaLaudos.set(formatarProntuario(l.prontuario), l);
     }
   });
@@ -238,19 +249,19 @@ export const MapaBancadaPrintView: React.FC<MapaBancadaPrintViewProps> = ({
       <table className="w-full border-collapse border border-black text-[11px]">
         <thead>
           <tr className="bg-neutral-200 text-black font-bold border-b border-black">
-            <th className="border border-black py-1.5 px-2 text-center w-[7%]">
+            <th className="border border-black py-1.5 px-1.5 text-center w-[6%]">
               Nº
             </th>
-            <th className="border border-black py-1.5 px-2.5 text-left w-[27%]">
+            <th className="border border-black py-1.5 px-2 text-left w-[22%]">
               Exame
             </th>
-            <th className="border border-black py-1.5 px-2.5 text-left w-[36%]">
+            <th className="border border-black py-1.5 px-2 text-left w-[34%]">
               Paciente
             </th>
-            <th className="border border-black py-1.5 px-2 text-center w-[12%]">
+            <th className="border border-black py-1.5 px-1 text-center w-[12%]">
               Prontuário
             </th>
-            <th className="border border-black py-1.5 px-2.5 text-left w-[18%]">
+            <th className="border border-black py-1.5 px-2 text-left w-[26%]">
               Resultado
             </th>
           </tr>
@@ -266,19 +277,19 @@ export const MapaBancadaPrintView: React.FC<MapaBancadaPrintViewProps> = ({
                   mudouGrupo ? "border-t-2 border-t-black" : ""
                 } ${index % 2 === 1 ? "bg-neutral-50/70" : "bg-white"}`}
               >
-                <td className="border border-black py-2 px-2 text-center font-mono font-black text-neutral-900">
+                <td className="border border-black py-1.5 px-1.5 text-center font-mono font-black text-neutral-900">
                   {row.numeroNoGrupo}
                 </td>
-                <td className="border border-black py-2 px-2.5 font-bold text-neutral-900">
+                <td className="border border-black py-1.5 px-2 font-bold text-neutral-900">
                   {row.exame}
                 </td>
-                <td className="border border-black py-2 px-2.5 font-semibold text-neutral-900 uppercase">
+                <td className="border border-black py-1.5 px-2 font-semibold text-neutral-900 uppercase">
                   {row.paciente}
                 </td>
-                <td className="border border-black py-2 px-2 text-center font-mono font-bold text-neutral-900">
+                <td className="border border-black py-1.5 px-1 text-center font-mono font-bold text-neutral-900">
                   {row.prontuario}
                 </td>
-                <td className="border border-black py-2 px-2.5 text-neutral-900 font-mono text-[10px]">
+                <td className="border border-black py-1.5 px-2 text-neutral-900 font-mono text-[10px] break-words">
                   {row.resultado}
                 </td>
               </tr>

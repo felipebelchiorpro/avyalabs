@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { QuickChipSelect } from "@/components/QuickChipSelect";
-import { LaudoUrina, ItemRotina, StatusLaudo } from "@/lib/googleSheets";
+import { LaudoUrina, ItemRotina, StatusLaudo, normalizarDataIso } from "@/lib/googleSheets";
 import { formatarProntuario } from "@/lib/extratorBancada";
 import { MapaBancadaPrintView } from "@/components/MapaBancadaPrintView";
 import { RelatorioBancadaDiaPrintView } from "@/components/RelatorioBancadaDiaPrintView";
@@ -241,10 +241,21 @@ export default function BancadaOperacionalPage() {
     }
   }, []);
 
+  const dataHojeRef = useRef(dataHoje);
+  dataHojeRef.current = dataHoje;
+  const dataFimPeriodoRef = useRef(dataFimPeriodo);
+  dataFimPeriodoRef.current = dataFimPeriodo;
+  const modoFiltroDataRef = useRef(modoFiltroData);
+  modoFiltroDataRef.current = modoFiltroData;
+
   // Sincronização automática a cada 8 segundos para manter Computador e Celular em tempo real
   useEffect(() => {
     const timer = setInterval(() => {
-      carregarDadosSincronizados(true);
+      carregarDadosSincronizados(
+        true,
+        dataHojeRef.current,
+        modoFiltroDataRef.current === "periodo" ? dataFimPeriodoRef.current : ""
+      );
     }, 8000);
     return () => clearInterval(timer);
   }, []);
@@ -383,14 +394,14 @@ export default function BancadaOperacionalPage() {
     setTipoImpressao("triagem");
     setTimeout(() => {
       window.print();
-    }, 150);
+    }, 250);
   };
 
   const handleImprimirCanhotos = () => {
     setTipoImpressao("resultados");
     setTimeout(() => {
       window.print();
-    }, 150);
+    }, 250);
   };
 
   const mostrarNotificacao = (
@@ -570,18 +581,31 @@ export default function BancadaOperacionalPage() {
   // Pacientes e Laudos estritamente filtrados pela data da rotina selecionada (evita misturar pacientes de outros dias)
   const laudosDoDia = React.useMemo(() => {
     if (!dataHoje) return laudosDia;
-    const alvo = dataHoje.trim();
-    return laudosDia.filter((l) => (l.data_hora || "").split("T")[0] === alvo);
-  }, [laudosDia, dataHoje]);
+    const alvo = normalizarDataIso(dataHoje);
+    const alvoFim = modoFiltroData === "periodo" && dataFimPeriodo ? normalizarDataIso(dataFimPeriodo) : alvo;
+    return laudosDia.filter((l) => {
+      const d = normalizarDataIso(l.data_hora);
+      if (!d) return true;
+      if (modoFiltroData === "periodo") {
+        return d >= alvo && d <= alvoFim;
+      }
+      return d === alvo;
+    });
+  }, [laudosDia, dataHoje, dataFimPeriodo, modoFiltroData]);
 
   const rotinaDoDia = React.useMemo(() => {
     if (!dataHoje) return rotinaDia;
-    const alvo = dataHoje.trim();
+    const alvo = normalizarDataIso(dataHoje);
+    const alvoFim = modoFiltroData === "periodo" && dataFimPeriodo ? normalizarDataIso(dataFimPeriodo) : alvo;
     return rotinaDia.filter((r) => {
-      const d = (r.data || r.data_rotina || "").split("T")[0];
+      const d = normalizarDataIso(r.data || r.data_rotina);
+      if (!d) return true;
+      if (modoFiltroData === "periodo") {
+        return d >= alvo && d <= alvoFim;
+      }
       return d === alvo;
     });
-  }, [rotinaDia, dataHoje]);
+  }, [rotinaDia, dataHoje, dataFimPeriodo, modoFiltroData]);
 
   // Filtrar sugestões de autocomplete por prontuário ou nome
   const sugestoesBusca = React.useMemo(() => {
@@ -1083,7 +1107,25 @@ export default function BancadaOperacionalPage() {
       const laudoExistente = mapaLaudosHoje.get(pront);
 
       if (laudoExistente) {
-        lista.push(laudoExistente);
+        lista.push({
+          ...laudoExistente,
+          tem_urina:
+            laudoExistente.tem_urina !== false &&
+            (Boolean(r.tem_urina) ||
+              laudoExistente.tem_urina === true ||
+              Boolean(
+                laudoExistente.volume ||
+                  laudoExistente.cor ||
+                  laudoExistente.aspecto ||
+                  laudoExistente.densidade ||
+                  laudoExistente.ph ||
+                  laudoExistente.leucocitos_campo ||
+                  laudoExistente.hemacias_campo
+              )),
+          volume:
+            laudoExistente.volume ||
+            (r.tem_urina !== false ? "60 mL" : ""),
+        });
       } else {
         lista.push({
           prontuario: r.prontuario,
@@ -1127,7 +1169,10 @@ export default function BancadaOperacionalPage() {
     laudosDoDia.forEach((l) => {
       const pront = formatarProntuario(l.prontuario);
       if (!prontuariosProcessados.has(pront)) {
-        lista.push(l);
+        lista.push({
+          ...l,
+          volume: l.volume || (l.tem_urina !== false ? "60 mL" : ""),
+        });
       }
     });
 
@@ -4535,7 +4580,7 @@ export default function BancadaOperacionalPage() {
                   type="button"
                   onClick={() => {
                     setTipoImpressao(previewImpressao === "triagem" ? "triagem" : "resultados");
-                    setTimeout(() => window.print(), 100);
+                    setTimeout(() => window.print(), 250);
                   }}
                   className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-sm transition active:scale-95 cursor-pointer"
                 >

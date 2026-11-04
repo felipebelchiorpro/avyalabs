@@ -2,6 +2,7 @@
 
 import React from "react";
 import { LaudoUrina, LabConfig, DEFAULT_LAB_CONFIG } from "@/types/urinalise";
+import { normalizarDataIso } from "@/lib/googleSheets";
 
 interface RelatorioBancadaDiaPrintViewProps {
   laudos: LaudoUrina[];
@@ -14,39 +15,23 @@ function pacienteTemUrina(l: LaudoUrina): boolean {
   if (l.tem_urina === false) return false;
   if (l.tem_urina === true) return true;
 
-  // Se o paciente tem qualquer exame de bancada rápida/sangue (Proteinúria, VDRL, ABO/Rh, PSO, Dengue, etc.)
-  // e a Urina 1 não foi solicitada explicitamente
-  const temOutroExame = Boolean(
-    l.resultado_proteinuria_rapida ||
-    l.tem_proteinuria_rapida ||
-    l.resultado_vdrl ||
-    l.tem_vdrl ||
-    l.resultado_abo_rh ||
-    l.tem_abo_rh ||
-    l.resultado_pso ||
-    l.tem_pso ||
-    l.tp_tempo ||
-    l.tem_coagulograma ||
-    l.resultado_beta_hcg ||
-    l.tem_beta_hcg ||
-    l.resultado_vhs ||
-    l.tem_vhs ||
-    l.resultado_pcr ||
-    l.tem_pcr ||
-    l.resultado_aslo ||
-    l.tem_aslo ||
-    l.resultado_fr ||
-    l.tem_fr ||
-    l.resultado_dengue ||
-    l.tem_dengue ||
-    l.dengue_ns1
+  // Se houver qualquer dado físico, químico ou sedimentoscópico preenchido, o paciente tem Urina
+  const temDadosUrina = Boolean(
+    l.volume ||
+    l.cor ||
+    l.aspecto ||
+    l.densidade ||
+    l.ph ||
+    l.hemacias_campo ||
+    l.leucocitos_campo ||
+    l.celulas_epiteliais ||
+    l.bacterias ||
+    l.cristais ||
+    l.proteina ||
+    l.glicose
   );
 
-  if (temOutroExame) {
-    return false;
-  }
-
-  return Boolean(l.cor || l.aspecto || l.densidade || l.ph);
+  return temDadosUrina;
 }
 
 /**
@@ -121,8 +106,12 @@ export const RelatorioBancadaDiaPrintView: React.FC<RelatorioBancadaDiaPrintView
   const [dataFormatada, setDataFormatada] = React.useState<string>(() => {
     if (dataSelecionada) {
       try {
-        const [ano, mes, dia] = dataSelecionada.split("-");
-        return `${dia}/${mes}/${ano}`;
+        const iso = normalizarDataIso(dataSelecionada);
+        if (iso) {
+          const [ano, mes, dia] = iso.split("-");
+          return `${dia}/${mes}/${ano}`;
+        }
+        return dataSelecionada;
       } catch {
         return dataSelecionada;
       }
@@ -142,9 +131,9 @@ export const RelatorioBancadaDiaPrintView: React.FC<RelatorioBancadaDiaPrintView
   // Filtrar laudos rigorosamente pela data selecionada para não puxar pacientes de outros dias
   const laudosExibir = React.useMemo(() => {
     if (!dataSelecionada) return laudos;
-    const alvo = dataSelecionada.trim();
+    const alvo = normalizarDataIso(dataSelecionada);
     const filtrados = laudos.filter((l) => {
-      const d = (l.data_hora || "").split("T")[0];
+      const d = normalizarDataIso(l.data_hora);
       return !d || d === alvo;
     });
     return filtrados.length > 0 ? filtrados : laudos;
@@ -264,9 +253,9 @@ export const RelatorioBancadaDiaPrintView: React.FC<RelatorioBancadaDiaPrintView
                           </div>
                         ) : (
                           <div className="space-y-0.5 text-[9.5px] font-mono leading-none">
-                            <div className="flex justify-between border-b border-dotted border-slate-300 pb-0.5">
+                            <div className="flex justify-between border-b border-dotted border-slate-300 pb-0.5 bg-slate-100/80 px-1 rounded-xs">
                               <span className="font-black text-black">VOL:</span>
-                              <span className="font-sans font-medium text-slate-900">{l.volume || "60 mL"}</span>
+                              <span className="font-sans font-bold text-slate-900">{l.volume || "60 mL"}</span>
                             </div>
                             <div className="flex justify-between border-b border-dotted border-slate-300 pb-0.5">
                               <span className="font-black text-black">COR:</span>
@@ -572,7 +561,8 @@ export const RelatorioBancadaDiaPrintView: React.FC<RelatorioBancadaDiaPrintView
                         </div>
                       ) : (
                         <div>
-                          <div className="grid grid-cols-6 gap-1 text-[9px] font-mono">
+                          <div className="grid grid-cols-7 gap-1 text-[9px] font-mono">
+                            <div className="bg-slate-100 px-1 py-0.5 rounded font-black text-slate-950"><b>Vol:</b> {l.volume || "60 mL"}</div>
                             <div><b>Cor:</b> {l.cor || "Am. ouro"}</div>
                             <div><b>Asp:</b> {l.aspecto || "Límpido"}</div>
                             <div><b>Dens:</b> {l.densidade || "1.020"}</div>
@@ -772,7 +762,7 @@ export const RelatorioBancadaDiaPrintView: React.FC<RelatorioBancadaDiaPrintView
                     {recInfo.recUrina ? (
                       <span className="font-black text-rose-700 uppercase">⚠️ RECOLETA URINA I</span>
                     ) : hasUrina ? (
-                      `D: ${l.densidade || "1.020"} | pH: ${l.ph || "6.0"} | Cor: ${l.cor || "Am. ouro"}`
+                      `Vol: ${l.volume || "60 mL"} | Dens: ${l.densidade || "1.020"} | pH: ${l.ph || "6.0"} | Cor: ${l.cor || "Am. ouro"}`
                     ) : (
                       <span className="text-slate-400 italic">Não solicitado</span>
                     )}

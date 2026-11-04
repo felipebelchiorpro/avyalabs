@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { LaudoUrina, StatusLaudo, LabConfig, DEFAULT_LAB_CONFIG } from "@/types/urinalise";
@@ -24,7 +24,7 @@ export default function PainelLaudosPage() {
   const [dataSelecionada, setDataSelecionada] = useState<string>("");
   const [busca, setBusca] = useState<string>("");
   const [statusFiltro, setStatusFiltro] = useState<string>("todos");
-  const [modoRelatorio, setModoRelatorio] = useState<"caixas" | "tabela">("caixas");
+  const [modoRelatorio, setModoRelatorio] = useState<"tiras" | "caixas" | "tabela">("tiras");
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Laudo selecionado para visualização/impressão individual
@@ -97,18 +97,18 @@ export default function PainelLaudosPage() {
     }, 200);
   };
 
-  // Imprimir lote de todos os finalizados
+  // Imprimir lote de todos os exames filtrados ou do dia
   const handleImprimirTodos = () => {
-    const finalizadosList = laudos.filter((l) => l.status === "finalizado");
-    if (finalizadosList.length === 0) {
-      alert("Nenhum laudo com status 'Finalizado' para imprimir.");
+    const lista = laudosFiltrados.length > 0 ? laudosFiltrados : laudos;
+    if (lista.length === 0) {
+      alert("Nenhum exame encontrado para imprimir na data selecionada.");
       return;
     }
     setImprimindoTodos(true);
     setLaudoAtivo(null);
     setTimeout(() => {
       window.print();
-    }, 200);
+    }, 250);
   };
 
   return (
@@ -165,8 +165,21 @@ export default function PainelLaudosPage() {
                 />
               </div>
 
-              {/* Seletor de Modo de Impressão (Caixas Menores vs Tabela) */}
+              {/* Seletor de Modo de Impressão (Tiras vs Caixas vs Tabela) */}
               <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-xl p-1 shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setModoRelatorio("tiras")}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition flex items-center gap-1 ${
+                    modoRelatorio === "tiras"
+                      ? "bg-slate-900 text-white shadow-2xs"
+                      : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                  title="Tiras recortáveis (9 a 12 por folha A4)"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Tiras (Canhotos)</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setModoRelatorio("caixas")}

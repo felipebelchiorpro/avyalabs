@@ -151,9 +151,12 @@ export function normalizarDataIso(val: string | undefined): string {
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
     return s.substring(0, 10);
   }
-  const brMatch = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  const brMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (brMatch) {
-    return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+    const dia = brMatch[1].padStart(2, "0");
+    const mes = brMatch[2].padStart(2, "0");
+    const ano = brMatch[3];
+    return `${ano}-${mes}-${dia}`;
   }
   return s.split("T")[0];
 }
