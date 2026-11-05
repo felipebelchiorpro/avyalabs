@@ -1,6 +1,8 @@
 export const DEFAULT_SHEET_ID = "1BLgTktM_WrcM_bt2jLVsVxjFLmt-uqukm1NqkJ4ebWQ";
 export const DEFAULT_CLIENT_EMAIL = "laboratorio-caconde@citric-inkwell-471303-m8.iam.gserviceaccount.com";
 
+import fs from "fs";
+import path from "path";
 import { google } from "googleapis";
 import {
   LaudoUrina,
@@ -21,6 +23,37 @@ import {
 
 export type { LaudoUrina, RotinaItem, StatusLaudo, ItemTriagemEdta, TipoEdtaDestino, StatusTriagemEdta };
 export type ItemRotina = RotinaItem;
+
+// Diretório e arquivo para persistência física local (evita perda ao reiniciar servidor dev ou offline)
+const DATA_DIR = path.join(process.cwd(), "data");
+const LOCAL_DB_EDTA_PATH = path.join(DATA_DIR, "triagem_edta_db.json");
+
+export function lerDbLocalEdta(): ItemTriagemEdta[] {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (fs.existsSync(LOCAL_DB_EDTA_PATH)) {
+      const raw = fs.readFileSync(LOCAL_DB_EDTA_PATH, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {
+    console.error("Erro ao ler DB local EDTA do disco:", err);
+  }
+  return [];
+}
+
+export function salvarDbLocalEdta(itens: ItemTriagemEdta[]): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(LOCAL_DB_EDTA_PATH, JSON.stringify(itens, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Erro ao salvar DB local EDTA no disco:", err);
+  }
+}
 
 // Armazenamento em memória global para persistir durante a instância e servir de fallback imediato
 const globalForStore = global as unknown as {
@@ -43,8 +76,8 @@ if (!globalForStore.localMemoryLaudos) {
 if (!globalForStore.localMemoryRotina) {
   globalForStore.localMemoryRotina = [];
 }
-if (!globalForStore.localMemoryTriagemEdta) {
-  globalForStore.localMemoryTriagemEdta = [];
+if (!globalForStore.localMemoryTriagemEdta || globalForStore.localMemoryTriagemEdta.length === 0) {
+  globalForStore.localMemoryTriagemEdta = lerDbLocalEdta();
 }
 if (!globalForStore.localMemoryMedicos) {
   globalForStore.localMemoryMedicos = { medicos: [], padrao: "" };
@@ -1372,8 +1405,9 @@ export async function salvarTriagemEdta(
   // Lista consolidada preservando outras datas + rotina mesclada do dia
   const listaFinal = [...itensOutrasDatas, ...listaMesmaDataFinal];
 
-  // Atualizar memória do servidor
+  // Atualizar memória do servidor e persistir em disco local imediatamente
   globalForStore.localMemoryTriagemEdta = listaFinal;
+  salvarDbLocalEdta(listaFinal);
 
   // Mensagem padronizada exata conforme especificação
   const mensagemToast = `Rotina atualizada: ${novosAdicionados} novos pacientes adicionados. ${jaTriadosPreservados} pacientes já triados foram preservados.`;
@@ -1469,6 +1503,9 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
   let itens: ItemTriagemEdta[] = [];
 
   if (!gClient) {
+    if (!globalForStore.localMemoryTriagemEdta || globalForStore.localMemoryTriagemEdta.length === 0) {
+      globalForStore.localMemoryTriagemEdta = lerDbLocalEdta();
+    }
     itens = [...globalForStore.localMemoryTriagemEdta];
   } else {
     const { sheets, sheetId } = gClient;
@@ -1584,11 +1621,18 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
           });
         }
         globalForStore.localMemoryTriagemEdta = itens;
-      } else if (globalForStore.localMemoryTriagemEdta.length > 0) {
+        salvarDbLocalEdta(itens);
+      } else {
+        if (!globalForStore.localMemoryTriagemEdta || globalForStore.localMemoryTriagemEdta.length === 0) {
+          globalForStore.localMemoryTriagemEdta = lerDbLocalEdta();
+        }
         itens = [...globalForStore.localMemoryTriagemEdta];
       }
     } catch (err) {
       console.error("Erro ao ler Triagem EDTA do Google Sheets:", err);
+      if (!globalForStore.localMemoryTriagemEdta || globalForStore.localMemoryTriagemEdta.length === 0) {
+        globalForStore.localMemoryTriagemEdta = lerDbLocalEdta();
+      }
       itens = [...globalForStore.localMemoryTriagemEdta];
     }
   }
@@ -1694,6 +1738,7 @@ export async function atualizarStatusItemEdta(
 
   lista[index] = itemAtualizado;
   globalForStore.localMemoryTriagemEdta = lista;
+  salvarDbLocalEdta(lista);
 
   // Persistir atomicamente no Google Sheets
   const gClient = getGoogleSheetsClient();
@@ -1888,6 +1933,7 @@ export async function excluirItemEdta(
   });
 
   globalForStore.localMemoryTriagemEdta = lista;
+  salvarDbLocalEdta(lista);
 
   // Persiste atomicamente no Google Sheets se conectado
   const gClient = getGoogleSheetsClient();

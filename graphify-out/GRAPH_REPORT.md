@@ -1,17 +1,17 @@
 # Graph Report - Urinalise PWA Automatico  (2026-11-05)
 
 ## Corpus Check
-- 48 files · ~108,084 words
+- 49 files · ~108,465 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 4 file(s) not represented in the graph (top: (none) 2, .ico 1, .css 1)
 
 ## Summary
-- 324 nodes · 786 edges · 23 communities (21 shown, 2 thin omitted)
+- 330 nodes · 799 edges · 24 communities (22 shown, 2 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e9c5e39f`
+- Built from commit: `4b0545a0`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -38,6 +38,7 @@
 - vercel.json
 - postcss.config.mjs
 - EdtaBarcodeScanner.tsx
+- listarLaudos
 
 ## God Nodes (most connected - your core abstractions)
 1. `formatarProntuario()` - 24 edges
@@ -48,41 +49,41 @@
 6. `lucide-react` - 16 edges
 7. `compilerOptions` - 16 edges
 8. `getGoogleSheetsClient()` - 15 edges
-9. `formatarDataNascimento()` - 13 edges
-10. `normalizarProntuario()` - 13 edges
+9. `listarTriagemEdta()` - 14 edges
+10. `salvarTriagemEdta()` - 13 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `POST()` --calls--> `salvarRotinaDia()`  [EXTRACTED]
-  src/app/api/rotina/route.ts → src/lib/googleSheets.ts
 - `ResultadoSalvarTriagemEdta` --references--> `ItemTriagemEdta`  [EXTRACTED]
   src/lib/googleSheets.ts → src/types/urinalise.ts
-- `TriagemEdtaPage()` --calls--> `EdtaOcrScanner()`  [EXTRACTED]
-  src/app/triagem-edta/page.tsx → src/components/EdtaOcrScanner.tsx
-- `TriagemEdtaPage()` --calls--> `ModalSelecionarOperador()`  [EXTRACTED]
-  src/app/triagem-edta/page.tsx → src/components/ModalSelecionarOperador.tsx
-- `TriagemEdtaPage()` --calls--> `formatarDataNascimento()`  [EXTRACTED]
-  src/app/triagem-edta/page.tsx → src/lib/extratorBancada.ts
+- `RetidosGlicadaPage()` --calls--> `normalizarDataIso()`  [EXTRACTED]
+  src/app/retidos-glicada/page.tsx → src/lib/extratorBancada.ts
+- `GET()` --calls--> `isGoogleSheetsConfigured()`  [EXTRACTED]
+  src/app/api/test-sheets/route.ts → src/lib/googleSheets.ts
+- `POST()` --calls--> `salvarOuAtualizarLaudo()`  [EXTRACTED]
+  src/app/api/laudos/route.ts → src/lib/googleSheets.ts
+- `POST()` --calls--> `salvarOuAtualizarLaudo()`  [EXTRACTED]
+  src/app/api/salvar-laudo/route.ts → src/lib/googleSheets.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (23 total, 2 thin omitted)
+## Communities (24 total, 2 thin omitted)
 
 ### Community 0 - "urinalise.ts"
 Cohesion: 0.11
-Nodes (34): lucide-react, react, ConsultaAuditoriaPage(), ImportarRotinaPage(), PainelLaudosPage(), BancadaOperacionalPage(), VALORES_PADRAO_NORMAL, VALORES_SEM_URINA (+26 more)
+Nodes (35): lucide-react, react, ConsultaAuditoriaPage(), ImportarRotinaPage(), PainelLaudosPage(), BancadaOperacionalPage(), VALORES_PADRAO_NORMAL, VALORES_SEM_URINA (+27 more)
 
 ### Community 1 - "triagem-edta/page.tsx"
-Cohesion: 0.25
-Nodes (20): TriagemEdtaPage(), DadosPacienteCapturados, RelatorioTriagemEdtaPrintView(), getAudioContext(), tocarSomApenasGlicada(), tocarSomApenasHemograma(), tocarSomConfirmado(), tocarSomHemogramaGlicada() (+12 more)
+Cohesion: 0.31
+Nodes (17): TriagemEdtaPage(), RelatorioTriagemEdtaPrintView(), getAudioContext(), tocarSomApenasGlicada(), tocarSomApenasHemograma(), tocarSomConfirmado(), tocarSomHemogramaGlicada(), tocarSomNaoEncontrado() (+9 more)
 
 ### Community 2 - "Navbar.tsx"
 Cohesion: 0.17
 Nodes (20): geistMono, geistSans, metadata, RootLayout(), viewport, AppLayoutWrapper(), AppLayoutWrapperProps, Logo() (+12 more)
 
 ### Community 3 - "googleSheets.ts"
-Cohesion: 0.11
-Nodes (19): CABECALHO_LAUDOS, CABECALHO_MEDICOS, CABECALHO_OPERADORES, CABECALHO_ROTINA, CABECALHO_TRIAGEM_EDTA, DEFAULT_CLIENT_EMAIL, DEFAULT_SHEET_ID, extractPrivateKey() (+11 more)
+Cohesion: 0.08
+Nodes (22): CABECALHO_LAUDOS, CABECALHO_MEDICOS, CABECALHO_OPERADORES, CABECALHO_ROTINA, CABECALHO_TRIAGEM_EDTA, DATA_DIR, DEFAULT_CLIENT_EMAIL, DEFAULT_SHEET_ID (+14 more)
 
 ### Community 4 - "package.json"
 Cohesion: 0.15
@@ -93,7 +94,7 @@ Cohesion: 0.11
 Nodes (18): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+10 more)
 
 ### Community 6 - "listarLaudos"
-Cohesion: 0.27
+Cohesion: 0.24
 Nodes (10): dynamic, GET(), revalidate, dynamic, GET(), POST(), revalidate, buscarPacientePorProntuario() (+2 more)
 
 ### Community 7 - "operadores/route.ts"
@@ -101,16 +102,16 @@ Cohesion: 0.43
 Nodes (6): dynamic, GET(), POST(), revalidate, listarOperadoresGoogleSheets(), salvarOperadoresGoogleSheets()
 
 ### Community 8 - "next"
-Cohesion: 0.19
-Nodes (10): nextConfig, next, dynamic, GET(), POST(), revalidate, dynamic, POST() (+2 more)
+Cohesion: 0.21
+Nodes (9): nextConfig, next, dynamic, POST(), revalidate, dynamic, POST(), revalidate (+1 more)
 
 ### Community 9 - "dependencies"
 Cohesion: 0.17
 Nodes (12): dependencies, googleapis@^188.0.0, lucide-react@^1.61.0, next@16.4.3, react@19.3.0, react-dom@19.3.0, @tailwindcss/postcss@^4.3.3, tesseract.js@^7.0.0 (+4 more)
 
 ### Community 10 - "test-sheets/route.ts"
-Cohesion: 0.22
-Nodes (11): dynamic, GET(), revalidate, dynamic, GET(), revalidate, ensureSheetsExist(), extractSpreadsheetId() (+3 more)
+Cohesion: 0.32
+Nodes (7): dynamic, GET(), revalidate, ensureSheetsExist(), extractSpreadsheetId(), getGoogleSheetsCredentials(), indexParaColunaA1()
 
 ### Community 11 - "exportadorXmlExtensao.ts"
 Cohesion: 0.35
@@ -129,8 +130,8 @@ Cohesion: 0.43
 Nodes (6): dynamic, GET(), POST(), revalidate, listarMedicosGoogleSheets(), salvarMedicosGoogleSheets()
 
 ### Community 15 - "extratorBancada.ts"
-Cohesion: 0.14
-Nodes (34): dynamic, GET(), POST(), revalidate, RetidosGlicadaPage(), LoteVdrlPage(), EdtaOcrScanner(), EdtaOcrScannerProps (+26 more)
+Cohesion: 0.13
+Nodes (36): dynamic, GET(), POST(), revalidate, RetidosGlicadaPage(), LoteVdrlPage(), DadosPacienteCapturados, EdtaOcrScanner() (+28 more)
 
 ### Community 16 - "eslint.config.mjs"
 Cohesion: 0.33
@@ -152,22 +153,26 @@ Nodes (3): buildCommand, framework, installCommand
 Cohesion: 0.33
 Nodes (4): html5-qrcode@^2.3.8, html5-qrcode, EdtaBarcodeScanner(), EdtaBarcodeScannerProps
 
+### Community 23 - "listarLaudos"
+Cohesion: 0.43
+Nodes (6): dynamic, GET(), revalidate, GET(), isGoogleSheetsConfigured(), listarLaudos()
+
 ## Knowledge Gaps
 - **2 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `next` connect `next` to `urinalise.ts`, `triagem-edta/page.tsx`, `Navbar.tsx`, `package.json`, `listarLaudos`, `operadores/route.ts`, `dependencies`, `test-sheets/route.ts`, `extrair-arquivo/route.ts`, `medicos/route.ts`, `extratorBancada.ts`?**
-  _High betweenness centrality (0.162) - this node is a cross-community bridge._
+- **Why does `next` connect `next` to `urinalise.ts`, `triagem-edta/page.tsx`, `Navbar.tsx`, `package.json`, `listarLaudos`, `operadores/route.ts`, `dependencies`, `test-sheets/route.ts`, `extrair-arquivo/route.ts`, `medicos/route.ts`, `extratorBancada.ts`, `listarLaudos`?**
+  _High betweenness centrality (0.158) - this node is a cross-community bridge._
 - **Should `urinalise.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.11054421768707483 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.10666666666666667 - nodes in this community are weakly interconnected._
 - **Why does `react` connect `urinalise.ts` to `triagem-edta/page.tsx`, `Navbar.tsx`, `package.json`, `dependencies`, `extratorBancada.ts`, `TriagemEdtaReal.tsx`, `EdtaBarcodeScanner.tsx`?**
-  _High betweenness centrality (0.105) - this node is a cross-community bridge._
+  _High betweenness centrality (0.102) - this node is a cross-community bridge._
 - **Should `googleSheets.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.10526315789473684 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08333333333333333 - nodes in this community are weakly interconnected._
 - **Why does `lucide-react` connect `urinalise.ts` to `triagem-edta/page.tsx`, `Navbar.tsx`, `package.json`, `dependencies`, `extratorBancada.ts`, `TriagemEdtaReal.tsx`, `EdtaBarcodeScanner.tsx`?**
-  _High betweenness centrality (0.060) - this node is a cross-community bridge._
+  _High betweenness centrality (0.058) - this node is a cross-community bridge._
 - **Should `package.json` be split into smaller, more focused modules?**
   _Cohesion score 0.14619883040935672 - nodes in this community are weakly interconnected._
 - **Should `compilerOptions` be split into smaller, more focused modules?**

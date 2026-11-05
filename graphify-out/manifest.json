@@ -132,10 +132,10 @@
     "semantic_hash": "7882cd0db3ed17f538ea9ff17e9cc07a"
   },
   "src/app/retidos-glicada/page.tsx": {
-    "mtime": 1793912852.567103,
-    "seen": 1793914653.9417593,
-    "ast_hash": "691dcf8dade83caa4a8eed2d7297ad22",
-    "semantic_hash": "691dcf8dade83caa4a8eed2d7297ad22"
+    "mtime": 1793917774.3780935,
+    "seen": 1793918047.8540773,
+    "ast_hash": "4e80694c21de52aa59cbb6da7181c943",
+    "semantic_hash": ""
   },
   "src/app/triagem-edta/page.tsx": {
     "mtime": 1793915862.7815413,
@@ -240,9 +240,9 @@
     "semantic_hash": "6c21b9c3e9dd7ef05a969bdd9afd3012"
   },
   "src/lib/googleSheets.ts": {
-    "mtime": 1793915696.8570004,
-    "seen": 1793915905.6810002,
-    "ast_hash": "c3ee3a0a3679e89ef164df35dd553cdb",
+    "mtime": 1793917938.270042,
+    "seen": 1793918047.8541126,
+    "ast_hash": "0c7831067fa22bc595467180edc12056",
     "semantic_hash": ""
   },
   "src/lib/medicosStore.ts": {
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "public/graph.html": {
-    "mtime": 1793915274.0119038,
-    "seen": 1793915905.6810224,
-    "ast_hash": "1a357a89948b6687e31ef44f2a95ae7b",
+    "mtime": 1793915905.7179637,
+    "seen": 1793918047.8541336,
+    "ast_hash": "d4bcdbc47d92cb8c96a399384453d803",
     "semantic_hash": ""
   },
   "public/file.svg": {
@@ -363,6 +363,12 @@
     "mtime": 1792982202.4395545,
     "seen": 1793915273.9767902,
     "ast_hash": "a2760511c65806022ad20adf74370ff3",
+    "semantic_hash": ""
+  },
+  "data/triagem_edta_db.json": {
+    "mtime": 1793918032.9834526,
+    "seen": 1793918047.8540313,
+    "ast_hash": "d751713988987e9331980363e24189ce",
     "semantic_hash": ""
   },
   "package-lock.json": {

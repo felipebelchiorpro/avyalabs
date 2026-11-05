@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { ItemTriagemEdta } from "@/types/urinalise";
-import { formatarProntuario, formatarDataNascimento, normalizarTexto } from "@/lib/extratorBancada";
+import { formatarProntuario, formatarDataNascimento, normalizarTexto, normalizarDataIso } from "@/lib/extratorBancada";
 import {
   Clock,
   Search,
@@ -74,19 +74,31 @@ export default function RetidosGlicadaPage() {
     return itens.filter((i) => {
       const ehRetido =
         i.status === "retido_envio_posterior" ||
-        (i.enviar_hemograma_hoje === false && (i.tipo_destino === "hemograma_glicada" || i.tem_glicada));
+        i.status === "retido_bancada" ||
+        (i as any).status === "retido_local" ||
+        Boolean((i as any).retidoParaFracionar) ||
+        i.tipo_destino === "apenas_glicada" ||
+        (i.enviar_hemograma_hoje === false && (i.tipo_destino === "hemograma_glicada" || i.tem_glicada)) ||
+        (Boolean(i.fracionado_glicada) && !i.colocado_grade);
       return ehRetido;
     });
   }, [itens]);
 
-  const contagemHoje = useMemo(() => listaRetidos.filter((i) => i.data === hojeIso).length, [listaRetidos, hojeIso]);
-  const contagemOntem = useMemo(() => listaRetidos.filter((i) => i.data === ontemIso).length, [listaRetidos, ontemIso]);
+  const contagemHoje = useMemo(
+    () => listaRetidos.filter((i) => normalizarDataIso(i.data) === hojeIso).length,
+    [listaRetidos, hojeIso]
+  );
+  const contagemOntem = useMemo(
+    () => listaRetidos.filter((i) => normalizarDataIso(i.data) === ontemIso).length,
+    [listaRetidos, ontemIso]
+  );
 
   // Filtro de data e busca por nome, prontuário ou data de nascimento
   const listaFiltrada = useMemo(() => {
     let base = listaRetidos;
     if (dataFiltro) {
-      base = base.filter((i) => i.data === dataFiltro);
+      const dataFiltroIso = normalizarDataIso(dataFiltro);
+      base = base.filter((i) => normalizarDataIso(i.data) === dataFiltroIso);
     }
 
     if (!busca.trim()) return base;
