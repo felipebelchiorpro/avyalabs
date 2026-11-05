@@ -47,3 +47,4 @@ Extratores/
 *.zip
 *.pyc
 __pycache__
+graphify-out/cache/

@@ -1276,14 +1276,16 @@ export async function salvarTriagemEdta(
   let jaTriadosPreservados = 0;
   let atualizadosPendentes = 0;
 
-  if (substituirExistente || itensMesmaData.length === 0) {
-    // Primeiro upload do dia ou substituição forçada
+  // BLINDAGEM ANTI-APAGAMENTO: Nunca substitui nem zera a base da data.
+  // Se já existem pacientes da mesma data, executa sempre Merge / Upsert incremental por prontuário normalizado.
+  if (itensMesmaData.length === 0) {
+    // Primeiro upload da data: inicializa com os novos itens ordenados
     listaMesmaDataFinal = [...itensNovosNormalizados].sort((a, b) =>
       a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR")
     );
     novosAdicionados = listaMesmaDataFinal.length;
   } else {
-    // LÓGICA DE MERGE / UPSERT INCREMENTAL POR DATA E PRONTUÁRIO
+    // LÓGICA DE MERGE / UPSERT INCREMENTAL BLINDADO POR DATA E PRONTUÁRIO
     listaMesmaDataFinal = [...itensMesmaData];
     const mapaIndices = new Map<string, number>();
 
@@ -1305,15 +1307,23 @@ export async function salvarTriagemEdta(
           existente.fracionado_glicada ||
           Boolean(existente.horario_bipado);
 
+        // Preserva médico solicitante customizado/editado previamente
+        const medicoPreservado =
+          existente.solicitante &&
+          !existente.solicitante.toLowerCase().includes("clínico(a) geral") &&
+          !existente.solicitante.toLowerCase().includes("clinico(a) geral")
+            ? existente.solicitante
+            : itemNovo.solicitante || existente.solicitante;
+
         if (jaFoiBipadoOuTriado) {
           // 1. Pacientes já existentes que já foram bipados/triados:
-          // MANTÊM RIGOROSAMENTE seu status atual e histórico de triagem!
+          // MANTÊM RIGOROSAMENTE seu status atual, médico editado e histórico de triagem!
           jaTriadosPreservados++;
 
           listaMesmaDataFinal[idxExistente] = {
             ...itemNovo,
             ...existente,
-            // Complementa eventuais dados cadastrais sem perder o estado de triagem
+            solicitante: medicoPreservado,
             data_nascimento: existente.data_nascimento || itemNovo.data_nascimento || "",
             data_nascimento_digitos:
               existente.data_nascimento_digitos || itemNovo.data_nascimento_digitos || "",
@@ -1323,12 +1333,13 @@ export async function salvarTriagemEdta(
           };
         } else {
           // 2. Pacientes já existentes que continuavam com status pendente:
-          // Atualiza dados cadastrais sem perder a posição.
+          // Atualiza dados cadastrais sem perder modificações manuais (como médico).
           atualizadosPendentes++;
 
           listaMesmaDataFinal[idxExistente] = {
-            ...existente,
             ...itemNovo,
+            ...existente,
+            solicitante: medicoPreservado,
             status: "pendente",
             fracionado_glicada: false,
             colocado_grade: false,
@@ -1336,6 +1347,9 @@ export async function salvarTriagemEdta(
             data_nascimento: itemNovo.data_nascimento || existente.data_nascimento || "",
             data_nascimento_digitos:
               itemNovo.data_nascimento_digitos || existente.data_nascimento_digitos || "",
+            exames_originais: Array.from(
+              new Set([...(existente.exames_originais || []), ...(itemNovo.exames_originais || [])])
+            ),
           };
         }
       } else {
@@ -1835,6 +1849,104 @@ export async function atualizarStatusItemEdta(
   }
 
   return itemAtualizado;
+}
+
+/**
+ * Remove pontualmente um único paciente/tubo da Triagem EDTA (caso de glicada recente aproveitada, cancelamento, etc.)
+ * Mantém 100% da integridade do restante da rotina e histórico.
+ */
+export async function excluirItemEdta(
+  prontuario: string,
+  dataFiltro?: string
+): Promise<{ ok: boolean; message: string; itensRestantes: ItemTriagemEdta[] }> {
+  const prontLimpo = String(prontuario || "").trim();
+  const prontFormatado = formatarProntuario(prontLimpo).toLowerCase();
+  const prontNorm = normalizarProntuario(prontLimpo).toLowerCase();
+  const prontDigits = prontLimpo.replace(/\D/g, "");
+  const dataIso = dataFiltro ? normalizarDataIso(dataFiltro) : "";
+
+  let lista = await listarTriagemEdta("todas");
+  const tamanhoOriginal = lista.length;
+
+  lista = lista.filter((item) => {
+    const itemProntRaw = String(item.prontuario || "").trim().toLowerCase();
+    const itemProntFmt = formatarProntuario(item.prontuario).toLowerCase();
+    const itemProntNorm = (item.prontuario_normalizado || normalizarProntuario(item.prontuario)).toLowerCase();
+    const itemProntDigits = itemProntRaw.replace(/\D/g, "");
+    const itemData = normalizarDataIso(item.data);
+
+    const matchPront =
+      itemProntRaw === prontFormatado ||
+      itemProntFmt === prontFormatado ||
+      itemProntNorm === prontNorm ||
+      (prontDigits && itemProntDigits === prontDigits);
+
+    const matchData = dataIso ? itemData === dataIso : true;
+
+    // Remove apenas se bater prontuário e data (se fornecida)
+    return !(matchPront && matchData);
+  });
+
+  globalForStore.localMemoryTriagemEdta = lista;
+
+  // Persiste atomicamente no Google Sheets se conectado
+  const gClient = getGoogleSheetsClient();
+  if (gClient) {
+    try {
+      const { sheets, sheetId } = gClient;
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId: sheetId,
+        range: `${SHEET_NAME_TRIAGEM_EDTA}!A:S`,
+      });
+
+      const hojeIso = new Date().toISOString().split("T")[0];
+      const values = [
+        CABECALHO_TRIAGEM_EDTA,
+        ...lista.map((item, idx) => {
+          const itemData = item.data || hojeIso;
+          const pNorm = item.prontuario_normalizado || normalizarProntuario(item.prontuario);
+          const itemId = item.id || `EDTA-${itemData}-${pNorm || idx + 1}`;
+          return [
+            itemId,
+            itemData,
+            item.prontuario,
+            pNorm,
+            item.data_nascimento || "",
+            item.nome_paciente,
+            item.tipo_destino,
+            item.status,
+            item.fracionado_glicada ? "SIM" : "NAO",
+            item.colocado_grade ? "SIM" : "NAO",
+            item.horario_bipado || "",
+            (item.exames_originais || []).join(" + "),
+            item.solicitante || "Dr(a). Clínico(a) Geral / UBS",
+            item.urgencia ? "SIM" : "NAO",
+            item.tem_vhs ? "SIM" : "NAO",
+            item.coletado_dois_tubos !== false ? "SIM" : "NAO",
+            item.qtd_tubos_coletados || (item.coletado_dois_tubos !== false ? 2 : 1),
+            item.enviar_hemograma_hoje !== false ? "SIM" : "NAO",
+            item.data_liberacao_apoio || "",
+          ];
+        }),
+      ];
+
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: `${SHEET_NAME_TRIAGEM_EDTA}!A1`,
+        valueInputOption: "RAW",
+        requestBody: { values },
+      });
+    } catch (sheetErr) {
+      console.warn("Aviso ao sincronizar exclusão pontual no Google Sheets:", sheetErr);
+    }
+  }
+
+  const removido = lista.length < tamanhoOriginal;
+  return {
+    ok: true,
+    message: removido ? "Paciente removido da rotina com sucesso." : "Paciente não encontrado para remoção.",
+    itensRestantes: lista,
+  };
 }
 
 export function emitirSinalImpressaoEdta(

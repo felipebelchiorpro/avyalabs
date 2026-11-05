@@ -1,0 +1,534 @@
+{
+  "communities": {
+    "0": [
+      "ref_lucide_react",
+      "ref_react",
+      "src_app_configuracoes_page",
+      "src_app_configuracoes_page_configuracoespage",
+      "src_app_consulta_page",
+      "src_app_consulta_page_consultaauditoriapage",
+      "src_app_importar_page",
+      "src_app_importar_page_importarrotinapage",
+      "src_app_laudos_page",
+      "src_app_laudos_page_painellaudospage",
+      "src_app_page",
+      "src_app_page_bancadaoperacionalpage",
+      "src_app_page_valores_padrao_normal",
+      "src_app_page_valores_sem_urina",
+      "src_app_vdrl_page",
+      "src_components_laudoprintview",
+      "src_components_laudoprintview_laudoprintview",
+      "src_components_laudoprintview_laudoprintviewprops",
+      "src_components_mapabancadaprintview",
+      "src_components_mapabancadaprintview_linhabancadaindividual",
+      "src_components_mapabancadaprintview_mapabancadaprintview",
+      "src_components_mapabancadaprintview_mapabancadaprintviewprops",
+      "src_components_quickchipselect",
+      "src_components_quickchipselect_quickchipselect",
+      "src_components_quickchipselect_quickchipselectprops",
+      "src_components_relatoriobancadadiaprintview",
+      "src_components_relatoriobancadadiaprintview_extrairinforecoleta",
+      "src_components_relatoriobancadadiaprintview_pacientetemurina",
+      "src_components_relatoriobancadadiaprintview_relatoriobancadadiaprintview",
+      "src_components_relatoriobancadadiaprintview_relatoriobancadadiaprintviewprops",
+      "src_components_statusbadge",
+      "src_components_statusbadge_statusbadge",
+      "src_components_statusbadge_statusbadgeprops",
+      "src_lib_extratorbancada_normalizardataiso",
+      "src_lib_mockdata",
+      "src_lib_mockdata_hoje_iso_date",
+      "src_lib_mockdata_mock_laudos",
+      "src_lib_mockdata_mock_rotina",
+      "src_types_urinalise",
+      "src_types_urinalise_default_lab_config",
+      "src_types_urinalise_itemrotina",
+      "src_types_urinalise_labconfig",
+      "src_types_urinalise_laudourina",
+      "src_types_urinalise_opcoes_aspecto_urina",
+      "src_types_urinalise_opcoes_cores_urina",
+      "src_types_urinalise_rotinaitem",
+      "src_types_urinalise_statuslaudo",
+      "src_types_urinalise_valores_padrao_normal",
+      "src_types_urinalise_valores_sem_urina"
+    ],
+    "1": [
+      "src_app_retidos_glicada_page",
+      "src_app_retidos_glicada_page_retidosglicadapage",
+      "src_app_triagem_edta_page",
+      "src_app_triagem_edta_page_triagemedtapage",
+      "src_components_edtaocrscanner",
+      "src_components_edtaocrscanner_dadospacientecapturados",
+      "src_components_edtaocrscanner_edtaocrscanner",
+      "src_components_edtaocrscanner_edtaocrscannerprops",
+      "src_components_relatoriotriagemedtaprintview",
+      "src_components_relatoriotriagemedtaprintview_relatoriotriagemedtaprintview",
+      "src_components_relatoriotriagemedtaprintview_relatoriotriagemedtaprintviewprops",
+      "src_lib_audiofeedback",
+      "src_lib_audiofeedback_getaudiocontext",
+      "src_lib_audiofeedback_tocarsomapenasglicada",
+      "src_lib_audiofeedback_tocarsomapenashemograma",
+      "src_lib_audiofeedback_tocarsomconfirmado",
+      "src_lib_audiofeedback_tocarsomhemogramaglicada",
+      "src_lib_audiofeedback_tocarsomnaoencontrado",
+      "src_lib_audiofeedback_tocarsomsutil",
+      "src_lib_extratorbancada",
+      "src_lib_extratorbancada_classificarexamebancada",
+      "src_lib_extratorbancada_extrairexamesbancadaconectasus",
+      "src_lib_extratorbancada_extrairtriagemedta",
+      "src_lib_extratorbancada_formatardatanascimento",
+      "src_lib_extratorbancada_identificarexameedta",
+      "src_lib_extratorbancada_itemrotina",
+      "src_lib_extratorbancada_linhacoletabruta",
+      "src_lib_extratorbancada_linharelatoriobancada",
+      "src_lib_extratorbancada_normalizardigitosdata",
+      "src_lib_extratorbancada_normalizartexto",
+      "src_lib_extratorbancada_processarmatrizlinhasbancada",
+      "src_lib_extratorbancada_resultadoextracaobancada",
+      "src_lib_extratorbancada_resultadoprocessamentobancada",
+      "src_lib_medicosstore",
+      "src_lib_medicosstore_adicionarmedico",
+      "src_lib_medicosstore_definirmedicopadrao",
+      "src_lib_medicosstore_medicos_padrao_iniciais",
+      "src_lib_medicosstore_obtermedicopadrao",
+      "src_lib_medicosstore_obtermedicoscadastrados",
+      "src_lib_medicosstore_removermedico",
+      "src_lib_medicosstore_salvarmedicoscadastrados",
+      "src_lib_medicosstore_sincronizarmedicoscomservidor",
+      "src_types_urinalise_itemtriagemedta",
+      "tesseract_js"
+    ],
+    "2": [
+      "src_app_globals",
+      "src_app_layout",
+      "src_app_layout_geistmono",
+      "src_app_layout_geistsans",
+      "src_app_layout_metadata",
+      "src_app_layout_rootlayout",
+      "src_app_layout_viewport",
+      "src_components_applayoutwrapper",
+      "src_components_applayoutwrapper_applayoutwrapper",
+      "src_components_applayoutwrapper_applayoutwrapperprops",
+      "src_components_logo",
+      "src_components_logo_logo",
+      "src_components_logo_logoprops",
+      "src_components_modalselecionaroperador",
+      "src_components_modalselecionaroperador_modalselecionaroperador",
+      "src_components_modalselecionaroperador_modalselecionaroperadorprops",
+      "src_components_navbar",
+      "src_components_navbar_grupomenu",
+      "src_components_navbar_itemmenu",
+      "src_components_navbar_navbar",
+      "src_lib_operadoresstore",
+      "src_lib_operadoresstore_adicionaroperador",
+      "src_lib_operadoresstore_definiroperadorativo",
+      "src_lib_operadoresstore_obteroperadorativo",
+      "src_lib_operadoresstore_obteroperadorescadastrados",
+      "src_lib_operadoresstore_removeroperador",
+      "src_lib_operadoresstore_sincronizaroperadorescomservidor"
+    ],
+    "3": [
+      "src_lib_googlesheets",
+      "src_lib_googlesheets_cabecalho_laudos",
+      "src_lib_googlesheets_cabecalho_medicos",
+      "src_lib_googlesheets_cabecalho_operadores",
+      "src_lib_googlesheets_cabecalho_rotina",
+      "src_lib_googlesheets_cabecalho_triagem_edta",
+      "src_lib_googlesheets_default_client_email",
+      "src_lib_googlesheets_default_sheet_id",
+      "src_lib_googlesheets_extractprivatekey",
+      "src_lib_googlesheets_globalforstore",
+      "src_lib_googlesheets_itemrotina",
+      "src_lib_googlesheets_resultadosalvartriagemedta",
+      "src_lib_googlesheets_sheet_name_laudos",
+      "src_lib_googlesheets_sheet_name_medicos",
+      "src_lib_googlesheets_sheet_name_operadores",
+      "src_lib_googlesheets_sheet_name_rotina",
+      "src_lib_googlesheets_sheet_name_triagem_edta",
+      "src_lib_googlesheets_tryextractfromcandidate",
+      "src_types_urinalise_statustriagemedta",
+      "src_types_urinalise_tipoedtadestino"
+    ],
+    "4": [
+      "package",
+      "package_devdependencies",
+      "package_devdependencies_tailwindcss",
+      "package_devdependencies_tailwindcss_turbopack",
+      "package_devdependencies_types_node",
+      "package_devdependencies_types_pdf_parse",
+      "package_devdependencies_types_react",
+      "package_devdependencies_types_react_dom",
+      "package_devdependencies_typescript",
+      "package_name",
+      "package_private",
+      "package_version",
+      "ref_tailwindcss",
+      "ref_tailwindcss_turbopack",
+      "ref_types_node",
+      "ref_types_pdf_parse",
+      "ref_types_react",
+      "ref_types_react_dom",
+      "ref_typescript"
+    ],
+    "5": [
+      "tsconfig",
+      "tsconfig_compileroptions",
+      "tsconfig_compileroptions_allowjs",
+      "tsconfig_compileroptions_esmoduleinterop",
+      "tsconfig_compileroptions_incremental",
+      "tsconfig_compileroptions_isolatedmodules",
+      "tsconfig_compileroptions_jsx",
+      "tsconfig_compileroptions_lib",
+      "tsconfig_compileroptions_module",
+      "tsconfig_compileroptions_moduleresolution",
+      "tsconfig_compileroptions_noemit",
+      "tsconfig_compileroptions_paths",
+      "tsconfig_compileroptions_plugins",
+      "tsconfig_compileroptions_resolvejsonmodule",
+      "tsconfig_compileroptions_skiplibcheck",
+      "tsconfig_compileroptions_strict",
+      "tsconfig_compileroptions_target",
+      "tsconfig_exclude",
+      "tsconfig_include"
+    ],
+    "6": [
+      "src_app_api_paciente_route",
+      "src_app_api_paciente_route_dynamic",
+      "src_app_api_paciente_route_get",
+      "src_app_api_paciente_route_revalidate",
+      "src_app_api_rotina_route",
+      "src_app_api_rotina_route_dynamic",
+      "src_app_api_rotina_route_get",
+      "src_app_api_rotina_route_post",
+      "src_app_api_rotina_route_revalidate",
+      "src_app_vdrl_page_lotevdrlpage",
+      "src_lib_extratorbancada_aplicarflagsexamesnoitem",
+      "src_lib_extratorbancada_formatarprontuario",
+      "src_lib_googlesheets_buscarpacienteporprontuario",
+      "src_lib_googlesheets_listarlaudos",
+      "src_lib_googlesheets_listarrotinadia",
+      "src_lib_googlesheets_salvarrotinadia"
+    ],
+    "7": [
+      "src_app_api_triagem_edta_route",
+      "src_app_api_triagem_edta_route_dynamic",
+      "src_app_api_triagem_edta_route_get",
+      "src_app_api_triagem_edta_route_post",
+      "src_app_api_triagem_edta_route_revalidate",
+      "src_lib_extratorbancada_normalizarprontuario",
+      "src_lib_googlesheets_atualizarstatusitemedta",
+      "src_lib_googlesheets_consumirsinalimpressaoedta",
+      "src_lib_googlesheets_emitirsinalimpressaoedta",
+      "src_lib_googlesheets_getgooglesheetsclient",
+      "src_lib_googlesheets_listartriagemedta",
+      "src_lib_googlesheets_normalizardataiso",
+      "src_lib_googlesheets_obtersinalimpressaoedta",
+      "src_lib_googlesheets_salvartriagemedta"
+    ],
+    "8": [
+      "next_config",
+      "next_config_nextconfig",
+      "ref_next",
+      "src_app_api_laudos_route",
+      "src_app_api_laudos_route_dynamic",
+      "src_app_api_laudos_route_get",
+      "src_app_api_laudos_route_post",
+      "src_app_api_laudos_route_revalidate",
+      "src_app_api_salvar_laudo_route",
+      "src_app_api_salvar_laudo_route_dynamic",
+      "src_app_api_salvar_laudo_route_post",
+      "src_app_api_salvar_laudo_route_revalidate",
+      "src_lib_googlesheets_salvarouatualizarlaudo"
+    ],
+    "9": [
+      "package_dependencies",
+      "package_dependencies_googleapis",
+      "package_dependencies_lucide_react",
+      "package_dependencies_next",
+      "package_dependencies_react",
+      "package_dependencies_react_dom",
+      "package_dependencies_tailwindcss_postcss",
+      "package_dependencies_tesseract_js",
+      "ref_googleapis",
+      "ref_react_dom",
+      "ref_tailwindcss_postcss",
+      "ref_tesseract_js"
+    ],
+    "10": [
+      "src_app_api_laudos_dia_route",
+      "src_app_api_laudos_dia_route_dynamic",
+      "src_app_api_laudos_dia_route_get",
+      "src_app_api_laudos_dia_route_revalidate",
+      "src_app_api_test_sheets_route",
+      "src_app_api_test_sheets_route_dynamic",
+      "src_app_api_test_sheets_route_get",
+      "src_app_api_test_sheets_route_revalidate",
+      "src_lib_googlesheets_extractspreadsheetid",
+      "src_lib_googlesheets_getgooglesheetscredentials",
+      "src_lib_googlesheets_isgooglesheetsconfigured"
+    ],
+    "11": [
+      "src_lib_exportadorxmlextensao",
+      "src_lib_exportadorxmlextensao_baixarxlsxurinalise",
+      "src_lib_exportadorxmlextensao_baixarxmlurinalise",
+      "src_lib_exportadorxmlextensao_escaparxml",
+      "src_lib_exportadorxmlextensao_estanointervalodata",
+      "src_lib_exportadorxmlextensao_extrairnumero",
+      "src_lib_exportadorxmlextensao_formatardataptbr",
+      "src_lib_exportadorxmlextensao_gerarstringxmlurinalise",
+      "src_lib_exportadorxmlextensao_itemxmlurinalise",
+      "src_lib_exportadorxmlextensao_limparaspecto",
+      "src_lib_exportadorxmlextensao_preparardadosxmlurinalise"
+    ],
+    "12": [
+      "package_dependencies_pdf_parse",
+      "package_dependencies_xlsx",
+      "pdf_parse",
+      "ref_pdf_parse",
+      "ref_xlsx",
+      "src_app_api_extrair_arquivo_route",
+      "src_app_api_extrair_arquivo_route_dynamic",
+      "src_app_api_extrair_arquivo_route_extracttextfrompdf",
+      "src_app_api_extrair_arquivo_route_post",
+      "src_app_api_extrair_arquivo_route_revalidate"
+    ],
+    "13": [
+      "public_manifest",
+      "public_manifest_background_color",
+      "public_manifest_description",
+      "public_manifest_display",
+      "public_manifest_icons",
+      "public_manifest_name",
+      "public_manifest_orientation",
+      "public_manifest_short_name",
+      "public_manifest_start_url",
+      "public_manifest_theme_color"
+    ],
+    "14": [
+      "src_app_api_medicos_route",
+      "src_app_api_medicos_route_dynamic",
+      "src_app_api_medicos_route_get",
+      "src_app_api_medicos_route_post",
+      "src_app_api_medicos_route_revalidate",
+      "src_lib_googlesheets_ensuresheetsexist",
+      "src_lib_googlesheets_indexparacolunaa1",
+      "src_lib_googlesheets_listarmedicosgooglesheets",
+      "src_lib_googlesheets_salvarmedicosgooglesheets"
+    ],
+    "15": [
+      "src_app_api_operadores_route",
+      "src_app_api_operadores_route_dynamic",
+      "src_app_api_operadores_route_get",
+      "src_app_api_operadores_route_post",
+      "src_app_api_operadores_route_revalidate",
+      "src_lib_googlesheets_listaroperadoresgooglesheets",
+      "src_lib_googlesheets_salvaroperadoresgooglesheets"
+    ],
+    "16": [
+      "eslint_config",
+      "eslint_config_eslintconfig",
+      "package_devdependencies_eslint",
+      "package_devdependencies_eslint_config_next",
+      "ref_eslint",
+      "ref_eslint_config_next"
+    ],
+    "17": [
+      "html5_qrcode",
+      "package_dependencies_html5_qrcode",
+      "ref_html5_qrcode",
+      "src_components_edtabarcodescanner",
+      "src_components_edtabarcodescanner_edtabarcodescanner",
+      "src_components_edtabarcodescanner_edtabarcodescannerprops"
+    ],
+    "18": [
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_dev",
+      "package_scripts_lint",
+      "package_scripts_start"
+    ],
+    "19": [
+      "vercel",
+      "vercel_buildcommand",
+      "vercel_framework",
+      "vercel_installcommand"
+    ],
+    "20": [
+      "configurar_planilha_google",
+      "configurar_planilha_google_configurarplanilhalaboratorio"
+    ],
+    "21": [
+      "postcss_config",
+      "postcss_config_config"
+    ]
+  },
+  "cohesion": {
+    "0": 0.11054421768707483,
+    "1": 0.12790697674418605,
+    "2": 0.16809116809116809,
+    "3": 0.10526315789473684,
+    "4": 0.14619883040935672,
+    "5": 0.10526315789473684,
+    "6": 0.23333333333333334,
+    "7": 0.32967032967032966,
+    "8": 0.19230769230769232,
+    "9": 0.16666666666666666,
+    "10": 0.2545454545454545,
+    "11": 0.34545454545454546,
+    "12": 0.2222222222222222,
+    "13": 0.2,
+    "14": 0.3333333333333333,
+    "15": 0.42857142857142855,
+    "16": 0.3333333333333333,
+    "17": 0.3333333333333333,
+    "18": 0.4,
+    "19": 0.5,
+    "20": 1.0,
+    "21": 1.0
+  },
+  "gods": [
+    {
+      "id": "src_lib_extratorbancada_formatarprontuario",
+      "label": "formatarProntuario()",
+      "degree": 23
+    },
+    {
+      "id": "src_app_triagem_edta_page_triagemedtapage",
+      "label": "TriagemEdtaPage()",
+      "degree": 22
+    },
+    {
+      "id": "ref_react",
+      "label": "react",
+      "degree": 22
+    },
+    {
+      "id": "ref_next",
+      "label": "next",
+      "degree": 19
+    },
+    {
+      "id": "src_types_urinalise_laudourina",
+      "label": "LaudoUrina",
+      "degree": 16
+    },
+    {
+      "id": "tsconfig_compileroptions",
+      "label": "compilerOptions",
+      "degree": 16
+    },
+    {
+      "id": "ref_lucide_react",
+      "label": "lucide-react",
+      "degree": 15
+    },
+    {
+      "id": "src_lib_googlesheets_getgooglesheetsclient",
+      "label": "getGoogleSheetsClient()",
+      "degree": 14
+    },
+    {
+      "id": "src_lib_extratorbancada_formatardatanascimento",
+      "label": "formatarDataNascimento()",
+      "degree": 13
+    },
+    {
+      "id": "src_lib_googlesheets_ensuresheetsexist",
+      "label": "ensureSheetsExist()",
+      "degree": 12
+    }
+  ],
+  "surprises": [
+    {
+      "source": "ResultadoSalvarTriagemEdta",
+      "target": "ItemTriagemEdta",
+      "source_files": [
+        "src/lib/googleSheets.ts",
+        "src/types/urinalise.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities; peripheral node `ResultadoSalvarTriagemEdta` unexpectedly reaches hub `ItemTriagemEdta`"
+    },
+    {
+      "source": "StatusBadgeProps",
+      "target": "StatusLaudo",
+      "source_files": [
+        "src/components/StatusBadge.tsx",
+        "src/types/urinalise.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "peripheral node `StatusBadgeProps` unexpectedly reaches hub `StatusLaudo`"
+    },
+    {
+      "source": "RelatorioTriagemEdtaPrintViewProps",
+      "target": "LabConfig",
+      "source_files": [
+        "src/components/RelatorioTriagemEdtaPrintView.tsx",
+        "src/types/urinalise.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "ImportarRotinaPage()",
+      "target": "processarMatrizLinhasBancada()",
+      "source_files": [
+        "src/app/importar/page.tsx",
+        "src/lib/extratorBancada.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "BancadaOperacionalPage()",
+      "target": "baixarXlsxUrinalise()",
+      "source_files": [
+        "src/app/page.tsx",
+        "src/lib/exportadorXmlExtensao.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "bridges separate communities"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `next` connect `Community 8` to `Community 0`, `Community 1`, `Community 2`, `Community 4`, `Community 6`, `Community 7`, `Community 9`, `Community 10`, `Community 12`, `Community 14`, `Community 15`?",
+      "why": "High betweenness centrality (0.166) - this node is a cross-community bridge."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 0` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.11054421768707483 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `react` connect `Community 0` to `Community 1`, `Community 2`, `Community 4`, `Community 9`, `Community 17`?",
+      "why": "High betweenness centrality (0.088) - this node is a cross-community bridge."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 1` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.12790697674418605 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `lucide-react` connect `Community 0` to `Community 1`, `Community 2`, `Community 4`, `Community 9`, `Community 17`?",
+      "why": "High betweenness centrality (0.046) - this node is a cross-community bridge."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 3` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.10526315789473684 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 4` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.14619883040935672 - nodes in this community are weakly interconnected."
+    }
+  ]
+}

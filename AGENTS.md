@@ -7,3 +7,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## REGRA MANDATÓRIA: Processamento de Prompts via Graphify
+
+Para TODOS os prompts recebidos neste projeto:
+1. **Consulta Prévia**: Antes de gerar respostas de arquitetura ou modificar o código, execute `graphify query "<termo_do_prompt>"` ou use `graphify-out/graph.json` para mapear dependências e nós de impacto.
+2. **Atualização Pós-Edição**: Após qualquer modificação em arquivos do projeto, execute `graphify update .` para manter os grafos e interfaces visuais atualizados.

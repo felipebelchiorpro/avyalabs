@@ -6,6 +6,7 @@ import {
   listarTriagemEdta,
   salvarTriagemEdta,
   atualizarStatusItemEdta,
+  excluirItemEdta,
   emitirSinalImpressaoEdta,
   obterSinalImpressaoEdta,
   consumirSinalImpressaoEdta,
@@ -127,6 +128,19 @@ export async function POST(request: NextRequest) {
         message: "Status do tubo EDTA atualizado com sucesso!",
         item: itemAtualizado,
       });
+    }
+
+    if (acao === "excluir_item") {
+      const prontuario = body.prontuario;
+      const data = body.data;
+      if (!prontuario) {
+        return NextResponse.json(
+          { ok: false, error: "Prontuário obrigatório para exclusão pontual." },
+          { status: 400 }
+        );
+      }
+      const resultado = await excluirItemEdta(prontuario, data);
+      return NextResponse.json(resultado);
     }
 
     // Default: Salvar lista com lógica de Merge / Upsert incremental

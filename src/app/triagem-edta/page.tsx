@@ -130,6 +130,7 @@ export default function TriagemEdtaPage() {
   // Feedback e Sincronização
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [confirmandoExclusaoTubo, setConfirmandoExclusaoTubo] = useState<boolean>(false);
   const [mensagemSucesso, setMensagemSucesso] = useState<{
     titulo: string;
     subtitulo?: string;
@@ -933,6 +934,45 @@ export default function TriagemEdtaPage() {
     setEditandoDataNasc(false);
     setEditandoMedico(false);
     setScannerPausado(false);
+    setConfirmandoExclusaoTubo(false);
+  };
+
+  // EXCLUSÃO PONTUAL DE PACIENTE INDIVIDUAL (Caso de glicada recente aproveitada, cancelamento, etc.)
+  const handleExcluirPacienteAtivo = async () => {
+    if (!tuboAtivo) return;
+    limparTimerAutoAvanco();
+    setIsSyncing(true);
+
+    try {
+      const res = await fetch("/api/triagem-edta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          acao: "excluir_item",
+          prontuario: tuboAtivo.prontuario,
+          data: tuboAtivo.data,
+        }),
+      });
+
+      const resData = await res.json();
+      if (resData.ok) {
+        setItens((prev) => prev.filter((i) => i.prontuario !== tuboAtivo.prontuario));
+        setMensagemSucesso({
+          titulo: "Paciente removido da rotina do dia!",
+          subtitulo: `Prontuário ${tuboAtivo.prontuario} excluído individualmente. Demais pacientes mantidos.`,
+        });
+        fecharCardConferencia();
+        tocarSomSutil();
+      } else {
+        alert(resData.error || "Erro ao excluir paciente.");
+      }
+    } catch (err: any) {
+      console.error("Erro ao excluir paciente:", err);
+      alert("Erro ao comunicar com o servidor para excluir paciente.");
+    } finally {
+      setIsSyncing(false);
+      setConfirmandoExclusaoTubo(false);
+    }
   };
 
   // LIBERAR TUBO RETIDO DIRETAMENTE PARA O APOIO DE HOJE (1 CLIQUE)
@@ -1608,7 +1648,38 @@ export default function TriagemEdtaPage() {
           </div>
         ) : null}
 
-        {/* BOTÕES DE AÇÃO PRINCIPAIS: BOTÃO VERDE DE CONFIRMAÇÃO IMEDIATA E CANCELAR */}
+        {/* ALERTA DE CONFIRMAÇÃO DE EXCLUSÃO PONTUAL */}
+        {confirmandoExclusaoTubo && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 space-y-2 animate-in fade-in">
+            <div className="flex items-center gap-2 text-red-900 font-bold text-xs">
+              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>Remover este paciente da triagem do dia?</span>
+            </div>
+            <p className="text-[11px] text-red-700 leading-relaxed">
+              Esta ação remove <strong>apenas este paciente específico</strong> da rotina (caso de glicada recente aproveitada ou cancelamento). Todos os outros registros permanecem 100% seguros.
+            </p>
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                disabled={isSyncing}
+                onClick={handleExcluirPacienteAtivo}
+                className="py-2 px-3.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Sim, Confirmar Exclusão</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmandoExclusaoTubo(false)}
+                className="py-2 px-3.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Voltar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* BOTÕES DE AÇÃO PRINCIPAIS: BOTÃO VERDE DE CONFIRMAÇÃO IMEDIATA, EXCLUIR E CANCELAR */}
         <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
           <button
             type="button"
@@ -1631,6 +1702,23 @@ export default function TriagemEdtaPage() {
               {!autoAvancoPausado && tempoRestante > 0 ? ` (${tempoRestante}s)` : ""}
             </span>
           </button>
+
+          {!confirmandoExclusaoTubo && (
+            <button
+              type="button"
+              disabled={isSyncing}
+              onClick={() => {
+                limparTimerAutoAvanco();
+                setAutoAvancoPausado(true);
+                setConfirmandoExclusaoTubo(true);
+              }}
+              className="py-3 px-3 text-xs font-bold text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition cursor-pointer flex items-center gap-1.5 shrink-0"
+              title="Exclusão pontual deste paciente (ex: glicada recente aproveitada)"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Excluir</span>
+            </button>
+          )}
 
           <button
             type="button"
