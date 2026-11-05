@@ -240,9 +240,9 @@
     "semantic_hash": "6c21b9c3e9dd7ef05a969bdd9afd3012"
   },
   "src/lib/googleSheets.ts": {
-    "mtime": 1793917938.270042,
-    "seen": 1793918047.8541126,
-    "ast_hash": "0c7831067fa22bc595467180edc12056",
+    "mtime": 1793922808.9211073,
+    "seen": 1793922856.127967,
+    "ast_hash": "b94866c32e19f3f61174c5e9e50baac7",
     "semantic_hash": ""
   },
   "src/lib/medicosStore.ts": {
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "public/graph.html": {
-    "mtime": 1793918047.886209,
-    "seen": 1793919138.01499,
-    "ast_hash": "b342fe12bb6afaee5a5898d80a9ecb17",
+    "mtime": 1793919138.0495028,
+    "seen": 1793922856.1279902,
+    "ast_hash": "c6525442b1f283ed68d657732a456de5",
     "semantic_hash": ""
   },
   "public/file.svg": {

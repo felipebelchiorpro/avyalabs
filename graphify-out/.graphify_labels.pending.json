@@ -5,22 +5,11 @@
   "3": "googleSheets.ts",
   "4": "package.json",
   "5": "compilerOptions",
-  "6": "listarLaudos",
-  "7": "operadores/route.ts",
   "8": "next",
-  "9": "dependencies",
-  "10": "test-sheets/route.ts",
-  "11": "exportadorXmlExtensao.ts",
-  "12": "extrair-arquivo/route.ts",
   "13": "manifest.json",
-  "14": "medicos/route.ts",
   "15": "extratorBancada.ts",
-  "16": "eslint.config.mjs",
   "17": "TriagemEdtaReal.tsx",
-  "18": "scripts",
   "19": "vercel.json",
   "20": "configurar_planilha_google.js",
-  "21": "postcss.config.mjs",
-  "22": "EdtaBarcodeScanner.tsx",
-  "23": "listarLaudos"
+  "21": "postcss.config.mjs"
 }

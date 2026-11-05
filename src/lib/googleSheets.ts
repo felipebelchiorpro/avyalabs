@@ -27,6 +27,34 @@ export type ItemRotina = RotinaItem;
 // Diretório e arquivo para persistência física local (evita perda ao reiniciar servidor dev ou offline)
 const DATA_DIR = path.join(process.cwd(), "data");
 const LOCAL_DB_EDTA_PATH = path.join(DATA_DIR, "triagem_edta_db.json");
+const LOCAL_DB_ROTINA_PATH = path.join(DATA_DIR, "rotina_db.json");
+
+export function lerDbLocalRotina(): RotinaItem[] {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (fs.existsSync(LOCAL_DB_ROTINA_PATH)) {
+      const raw = fs.readFileSync(LOCAL_DB_ROTINA_PATH, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {
+    console.error("Erro ao ler DB local Rotina do disco:", err);
+  }
+  return [];
+}
+
+export function salvarDbLocalRotina(itens: RotinaItem[]): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(LOCAL_DB_ROTINA_PATH, JSON.stringify(itens, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Erro ao salvar DB local Rotina no disco:", err);
+  }
+}
 
 export function lerDbLocalEdta(): ItemTriagemEdta[] {
   try {
@@ -73,8 +101,8 @@ const globalForStore = global as unknown as {
 if (!globalForStore.localMemoryLaudos) {
   globalForStore.localMemoryLaudos = [];
 }
-if (!globalForStore.localMemoryRotina) {
-  globalForStore.localMemoryRotina = [];
+if (!globalForStore.localMemoryRotina || globalForStore.localMemoryRotina.length === 0) {
+  globalForStore.localMemoryRotina = lerDbLocalRotina();
 }
 if (!globalForStore.localMemoryTriagemEdta || globalForStore.localMemoryTriagemEdta.length === 0) {
   globalForStore.localMemoryTriagemEdta = lerDbLocalEdta();
@@ -990,20 +1018,47 @@ export async function salvarRotinaDia(
     )
     .sort((a, b) => a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR"));
 
-  if (substituirExistente) {
-    globalForStore.localMemoryRotina = [...itensNormalizados];
-  } else {
-    const mapa = new Map<string, RotinaItem>();
-    for (const r of globalForStore.localMemoryRotina) {
-      mapa.set(`${formatarProntuario(r.prontuario)}_${r.nome_paciente}`, r);
-    }
-    for (const novo of itensNormalizados) {
-      mapa.set(`${novo.prontuario}_${novo.nome_paciente}`, novo);
-    }
-    globalForStore.localMemoryRotina = Array.from(mapa.values()).sort((a, b) =>
-      a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR")
-    );
+  // Obter lista existente completa para preservação histórica multi-dias
+  let listaExistente: RotinaItem[] = [];
+  try {
+    listaExistente = await listarRotinaDia();
+  } catch (_) {
+    listaExistente = [...(globalForStore.localMemoryRotina || [])];
   }
+
+  // Identificar quais datas estão sendo importadas agora
+  const datasNovas = new Set(itensNormalizados.map((i) => i.data));
+
+  // Preservar outras datas 100% intactas
+  const itensOutrasDatas = listaExistente.filter((i) => !datasNovas.has(i.data));
+  const itensMesmaData = listaExistente.filter((i) => datasNovas.has(i.data));
+
+  // Merge nos itens da mesma data
+  const mapa = new Map<string, RotinaItem>();
+  for (const r of itensMesmaData) {
+    mapa.set(`${formatarProntuario(r.prontuario)}_${r.nome_paciente}`, r);
+  }
+  for (const novo of itensNormalizados) {
+    const chave = `${novo.prontuario}_${novo.nome_paciente}`;
+    const existente = mapa.get(chave);
+    if (existente) {
+      mapa.set(chave, {
+        ...novo,
+        tem_laudo: existente.tem_laudo || novo.tem_laudo,
+        status_laudo: existente.status_laudo && String(existente.status_laudo).toLowerCase() !== "pendente" ? existente.status_laudo : novo.status_laudo,
+      });
+    } else {
+      mapa.set(chave, novo);
+    }
+  }
+
+  const listaFinal = [
+    ...itensOutrasDatas,
+    ...Array.from(mapa.values()).sort((a, b) => a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR")),
+  ];
+
+  globalForStore.localMemoryRotina = listaFinal;
+  salvarDbLocalRotina(listaFinal);
 
   const gClient = getGoogleSheetsClient();
 
@@ -1100,6 +1155,9 @@ export async function listarRotinaDia(
   let rotina: RotinaItem[] = [];
 
   if (!gClient) {
+    if (!globalForStore.localMemoryRotina || globalForStore.localMemoryRotina.length === 0) {
+      globalForStore.localMemoryRotina = lerDbLocalRotina();
+    }
     rotina = globalForStore.localMemoryRotina.map(aplicarFlagsExamesNoItem);
   } else {
     const { sheets, sheetId } = gClient;
@@ -1163,11 +1221,18 @@ export async function listarRotinaDia(
           );
         }
         globalForStore.localMemoryRotina = rotina;
-      } else if (globalForStore.localMemoryRotina.length > 0) {
+        salvarDbLocalRotina(rotina);
+      } else {
+        if (!globalForStore.localMemoryRotina || globalForStore.localMemoryRotina.length === 0) {
+          globalForStore.localMemoryRotina = lerDbLocalRotina();
+        }
         rotina = globalForStore.localMemoryRotina.map(aplicarFlagsExamesNoItem);
       }
     } catch (err) {
       console.error("Erro ao ler rotina do Google Sheets:", err);
+      if (!globalForStore.localMemoryRotina || globalForStore.localMemoryRotina.length === 0) {
+        globalForStore.localMemoryRotina = lerDbLocalRotina();
+      }
       rotina = globalForStore.localMemoryRotina.map(aplicarFlagsExamesNoItem);
     }
   }
