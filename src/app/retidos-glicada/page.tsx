@@ -26,8 +26,21 @@ export default function RetidosGlicadaPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [busca, setBusca] = useState<string>("");
+  const [dataFiltro, setDataFiltro] = useState<string>("");
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ message: string; type: "success" | "warning" | "error" } | null>(null);
+
+  const hojeIso = new Date().toISOString().split("T")[0];
+  const ontemIso = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+  const formatarData = (dStr: string) => {
+    if (!dStr) return "—";
+    if (dStr.includes("-")) {
+      const [ano, mes, dia] = dStr.split("-");
+      return `${dia}/${mes}/${ano}`;
+    }
+    return dStr;
+  };
 
   const mostrarNotificacao = (message: string, type: "success" | "warning" | "error" = "success") => {
     setToast({ message, type });
@@ -66,13 +79,21 @@ export default function RetidosGlicadaPage() {
     });
   }, [itens]);
 
-  // Filtro de busca por nome, prontuário ou data de nascimento
+  const contagemHoje = useMemo(() => listaRetidos.filter((i) => i.data === hojeIso).length, [listaRetidos, hojeIso]);
+  const contagemOntem = useMemo(() => listaRetidos.filter((i) => i.data === ontemIso).length, [listaRetidos, ontemIso]);
+
+  // Filtro de data e busca por nome, prontuário ou data de nascimento
   const listaFiltrada = useMemo(() => {
-    if (!busca.trim()) return listaRetidos;
+    let base = listaRetidos;
+    if (dataFiltro) {
+      base = base.filter((i) => i.data === dataFiltro);
+    }
+
+    if (!busca.trim()) return base;
     const termo = normalizarTexto(busca.trim());
     const termoDigits = busca.replace(/\D/g, "");
 
-    return listaRetidos.filter((i) => {
+    return base.filter((i) => {
       const nome = normalizarTexto(i.nome_paciente || "");
       const pront = String(i.prontuario || "").replace(/\D/g, "");
       const dn = (i.data_nascimento || "").replace(/\D/g, "");
@@ -82,7 +103,7 @@ export default function RetidosGlicadaPage() {
         (termoDigits && dn.includes(termoDigits))
       );
     });
-  }, [listaRetidos, busca]);
+  }, [listaRetidos, dataFiltro, busca]);
 
   const toggleSelecionar = (prontuario: string) => {
     setSelecionados((prev) => {
@@ -294,7 +315,88 @@ export default function RetidosGlicadaPage() {
       </header>
 
       {/* CONTEÚDO PRINCIPAL */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-5">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-4">
+        {/* BARRA DE SELEÇÃO DE PERÍODO / DATA DE ORIGEM */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-500 mr-1 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-amber-600" />
+              <span>Data de Origem:</span>
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setDataFiltro("")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                !dataFiltro
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+              }`}
+            >
+              <span>Todos os Dias</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                !dataFiltro ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+              }`}>
+                {listaRetidos.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setDataFiltro(hojeIso)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                dataFiltro === hojeIso
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200"
+              }`}
+            >
+              <span>Hoje</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                dataFiltro === hojeIso ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-800"
+              }`}>
+                {contagemHoje}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setDataFiltro(ontemIso)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                dataFiltro === ontemIso
+                  ? "bg-amber-600 text-white shadow-xs"
+                  : "bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200"
+              }`}
+            >
+              <span>Ontem</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                dataFiltro === ontemIso ? "bg-white/20 text-white" : "bg-amber-100 text-amber-800"
+              }`}>
+                {contagemOntem}
+              </span>
+            </button>
+          </div>
+
+          {/* SELETOR DE DATA MANUAL (CALENDÁRIO) */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-500 hidden sm:inline">Data Específica:</span>
+            <input
+              type="date"
+              value={dataFiltro}
+              onChange={(e) => setDataFiltro(e.target.value)}
+              className="px-2.5 py-1.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:outline-amber-600 bg-white shadow-2xs"
+            />
+            {dataFiltro && (
+              <button
+                type="button"
+                onClick={() => setDataFiltro("")}
+                className="text-[11px] font-bold text-slate-400 hover:text-slate-700 underline cursor-pointer"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* BARRA DE AÇÕES & BUSCA */}
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
           <div className="relative flex-1 min-w-[240px] max-w-md">
@@ -391,7 +493,7 @@ export default function RetidosGlicadaPage() {
                     <th className="py-3 px-3 w-32 text-center">Data Nasc.</th>
                     <th className="py-3 px-3 w-40 text-center">Exames</th>
                     <th className="py-3 px-2 w-20 text-center">VHS?</th>
-                    <th className="py-3 px-3 w-32 text-center">Data Retenção</th>
+                    <th className="py-3 px-3 w-36 text-center">Data de Origem</th>
                     <th className="py-3 px-4 w-36 text-center">Ação</th>
                   </tr>
                 </thead>
@@ -461,8 +563,28 @@ export default function RetidosGlicadaPage() {
                           )}
                         </td>
 
-                        <td className="py-3 px-3 text-center text-slate-500 text-[11px] font-medium">
-                          {item.data || "—"}
+                        <td className="py-3 px-3 text-center">
+                          {item.data ? (
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border shadow-2xs ${
+                                item.data === hojeIso
+                                  ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                                  : item.data === ontemIso
+                                  ? "bg-amber-100 text-amber-950 border-amber-300 font-black"
+                                  : "bg-slate-100 text-slate-700 border-slate-300"
+                              }`}
+                              title={`Data do atendimento: ${item.data}`}
+                            >
+                              <Calendar className="w-3 h-3 shrink-0" />
+                              {item.data === hojeIso
+                                ? "Hoje"
+                                : item.data === ontemIso
+                                ? "Ontem"
+                                : formatarData(item.data)}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">—</span>
+                          )}
                         </td>
 
                         <td className="py-3 px-4 text-center">

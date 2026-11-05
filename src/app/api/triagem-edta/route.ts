@@ -35,6 +35,8 @@ export async function GET(request: NextRequest) {
     }
 
     const itens = await listarTriagemEdta(data);
+    const todosItens = await listarTriagemEdta("todas");
+    const datasDisponiveis = Array.from(new Set(todosItens.map((i) => i.data).filter(Boolean))).sort().reverse();
 
     if (prontuario) {
       const pBusca = formatarProntuario(prontuario).toLowerCase();
@@ -54,12 +56,13 @@ export async function GET(request: NextRequest) {
     const apenasHemograma = itens.filter((i) => i.tipo_destino === "apenas_hemograma").length;
     const apenasGlicada = itens.filter((i) => i.tipo_destino === "apenas_glicada").length;
     const prontosGrade = itens.filter((i) => i.status === "pronto_grade" || i.colocado_grade).length;
-    const retidosBancada = itens.filter((i) => i.status === "retido_bancada").length;
+    const retidosBancada = itens.filter((i) => i.status === "retido_bancada" || i.status === "retido_envio_posterior").length;
     const pendentes = itens.filter((i) => i.status === "pendente").length;
 
     return NextResponse.json({
       ok: true,
       itens,
+      datasDisponiveis,
       stats: {
         totalTubos,
         fracionarGlicada,

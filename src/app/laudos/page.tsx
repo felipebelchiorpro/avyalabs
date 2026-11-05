@@ -131,37 +131,41 @@ export default function PainelLaudosPage() {
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Botões rápidos de dias anteriores */}
+              {/* Seletor de Período Padronizado: Hoje, Ontem e Calendário Manual */}
               <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-xl p-1 shadow-xs">
-                {[
-                  { id: "", label: "🌐 Todos" },
-                  { id: hojeStr, label: "Hoje" },
-                  { id: ontemStr, label: "Ontem" },
-                  { id: anteontemStr, label: "Anteontem" },
-                ].map((btn) => (
-                  <button
-                    key={btn.id}
-                    type="button"
-                    onClick={() => setDataSelecionada(btn.id)}
-                    className={`px-2 py-1 text-xs font-bold rounded-lg transition ${
-                      dataSelecionada === btn.id
-                        ? "bg-slate-900 text-white shadow-2xs"
-                        : "text-slate-600 hover:bg-slate-100"
-                    }`}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  onClick={() => setDataSelecionada(hojeStr)}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer ${
+                    dataSelecionada === hojeStr
+                      ? "bg-slate-900 text-white shadow-2xs"
+                      : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  Hoje
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDataSelecionada(ontemStr)}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer ${
+                    dataSelecionada === ontemStr
+                      ? "bg-slate-900 text-white shadow-2xs"
+                      : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  Ontem
+                </button>
               </div>
 
-              {/* Seletor de Data Calendário */}
+              {/* Seletor de Data Manual para o Calendário Geral */}
               <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 shadow-xs">
                 <Calendar className="w-3.5 h-3.5 text-slate-500" />
                 <input
                   type="date"
                   value={dataSelecionada}
                   onChange={(e) => setDataSelecionada(e.target.value)}
-                  className="text-xs font-semibold text-slate-800 bg-transparent focus:outline-none"
+                  className="text-xs font-semibold text-slate-800 bg-transparent focus:outline-none cursor-pointer"
+                  title="Selecionar data no calendário geral"
                 />
               </div>
 

@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { ItemRotina, LaudoUrina, normalizarDataIso } from "@/lib/googleSheets";
-import { formatarProntuario } from "@/lib/extratorBancada";
+import type { ItemRotina, LaudoUrina } from "@/types/urinalise";
+import { formatarProntuario, normalizarDataIso } from "@/lib/extratorBancada";
 
 interface MapaBancadaPrintViewProps {
   pacientes: ItemRotina[];

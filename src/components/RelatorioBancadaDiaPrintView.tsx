@@ -2,7 +2,7 @@
 
 import React from "react";
 import { LaudoUrina, LabConfig, DEFAULT_LAB_CONFIG } from "@/types/urinalise";
-import { normalizarDataIso } from "@/lib/googleSheets";
+import { normalizarDataIso } from "@/lib/extratorBancada";
 
 interface RelatorioBancadaDiaPrintViewProps {
   laudos: LaudoUrina[];

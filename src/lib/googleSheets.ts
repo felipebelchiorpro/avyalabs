@@ -1232,11 +1232,12 @@ export async function salvarTriagemEdta(
     const pNorm = item.prontuario_normalizado || normalizarProntuario(pFormatado);
     const dtNasc = item.data_nascimento || "";
     const dtNascDigitos = item.data_nascimento_digitos || normalizarDigitosData(dtNasc);
+    const dataItem = normalizarDataIso(item.data) || hojeIso;
 
     return {
       ...item,
-      id: item.id || `edta-${normalizarDataIso(item.data) || hojeIso}-${pNorm}`,
-      data: normalizarDataIso(item.data) || hojeIso,
+      id: item.id || `edta-${dataItem}-${pNorm}`,
+      data: dataItem,
       prontuario: pFormatado,
       prontuario_normalizado: pNorm,
       data_nascimento: dtNasc,
@@ -1253,36 +1254,50 @@ export async function salvarTriagemEdta(
     };
   });
 
-  // Obter lista atual em memória/servidor
-  const listaAtual = [...(globalForStore.localMemoryTriagemEdta || [])];
+  // Obter lista existente completa de todos os dias
+  let listaExistente: ItemTriagemEdta[] = [];
+  try {
+    listaExistente = await listarTriagemEdta("todas");
+  } catch (_) {
+    listaExistente = [...(globalForStore.localMemoryTriagemEdta || [])];
+  }
 
-  let listaFinal: ItemTriagemEdta[] = [];
+  // Identificar quais datas estão sendo importadas agora
+  const datasSendoImportadas = new Set(itensNovosNormalizados.map((i) => i.data));
+
+  // Itens de OUTRAS datas são mantidos 100% intactos (preservação histórica multi-dia)
+  const itensOutrasDatas = listaExistente.filter((i) => !datasSendoImportadas.has(i.data));
+
+  // Itens existentes da(s) mesma(s) data(s)
+  const itensMesmaData = listaExistente.filter((i) => datasSendoImportadas.has(i.data));
+
+  let listaMesmaDataFinal: ItemTriagemEdta[] = [];
   let novosAdicionados = 0;
   let jaTriadosPreservados = 0;
   let atualizadosPendentes = 0;
 
-  if (substituirExistente || listaAtual.length === 0) {
-    // Primeiro upload ou substituição forçada
-    listaFinal = [...itensNovosNormalizados].sort((a, b) =>
+  if (substituirExistente || itensMesmaData.length === 0) {
+    // Primeiro upload do dia ou substituição forçada
+    listaMesmaDataFinal = [...itensNovosNormalizados].sort((a, b) =>
       a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR")
     );
-    novosAdicionados = listaFinal.length;
+    novosAdicionados = listaMesmaDataFinal.length;
   } else {
-    // LÓGICA DE MERGE / UPSERT INCREMENTAL (Chave primária: prontuário normalizado)
-    listaFinal = [...listaAtual];
+    // LÓGICA DE MERGE / UPSERT INCREMENTAL POR DATA E PRONTUÁRIO
+    listaMesmaDataFinal = [...itensMesmaData];
     const mapaIndices = new Map<string, number>();
 
-    listaFinal.forEach((item, idx) => {
-      const chave = normalizarProntuario(item.prontuario).toLowerCase();
+    listaMesmaDataFinal.forEach((item, idx) => {
+      const chave = `${item.data}_${normalizarProntuario(item.prontuario).toLowerCase()}`;
       mapaIndices.set(chave, idx);
     });
 
     for (const itemNovo of itensNovosNormalizados) {
-      const chaveNovo = normalizarProntuario(itemNovo.prontuario).toLowerCase();
+      const chaveNovo = `${itemNovo.data}_${normalizarProntuario(itemNovo.prontuario).toLowerCase()}`;
 
       if (mapaIndices.has(chaveNovo)) {
         const idxExistente = mapaIndices.get(chaveNovo)!;
-        const existente = listaFinal[idxExistente];
+        const existente = listaMesmaDataFinal[idxExistente];
 
         const jaFoiBipadoOuTriado =
           existente.status !== "pendente" ||
@@ -1292,13 +1307,13 @@ export async function salvarTriagemEdta(
 
         if (jaFoiBipadoOuTriado) {
           // 1. Pacientes já existentes que já foram bipados/triados:
-          // Mantêm rigorosamente seu status atual e respectivos timestamps/histórico de triagem.
+          // MANTÊM RIGOROSAMENTE seu status atual e histórico de triagem!
           jaTriadosPreservados++;
 
-          listaFinal[idxExistente] = {
+          listaMesmaDataFinal[idxExistente] = {
             ...itemNovo,
             ...existente,
-            // Complementa eventuais dados cadastrais que faltavam sem perder o estado de triagem
+            // Complementa eventuais dados cadastrais sem perder o estado de triagem
             data_nascimento: existente.data_nascimento || itemNovo.data_nascimento || "",
             data_nascimento_digitos:
               existente.data_nascimento_digitos || itemNovo.data_nascimento_digitos || "",
@@ -1307,11 +1322,11 @@ export async function salvarTriagemEdta(
             ),
           };
         } else {
-          // 3. Pacientes já existentes que continuavam com status pendente:
-          // Atualiza apenas eventuais dados cadastrais complementares da planilha sem perder a ordem.
+          // 2. Pacientes já existentes que continuavam com status pendente:
+          // Atualiza dados cadastrais sem perder a posição.
           atualizadosPendentes++;
 
-          listaFinal[idxExistente] = {
+          listaMesmaDataFinal[idxExistente] = {
             ...existente,
             ...itemNovo,
             status: "pendente",
@@ -1324,7 +1339,7 @@ export async function salvarTriagemEdta(
           };
         }
       } else {
-        // 2. Pacientes novos (não presentes na lista atual):
+        // 3. Pacientes novos (chegada de pacientes atrasados na rotina):
         // Inseridos no final da lista com o status padrão pendente.
         novosAdicionados++;
         const novoParaInserir: ItemTriagemEdta = {
@@ -1334,26 +1349,20 @@ export async function salvarTriagemEdta(
           colocado_grade: false,
           horario_bipado: "",
         };
-        listaFinal.push(novoParaInserir);
-        mapaIndices.set(chaveNovo, listaFinal.length - 1);
+        listaMesmaDataFinal.push(novoParaInserir);
+        mapaIndices.set(chaveNovo, listaMesmaDataFinal.length - 1);
       }
     }
   }
 
+  // Lista consolidada preservando outras datas + rotina mesclada do dia
+  const listaFinal = [...itensOutrasDatas, ...listaMesmaDataFinal];
+
   // Atualizar memória do servidor
   globalForStore.localMemoryTriagemEdta = listaFinal;
 
-  // Mensagem padronizada informativa
-  let mensagemToast = "";
-  if (jaTriadosPreservados > 0 || atualizadosPendentes > 0) {
-    if (novosAdicionados > 0) {
-      mensagemToast = `Lista atualizada com sucesso! ${novosAdicionados} novos pacientes adicionados. ${jaTriadosPreservados} pacientes já triados foram preservados.`;
-    } else {
-      mensagemToast = `Lista atualizada com sucesso! Nenhum novo paciente detectado na planilha. ${jaTriadosPreservados} pacientes já triados foram preservados.`;
-    }
-  } else {
-    mensagemToast = `Lista carregada com sucesso! ${novosAdicionados} novos pacientes adicionados à triagem.`;
-  }
+  // Mensagem padronizada exata conforme especificação
+  const mensagemToast = `Rotina atualizada: ${novosAdicionados} novos pacientes adicionados. ${jaTriadosPreservados} pacientes já triados foram preservados.`;
 
   const gClient = getGoogleSheetsClient();
   if (!gClient) {
@@ -1570,12 +1579,9 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
     }
   }
 
-  if (dataFiltro) {
+  if (dataFiltro && dataFiltro !== "todas") {
     const alvo = normalizarDataIso(dataFiltro);
-    const filtrada = itens.filter((r) => normalizarDataIso(r.data) === alvo);
-    if (filtrada.length > 0) {
-      itens = filtrada;
-    }
+    itens = itens.filter((r) => normalizarDataIso(r.data) === alvo);
   }
 
   // Sanitização de segurança: garante que qualquer valor não-data (ex: "HEMOGLOBINA GLICADA") seja expurgado
@@ -1599,14 +1605,16 @@ export async function atualizarStatusItemEdta(
   const prontNorm = normalizarProntuario(prontLimpo).toLowerCase();
   const prontDigits = prontLimpo.replace(/\D/g, "");
   const nomeTarget = updates.nome_paciente ? normalizarTexto(updates.nome_paciente) : "";
+  const dataTarget = updates.data ? normalizarDataIso(updates.data) : "";
 
-  const lista = await listarTriagemEdta();
-  const index = lista.findIndex((item) => {
+  const lista = await listarTriagemEdta("todas");
+  let index = lista.findIndex((item) => {
     const itemProntRaw = String(item.prontuario || "").trim().toLowerCase();
     const itemProntFmt = formatarProntuario(item.prontuario).toLowerCase();
     const itemProntNorm = (item.prontuario_normalizado || normalizarProntuario(item.prontuario)).toLowerCase();
     const itemProntDigits = itemProntRaw.replace(/\D/g, "");
     const itemNome = normalizarTexto(item.nome_paciente || "");
+    const itemData = normalizarDataIso(item.data);
 
     const matchPront =
       itemProntRaw === prontFormatado ||
@@ -1622,8 +1630,37 @@ export async function atualizarStatusItemEdta(
       )
     );
 
-    return matchPront || matchNome;
+    const matchData = dataTarget ? itemData === dataTarget : true;
+
+    return (matchPront || matchNome) && matchData;
   });
+
+  // Se não encontrou filtrando por data, tenta sem filtrar por data
+  if (index === -1 && dataTarget) {
+    index = lista.findIndex((item) => {
+      const itemProntRaw = String(item.prontuario || "").trim().toLowerCase();
+      const itemProntFmt = formatarProntuario(item.prontuario).toLowerCase();
+      const itemProntNorm = (item.prontuario_normalizado || normalizarProntuario(item.prontuario)).toLowerCase();
+      const itemProntDigits = itemProntRaw.replace(/\D/g, "");
+      const itemNome = normalizarTexto(item.nome_paciente || "");
+
+      const matchPront =
+        itemProntRaw === prontFormatado ||
+        itemProntFmt === prontFormatado ||
+        itemProntNorm === prontNorm ||
+        (prontDigits && itemProntDigits === prontDigits);
+
+      const matchNome = Boolean(
+        nomeTarget && itemNome && (
+          itemNome === nomeTarget ||
+          (nomeTarget.length >= 6 && itemNome.includes(nomeTarget)) ||
+          (itemNome.length >= 6 && nomeTarget.includes(itemNome))
+        )
+      );
+
+      return matchPront || matchNome;
+    });
+  }
 
   if (index === -1) {
     return null;

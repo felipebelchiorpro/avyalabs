@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { QuickChipSelect } from "@/components/QuickChipSelect";
-import { LaudoUrina, ItemRotina, StatusLaudo, normalizarDataIso } from "@/lib/googleSheets";
-import { formatarProntuario } from "@/lib/extratorBancada";
+import type { LaudoUrina, ItemRotina, StatusLaudo } from "@/types/urinalise";
+import { formatarProntuario, normalizarDataIso } from "@/lib/extratorBancada";
 import { MapaBancadaPrintView } from "@/components/MapaBancadaPrintView";
 import { RelatorioBancadaDiaPrintView } from "@/components/RelatorioBancadaDiaPrintView";
 import {

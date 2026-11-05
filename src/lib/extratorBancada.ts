@@ -35,6 +35,25 @@ export interface ResultadoExtracaoBancada {
 }
 
 /**
+ * Normaliza qualquer data para o padrão ISO (YYYY-MM-DD)
+ */
+export function normalizarDataIso(val: string | undefined): string {
+  const s = String(val ?? "").trim();
+  if (!s) return "";
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    return s.substring(0, 10);
+  }
+  const brMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (brMatch) {
+    const dia = brMatch[1].padStart(2, "0");
+    const mes = brMatch[2].padStart(2, "0");
+    const ano = brMatch[3];
+    return `${ano}-${mes}-${dia}`;
+  }
+  return s.split("T")[0];
+}
+
+/**
  * Remove acentos e converte para maiúsculas para comparação segura
  */
 export function normalizarTexto(str: string): string {

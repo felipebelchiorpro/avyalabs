@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 import { EdtaOcrScanner, DadosPacienteCapturados } from "@/components/EdtaOcrScanner";
@@ -67,6 +67,13 @@ export default function TriagemEdtaPage() {
   const [dataReferencia, setDataReferencia] = useState<string>("");
   const [horaEncerramento, setHoraEncerramento] = useState<string>("");
   const [labConfig, setLabConfig] = useState<LabConfig>(DEFAULT_LAB_CONFIG);
+
+  // Navegação e Filtros de Data e Status da Triagem EDTA
+  const hojeIso = new Date().toISOString().split("T")[0];
+  const ontemIso = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const [dataFiltro, setDataFiltro] = useState<string>("");
+  const [datasDisponiveis, setDatasDisponiveis] = useState<string[]>([]);
+  const [filtroStatusLista, setFiltroStatusLista] = useState<"todos" | "pendentes" | "na_grade" | "retidos">("todos");
 
   // Modo de Entrada Híbrido: Câmera com OCR contínuo vs Manual
   const [leitorCameraAtivo, setLeitorCameraAtivo] = useState<boolean>(true);
@@ -212,15 +219,22 @@ export default function TriagemEdtaPage() {
     };
   }, []);
 
-  const carregarDadosEdta = async (silencioso = false) => {
+  const carregarDadosEdta = async (silencioso = false, dataFiltroEscolhida?: string) => {
     if (!silencioso) setIsLoading(true);
     try {
-      const res = await fetch("/api/triagem-edta");
+      const dataParaBuscar = dataFiltroEscolhida !== undefined ? dataFiltroEscolhida : dataFiltro;
+      const url = dataParaBuscar ? `/api/triagem-edta?data=${encodeURIComponent(dataParaBuscar)}` : "/api/triagem-edta";
+      const res = await fetch(url);
       const data = await res.json();
       if (data.ok && Array.isArray(data.itens)) {
         setItens(data.itens);
-        if (data.itens.length > 0 && data.itens[0].data) {
+        if (Array.isArray(data.datasDisponiveis)) {
+          setDatasDisponiveis(data.datasDisponiveis);
+        }
+        if (data.itens.length > 0 && data.itens[0].data && !dataParaBuscar) {
           setDataReferencia(data.itens[0].data);
+        } else if (dataParaBuscar) {
+          setDataReferencia(dataParaBuscar);
         }
       }
     } catch (e) {
@@ -228,6 +242,11 @@ export default function TriagemEdtaPage() {
     } finally {
       if (!silencioso) setIsLoading(false);
     }
+  };
+
+  const selecionarDataFiltro = (novaData: string) => {
+    setDataFiltro(novaData);
+    carregarDadosEdta(false, novaData);
   };
 
   // Verifica se o celular enviou sinal de finalização e impressão para o PC
@@ -281,6 +300,67 @@ export default function TriagemEdtaPage() {
   const tubosRetidosLocal = itens.filter(
     (i) => i.status === "retido_envio_posterior" || i.status === "retido_bancada" || i.enviar_hemograma_hoje === false
   ).length;
+
+  const formatarDataOrigem = (dStr: string) => {
+    if (!dStr) return "—";
+    if (dStr.includes("-")) {
+      const [ano, mes, dia] = dStr.split("-");
+      return `${dia}/${mes}/${ano}`;
+    }
+    return dStr;
+  };
+
+  // Contagem para as abas da relação
+  const pendentesListaCount = useMemo(() => {
+    return itens.filter((i) => {
+      const ehRetido =
+        i.status === "retido_envio_posterior" ||
+        (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada");
+      const concluido = (i.status === "pronto_grade" || i.colocado_grade) && !ehRetido;
+      return !concluido && !ehRetido;
+    }).length;
+  }, [itens]);
+
+  const naGradeListaCount = useMemo(() => {
+    return itens.filter((i) => {
+      const ehRetido =
+        i.status === "retido_envio_posterior" ||
+        (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada");
+      return (i.status === "pronto_grade" || i.colocado_grade) && !ehRetido;
+    }).length;
+  }, [itens]);
+
+  const retidosListaCount = useMemo(() => {
+    return itens.filter((i) => {
+      return (
+        i.status === "retido_envio_posterior" ||
+        i.status === "retido_bancada" ||
+        i.enviar_hemograma_hoje === false
+      );
+    }).length;
+  }, [itens]);
+
+  // Lista filtrada pelo chip de status
+  const itensExibidos = useMemo(() => {
+    return itens.filter((item) => {
+      const ehRetido =
+        item.status === "retido_envio_posterior" ||
+        (item.enviar_hemograma_hoje === false && item.tipo_destino !== "apenas_glicada");
+      const concluidoGrade =
+        (item.status === "pronto_grade" || item.colocado_grade) && !ehRetido;
+
+      if (filtroStatusLista === "pendentes") {
+        return !concluidoGrade && !ehRetido;
+      }
+      if (filtroStatusLista === "na_grade") {
+        return concluidoGrade;
+      }
+      if (filtroStatusLista === "retidos") {
+        return ehRetido;
+      }
+      return true;
+    });
+  }, [itens, filtroStatusLista]);
 
   // Formatar Máscara de Data de Nascimento (DD/MM/AAAA) enquanto o usuário digita
   const aplicarMascaraData = (valor: string): string => {
@@ -2044,30 +2124,169 @@ export default function TriagemEdtaPage() {
             </div>
           )}
 
-          {/* LISTA DA ROTINA EDTA DO DIA */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="p-3 border-b border-slate-100 flex items-center justify-between">
+          {/* LISTA DA ROTINA EDTA DO DIA / HISTÓRICO */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-0">
+            {/* TOPO DA RELAÇÃO */}
+            <div className="p-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs font-black text-slate-800 uppercase tracking-tight flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                Relação EDTA do Dia ({itens.length})
+                <span>
+                  Relação EDTA • {dataFiltro === hojeIso ? "Hoje" : dataFiltro === ontemIso ? "Ontem" : dataFiltro ? formatarDataOrigem(dataFiltro) : "Todas as Datas"}
+                </span>
+                <span className="text-[11px] font-bold text-slate-500">
+                  ({itensExibidos.length}{filtroStatusLista !== "todos" ? ` de ${itens.length}` : ""})
+                </span>
               </span>
+
               <button
                 type="button"
                 onClick={() => carregarDadosEdta(false)}
-                className="text-[11px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"
+                className="text-[11px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
               >
                 <RefreshCw className={`w-3 h-3 ${isLoading ? "animate-spin" : ""}`} />
                 Atualizar
               </button>
             </div>
 
+            {/* SELETOR DE PERÍODO / DATA */}
+            <div className="p-2.5 sm:p-3 bg-slate-50/70 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => selecionarDataFiltro(hojeIso)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                    dataFiltro === hojeIso
+                      ? "bg-emerald-600 text-white shadow-2xs"
+                      : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
+                  }`}
+                >
+                  <Calendar className="w-3 h-3" />
+                  <span>Hoje</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => selecionarDataFiltro(ontemIso)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                    dataFiltro === ontemIso
+                      ? "bg-amber-600 text-white shadow-2xs"
+                      : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
+                  }`}
+                >
+                  <span>Ontem</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => selecionarDataFiltro("")}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                    !dataFiltro
+                      ? "bg-slate-900 text-white shadow-2xs"
+                      : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
+                  }`}
+                >
+                  <span>Todas</span>
+                </button>
+              </div>
+
+              {/* CALENDÁRIO MANUAL */}
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={dataFiltro}
+                  onChange={(e) => selecionarDataFiltro(e.target.value)}
+                  className="px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 shadow-2xs focus:outline-purple-600"
+                  title="Selecionar data específica no calendário"
+                />
+                {dataFiltro && (
+                  <button
+                    type="button"
+                    onClick={() => selecionarDataFiltro("")}
+                    className="text-[10px] font-bold text-slate-400 hover:text-slate-700 underline"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* AVISO SE VISUALIZANDO DATA ANTERIOR */}
+            {dataFiltro && dataFiltro !== hojeIso && (
+              <div className="bg-amber-50 px-3 py-1.5 border-b border-amber-200 text-amber-900 text-[11px] font-bold flex items-center justify-between">
+                <span>
+                  ⚠️ Visualizando dados de {dataFiltro === ontemIso ? "Ontem" : formatarDataOrigem(dataFiltro)}.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => selecionarDataFiltro(hojeIso)}
+                  className="underline hover:text-amber-950 font-black"
+                >
+                  Voltar para Hoje
+                </button>
+              </div>
+            )}
+
+            {/* CHIPS DE STATUS */}
+            <div className="px-3 py-2 border-b border-slate-100 flex flex-wrap items-center gap-1.5 bg-white">
+              <button
+                type="button"
+                onClick={() => setFiltroStatusLista("todos")}
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold transition cursor-pointer ${
+                  filtroStatusLista === "todos"
+                    ? "bg-slate-900 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                Todos ({itens.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFiltroStatusLista("pendentes")}
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold transition cursor-pointer ${
+                  filtroStatusLista === "pendentes"
+                    ? "bg-purple-700 text-white"
+                    : "bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200"
+                }`}
+              >
+                ⏳ Pendentes ({pendentesListaCount})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFiltroStatusLista("na_grade")}
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold transition cursor-pointer ${
+                  filtroStatusLista === "na_grade"
+                    ? "bg-emerald-700 text-white"
+                    : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
+                }`}
+              >
+                ✓ Na Grade ({naGradeListaCount})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFiltroStatusLista("retidos")}
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold transition cursor-pointer ${
+                  filtroStatusLista === "retidos"
+                    ? "bg-amber-600 text-white"
+                    : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
+                }`}
+              >
+                📦 Retidos ({retidosListaCount})
+              </button>
+            </div>
+
+            {/* ITENS DA LISTA */}
             <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
-              {itens.length === 0 ? (
+              {itensExibidos.length === 0 ? (
                 <div className="p-6 text-center text-slate-400 text-xs italic">
-                  Nenhum tubo EDTA carregado para hoje. Suba a planilha Conecta SUS em &quot;Importar&quot;.
+                  {itens.length === 0
+                    ? `Nenhum tubo EDTA localizado para ${dataFiltro ? formatarDataOrigem(dataFiltro) : "o período"}.`
+                    : "Nenhum tubo com o status selecionado."}
                 </div>
               ) : (
-                itens.map((item, index) => {
+                itensExibidos.map((item: ItemTriagemEdta, index: number) => {
                   const ehGlicada =
                     item.tipo_destino === "hemograma_glicada" ||
                     (item.tem_hemograma && item.tem_glicada);
@@ -2107,7 +2326,7 @@ export default function TriagemEdtaPage() {
                           <p className="text-xs font-black text-slate-900 uppercase truncate">
                             {item.nome_paciente}
                           </p>
-                          <div className="flex items-center gap-2 text-[10.5px] text-slate-500">
+                          <div className="flex flex-wrap items-center gap-1.5 text-[10.5px] text-slate-500">
                             {item.data_nascimento ? (
                               <span className="font-bold text-purple-900">
                                 DN: {item.data_nascimento}
@@ -2118,6 +2337,23 @@ export default function TriagemEdtaPage() {
                             <span className="font-mono text-slate-400">
                               (#{item.prontuario})
                             </span>
+                            {item.data && (
+                              <span
+                                className={`px-1.5 py-0.2 rounded text-[9.5px] font-bold border ${
+                                  item.data === hojeIso
+                                    ? "bg-slate-100 text-slate-600 border-slate-200"
+                                    : item.data === ontemIso
+                                    ? "bg-amber-100 text-amber-900 border-amber-300"
+                                    : "bg-slate-200 text-slate-700 border-slate-300"
+                                }`}
+                              >
+                                {item.data === hojeIso
+                                  ? "Hoje"
+                                  : item.data === ontemIso
+                                  ? "Ontem"
+                                  : formatarDataOrigem(item.data)}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
