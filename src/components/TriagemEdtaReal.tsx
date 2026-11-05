@@ -17,7 +17,7 @@ import {
   Check,
 } from "lucide-react";
 
-export type StatusTriagem = "pendente" | "concluido" | "retido_local" | "pronto_grade" | "retido_bancada";
+export type StatusTriagem = "pendente" | "concluido" | "retido_local" | "pronto_grade" | "retido_bancada" | "retido_envio_posterior";
 
 export interface PacienteRotinaEdta {
   prontuario: string;
@@ -28,6 +28,7 @@ export interface PacienteRotinaEdta {
   tipo_destino?: "hemograma_glicada" | "apenas_hemograma" | "apenas_glicada";
   medico?: string;
   retidoParaFracionar?: boolean;
+  enviar_hemograma_hoje?: boolean;
   dataAtendimento: string; // YYYY-MM-DD
   status?: StatusTriagem;
 }
@@ -128,17 +129,37 @@ export default function TriagemEdtaReal({
       onAtualizarRotina(rotinaAtualizada);
     }
 
-    // 2. Persistência remota opcional (caso passe a prop de servidor)
+    // 2. Persistência no servidor / banco local
+    const ehRetido = Boolean(pacienteAtivo.retidoParaFracionar);
     if (onSalvarItemServidor) {
       try {
         await onSalvarItemServidor(prontuario, {
-          status: novoStatus,
+          status: ehRetido ? "retido_envio_posterior" : novoStatus,
           medico: pacienteAtivo.medico,
-          retidoParaFracionar: !!pacienteAtivo.retidoParaFracionar,
+          retidoParaFracionar: ehRetido,
+          enviar_hemograma_hoje: !ehRetido,
         });
       } catch (err) {
         console.error("Falha ao salvar no servidor remoto:", err);
       }
+    } else {
+      try {
+        await fetch("/api/triagem-edta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            acao: "atualizar_item",
+            prontuario: prontuario,
+            updates: {
+              solicitante: pacienteAtivo.medico,
+              status: ehRetido ? "retido_envio_posterior" : "pronto_grade",
+              enviar_hemograma_hoje: !ehRetido,
+              retidoParaFracionar: ehRetido,
+              colocado_grade: !ehRetido,
+            },
+          }),
+        });
+      } catch (_) {}
     }
 
     setPacienteAtivo(null);
@@ -154,6 +175,16 @@ export default function TriagemEdtaReal({
       const rotinaAtualizada = rotinaDoDia.filter((p) => p.prontuario !== prontuario);
       onAtualizarRotina(rotinaAtualizada);
     }
+    try {
+      fetch("/api/triagem-edta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          acao: "excluir_item",
+          prontuario: prontuario,
+        }),
+      });
+    } catch (_) {}
     setPacienteAtivo(null);
     setConfirmandoExclusao(false);
     dispararToast("🗑️ Paciente removido da triagem do dia.", "alerta");

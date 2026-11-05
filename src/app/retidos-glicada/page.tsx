@@ -152,6 +152,7 @@ export default function RetidosGlicadaPage() {
               status: "pronto_grade",
               colocado_grade: true,
               enviar_hemograma_hoje: true,
+              retidoParaFracionar: false,
               data_liberacao_apoio: hojeIso,
               horario_bipado: agora,
             }
@@ -172,6 +173,7 @@ export default function RetidosGlicadaPage() {
             status: "pronto_grade",
             colocado_grade: true,
             enviar_hemograma_hoje: true,
+            retidoParaFracionar: false,
             data_liberacao_apoio: hojeIso,
             horario_bipado: agora,
           },
@@ -214,6 +216,7 @@ export default function RetidosGlicadaPage() {
               status: "pronto_grade",
               colocado_grade: true,
               enviar_hemograma_hoje: true,
+              retidoParaFracionar: false,
               data_liberacao_apoio: hojeIso,
               horario_bipado: agora,
             }
@@ -236,6 +239,7 @@ export default function RetidosGlicadaPage() {
               status: "pronto_grade",
               colocado_grade: true,
               enviar_hemograma_hoje: true,
+              retidoParaFracionar: false,
               data_liberacao_apoio: hojeIso,
               horario_bipado: agora,
             },

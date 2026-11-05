@@ -153,6 +153,7 @@ export interface ItemTriagemEdta {
   coletado_dois_tubos?: boolean; // Indica se foram coletados 2 tubos EDTA (1 Apoio + 1 VHS Local)
   qtd_tubos_coletados?: number; // 1 ou 2
   enviar_hemograma_hoje?: boolean; // true = Enviar hoje na remessa | false = Reter na gradinha local p/ mandar outro dia
+  retidoParaFracionar?: boolean; // Indica se o tubo foi retido na bancada para fracionar HbA1c
   data_liberacao_apoio?: string; // Data em que o tubo retido foi efetivamente liberado para o apoio
   tipo_destino: TipoEdtaDestino;
   status: StatusTriagemEdta;

@@ -290,17 +290,28 @@ export default function TriagemEdtaPage() {
     } catch (_) {}
   };
 
+  // Helper de detecção unificada de amostra retida na bancada
+  const verificarSeEhRetido = (i: ItemTriagemEdta) => {
+    return Boolean(
+      i.status === "retido_envio_posterior" ||
+      i.status === "retido_bancada" ||
+      (i as any).status === "retido_local" ||
+      Boolean(i.retidoParaFracionar) ||
+      i.tipo_destino === "apenas_glicada" ||
+      i.enviar_hemograma_hoje === false ||
+      (Boolean(i.fracionado_glicada) && !i.colocado_grade)
+    );
+  };
+
   // CONTADORES DO TOPO
   const totalEdta = itens.length;
   const pendentesFracionar = itens.filter(
-    (i) => i.tipo_destino === "hemograma_glicada" && !i.fracionado_glicada && i.status !== "retido_envio_posterior"
+    (i) => i.tipo_destino === "hemograma_glicada" && !i.fracionado_glicada && !verificarSeEhRetido(i)
   ).length;
   const concluidosGrade = itens.filter(
-    (i) => (i.status === "pronto_grade" || i.colocado_grade) && i.enviar_hemograma_hoje !== false
+    (i) => (i.status === "pronto_grade" || i.colocado_grade) && !verificarSeEhRetido(i)
   ).length;
-  const tubosRetidosLocal = itens.filter(
-    (i) => i.status === "retido_envio_posterior" || i.status === "retido_bancada" || i.enviar_hemograma_hoje === false
-  ).length;
+  const tubosRetidosLocal = itens.filter((i) => verificarSeEhRetido(i)).length;
 
   const formatarDataOrigem = (dStr: string) => {
     if (!dStr) return "—";
@@ -314,9 +325,7 @@ export default function TriagemEdtaPage() {
   // Contagem para as abas da relação
   const pendentesListaCount = useMemo(() => {
     return itens.filter((i) => {
-      const ehRetido =
-        i.status === "retido_envio_posterior" ||
-        (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada");
+      const ehRetido = verificarSeEhRetido(i);
       const concluido = (i.status === "pronto_grade" || i.colocado_grade) && !ehRetido;
       return !concluido && !ehRetido;
     }).length;
@@ -324,29 +333,19 @@ export default function TriagemEdtaPage() {
 
   const naGradeListaCount = useMemo(() => {
     return itens.filter((i) => {
-      const ehRetido =
-        i.status === "retido_envio_posterior" ||
-        (i.enviar_hemograma_hoje === false && i.tipo_destino !== "apenas_glicada");
+      const ehRetido = verificarSeEhRetido(i);
       return (i.status === "pronto_grade" || i.colocado_grade) && !ehRetido;
     }).length;
   }, [itens]);
 
   const retidosListaCount = useMemo(() => {
-    return itens.filter((i) => {
-      return (
-        i.status === "retido_envio_posterior" ||
-        i.status === "retido_bancada" ||
-        i.enviar_hemograma_hoje === false
-      );
-    }).length;
+    return itens.filter((i) => verificarSeEhRetido(i)).length;
   }, [itens]);
 
   // Lista filtrada pelo chip de status
   const itensExibidos = useMemo(() => {
     return itens.filter((item) => {
-      const ehRetido =
-        item.status === "retido_envio_posterior" ||
-        (item.enviar_hemograma_hoje === false && item.tipo_destino !== "apenas_glicada");
+      const ehRetido = verificarSeEhRetido(item);
       const concluidoGrade =
         (item.status === "pronto_grade" || item.colocado_grade) && !ehRetido;
 
@@ -764,7 +763,7 @@ export default function TriagemEdtaPage() {
   }, [tuboAtivo, limparTimerAutoAvanco]);
 
   // CONFIRMAÇÃO DO CARD DE AÇÃO (CASO 1 / CASO 2 / BANCADA / RETIDO)
-  const confirmarAcaoTubo = async () => {
+  const confirmarAcaoTubo = async (forcarEnviarHoje?: boolean) => {
     if (!tuboAtivo) return;
 
     limparTimerAutoAvanco();
@@ -778,14 +777,18 @@ export default function TriagemEdtaPage() {
     });
     const hojeIso = new Date().toISOString().split("T")[0];
 
+    let vaiEnviarHoje = forcarEnviarHoje !== undefined ? forcarEnviarHoje : enviarHemogramaHoje;
+    if (forcarEnviarHoje !== undefined) {
+      setEnviarHemogramaHoje(forcarEnviarHoje);
+    }
+
     let novoStatus: "pronto_grade" | "retido_bancada" | "retido_envio_posterior" = "pronto_grade";
     let fracionado = tuboAtivo.fracionado_glicada;
     let colocado = true;
-    let vaiEnviarHoje = enviarHemogramaHoje;
     let dataLiberacao: string | undefined = undefined;
 
-    // Se marcado para enviar em outro dia (alto volume de HbA1c)
-    if (!enviarHemogramaHoje) {
+    // Se marcado para enviar em outro dia / reter na bancada (alto volume de HbA1c ou botão Reter)
+    if (!vaiEnviarHoje) {
       novoStatus = "retido_envio_posterior";
       colocado = false;
       fracionado = false;
@@ -831,6 +834,7 @@ export default function TriagemEdtaPage() {
       coletado_dois_tubos: coletadoDoisTubos,
       qtd_tubos_coletados: coletadoDoisTubos ? 2 : 1,
       enviar_hemograma_hoje: vaiEnviarHoje,
+      retidoParaFracionar: !vaiEnviarHoje,
       data_liberacao_apoio: dataLiberacao,
     };
 
@@ -884,6 +888,7 @@ export default function TriagemEdtaPage() {
             coletado_dois_tubos: coletadoDoisTubos,
             qtd_tubos_coletados: coletadoDoisTubos ? 2 : 1,
             enviar_hemograma_hoje: vaiEnviarHoje,
+            retidoParaFracionar: !vaiEnviarHoje,
             data_liberacao_apoio: dataLiberacao,
           },
         }),
@@ -1603,18 +1608,50 @@ export default function TriagemEdtaPage() {
           </div>
         </label>
 
+        {/* OPÇÃO DE RETER TUBO NA BANCADA PARA FRACIONAR / GLICADA LOCAL */}
+        <label
+          className={`flex items-center gap-2.5 p-2.5 rounded-xl cursor-pointer select-none transition border ${
+            !enviarHemogramaHoje
+              ? "bg-amber-50 border-amber-300 ring-2 ring-amber-400/30"
+              : "bg-slate-50 border-slate-200 hover:bg-slate-100/70"
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={!enviarHemogramaHoje}
+            onChange={(e) => {
+              const reter = e.target.checked;
+              setEnviarHemogramaHoje(!reter);
+              setAutoAvancoPausado(true);
+              limparTimerAutoAvanco();
+            }}
+            className="w-4 h-4 rounded text-amber-600 border-amber-300 focus:ring-amber-500 accent-amber-600 cursor-pointer shrink-0"
+          />
+          <div className="text-xs">
+            <span className="font-bold text-slate-800 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-amber-600" />
+              <span>Reter tubo para fracionar (HbA1c / Bancada Local)</span>
+            </span>
+            <span className="text-[10.5px] text-slate-500 block">
+              {!enviarHemogramaHoje
+                ? "✓ Amostra marcada como RETIDA: ficará na bancada local e irá para a aba Retidos Glicada."
+                : "Desmarcado: Tubo integral liberado para ir na Grade do Apoio de hoje."}
+            </span>
+          </div>
+        </label>
+
         {/* DESTINO AUTOMÁTICO DO HEMOGRAMA CONFORME REGRA DO PLANTÃO ATIVA */}
-        {ehRetido ? (
+        {ehRetido || !enviarHemogramaHoje ? (
           <div className="bg-amber-50 border border-amber-300 rounded-xl p-2.5 flex items-center gap-2.5 text-xs">
             <div className="p-1.5 bg-amber-200/70 rounded-lg text-amber-900 shrink-0">
               <Clock className="w-4 h-4" />
             </div>
             <div className="leading-tight">
               <span className="font-black text-amber-950 uppercase text-[11px] block">
-                📦 Amostra Retida (Glicada já dosada)
+                📦 Amostra Retida (Glicada na Bancada Local)
               </span>
               <span className="text-amber-900 text-[10.5px]">
-                A ativação para envio ao apoio é feita diretamente no computador na <strong>aba Retidos Glicada</strong>.
+                O tubo ficará na gradinha local. Para enviá-lo ao apoio, acesse a <strong>aba Retidos Glicada</strong>.
               </span>
             </div>
           </div>
@@ -1679,28 +1716,39 @@ export default function TriagemEdtaPage() {
           </div>
         )}
 
-        {/* BOTÕES DE AÇÃO PRINCIPAIS: BOTÃO VERDE DE CONFIRMAÇÃO IMEDIATA, EXCLUIR E CANCELAR */}
-        <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+        {/* BOTÕES DE AÇÃO PRINCIPAIS: CONFIRMAR NA GRADE vs RETER NA BANCADA vs EXCLUIR */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-slate-100">
           <button
             type="button"
             disabled={isSyncing}
             onClick={() => {
               limparTimerAutoAvanco();
-              confirmarAcaoTubo();
+              confirmarAcaoTubo(true);
             }}
-            className="flex-1 py-3 px-4 font-black text-xs sm:text-sm rounded-xl shadow-md transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="flex-1 py-3 px-3 font-black text-xs sm:text-sm rounded-xl shadow-md transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             <Check className="w-4 h-4 stroke-[3]" />
-            <span>
-              {ehRetido
-                ? "Manter Amostra Retida"
-                : !enviarHemogramaHoje
-                ? "Confirmar Amostra Retida"
-                : tubo.tipo_destino === "apenas_glicada"
-                ? "Confirmar Bancada Local"
-                : "Confirmar Tubo na Grade"}
-              {!autoAvancoPausado && tempoRestante > 0 ? ` (${tempoRestante}s)` : ""}
-            </span>
+            <span>Confirmar na Grade (Apoio Hoje)</span>
+            {!autoAvancoPausado && tempoRestante > 0 && enviarHemogramaHoje ? ` (${tempoRestante}s)` : ""}
+          </button>
+
+          <button
+            type="button"
+            disabled={isSyncing}
+            onClick={() => {
+              limparTimerAutoAvanco();
+              confirmarAcaoTubo(false);
+            }}
+            className={`py-3 px-3.5 font-black text-xs sm:text-sm rounded-xl shadow-md transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer ${
+              !enviarHemogramaHoje
+                ? "bg-amber-600 hover:bg-amber-700 text-white"
+                : "bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300"
+            }`}
+            title="Reter tubo na bancada local para envio posterior (HbA1c na Gradinha)"
+          >
+            <Clock className="w-4 h-4" />
+            <span>📦 Reter na Bancada</span>
+            {!autoAvancoPausado && tempoRestante > 0 && !enviarHemogramaHoje ? ` (${tempoRestante}s)` : ""}
           </button>
 
           {!confirmandoExclusaoTubo && (
@@ -1712,7 +1760,7 @@ export default function TriagemEdtaPage() {
                 setAutoAvancoPausado(true);
                 setConfirmandoExclusaoTubo(true);
               }}
-              className="py-3 px-3 text-xs font-bold text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition cursor-pointer flex items-center gap-1.5 shrink-0"
+              className="py-3 px-3 text-xs font-bold text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition cursor-pointer flex items-center gap-1.5 shrink-0 justify-center"
               title="Exclusão pontual deste paciente (ex: glicada recente aproveitada)"
             >
               <Trash2 className="w-4 h-4" />
@@ -1723,7 +1771,7 @@ export default function TriagemEdtaPage() {
           <button
             type="button"
             onClick={fecharCardConferencia}
-            className="py-3 px-3.5 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
+            className="py-3 px-3.5 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer text-center"
           >
             Cancelar
           </button>
