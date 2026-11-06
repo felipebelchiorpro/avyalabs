@@ -1341,7 +1341,25 @@ export async function salvarTriagemEdta(
       data_nascimento: dtNasc,
       data_nascimento_digitos: dtNascDigitos,
       nome_paciente: (item.nome_paciente || "").trim().toUpperCase(),
-      tipo_destino: item.tipo_destino || "apenas_hemograma",
+      tipo_destino: (() => {
+        const examesStr = (item.exames_originais || []).join(" + ").toUpperCase();
+        const tipoStr = (item.tipo_destino || "").toLowerCase();
+        const temGlic = Boolean(item.tem_glicada) || tipoStr.includes("glic") || examesStr.includes("GLIC") || examesStr.includes("HBA1C");
+        const temHemo = Boolean(item.tem_hemograma) || tipoStr.includes("hemogr") || examesStr.includes("HEMOGRAMA") || (!tipoStr && !examesStr);
+        if (temHemo && temGlic) return "hemograma_glicada";
+        if (temGlic) return "apenas_glicada";
+        return "apenas_hemograma";
+      })(),
+      tem_glicada: (() => {
+        const examesStr = (item.exames_originais || []).join(" + ").toUpperCase();
+        const tipoStr = (item.tipo_destino || "").toLowerCase();
+        return Boolean(item.tem_glicada) || tipoStr.includes("glic") || examesStr.includes("GLIC") || examesStr.includes("HBA1C");
+      })(),
+      tem_hemograma: (() => {
+        const examesStr = (item.exames_originais || []).join(" + ").toUpperCase();
+        const tipoStr = (item.tipo_destino || "").toLowerCase();
+        return Boolean(item.tem_hemograma) || tipoStr.includes("hemogr") || examesStr.includes("HEMOGRAMA") || (!tipoStr && !examesStr);
+      })(),
       status: "pendente",
       fracionado_glicada: false,
       colocado_grade: false,
@@ -1638,19 +1656,32 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
               ? String(r[idxProntNorm]).trim()
               : normalizarProntuario(prontuario);
 
-          const tipoRaw = (idxTipo >= 0 ? r[idxTipo] : "").toString().trim() as TipoEdtaDestino;
+          const tipoRaw = (idxTipo >= 0 ? r[idxTipo] : "").toString().trim().toLowerCase();
           const statusRaw = (idxStatus >= 0 ? r[idxStatus] : "pendente").toString().trim() as StatusTriagemEdta;
           const fracRaw = (idxFrac >= 0 ? r[idxFrac] : "").toString().trim().toUpperCase();
           const gradeRaw = (idxGrade >= 0 ? r[idxGrade] : "").toString().trim().toUpperCase();
           const solicitanteRaw = (idxSolicitante >= 0 ? r[idxSolicitante] : "").toString().trim();
           const urgenciaRaw = (idxUrgencia >= 0 ? r[idxUrgencia] : "").toString().trim().toUpperCase();
+          const examesRawStr = (idxExames >= 0 && r[idxExames] ? r[idxExames].toString().toUpperCase() : "");
+
+          const temGlicada =
+            tipoRaw.includes("glic") ||
+            examesRawStr.includes("GLIC") ||
+            examesRawStr.includes("HBA1C");
 
           const temHemograma =
-            tipoRaw === "apenas_hemograma" ||
-            tipoRaw === "hemograma_glicada" ||
-            !tipoRaw;
-          const temGlicada =
-            tipoRaw === "apenas_glicada" || tipoRaw === "hemograma_glicada";
+            tipoRaw.includes("hemogr") ||
+            examesRawStr.includes("HEMOGRAMA") ||
+            (!tipoRaw && !examesRawStr);
+
+          let tipoDestino: TipoEdtaDestino = "apenas_hemograma";
+          if (temHemograma && temGlicada) {
+            tipoDestino = "hemograma_glicada";
+          } else if (temGlicada) {
+            tipoDestino = "apenas_glicada";
+          } else if (temHemograma) {
+            tipoDestino = "apenas_hemograma";
+          }
 
           const temVhs = idxVhs >= 0 && (r[idxVhs] === "SIM" || r[idxVhs] === "TRUE");
           const coletadoDois = idxDoisTubos >= 0 ? (r[idxDoisTubos] === "SIM" || r[idxDoisTubos] === "TRUE") : temVhs;
@@ -1668,7 +1699,7 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
             data_nascimento: dataNasc,
             data_nascimento_digitos: dataNascDigitos,
             nome_paciente: (idxNome >= 0 ? r[idxNome] : r[2] || "").toString().trim().toUpperCase(),
-            tipo_destino: tipoRaw || "apenas_hemograma",
+            tipo_destino: tipoDestino,
             status: statusRaw || "pendente",
             fracionado_glicada: fracRaw === "SIM" || fracRaw === "TRUE",
             colocado_grade: gradeRaw === "SIM" || gradeRaw === "TRUE",

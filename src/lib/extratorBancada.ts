@@ -54,6 +54,30 @@ export function normalizarDataIso(val: string | undefined): string {
 }
 
 /**
+ * Retorna a data de hoje no fuso horário local do dispositivo no formato YYYY-MM-DD
+ * Evita o bug de fuso horário UTC (onde após 21:00 no Brasil vira o dia seguinte)
+ */
+export function obterHojeIsoLocal(): string {
+  const d = new Date();
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+/**
+ * Retorna a data de ontem no fuso horário local do dispositivo no formato YYYY-MM-DD
+ */
+export function obterOntemIsoLocal(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+/**
  * Remove acentos e converte para maiúsculas para comparação segura
  */
 export function normalizarTexto(str: string): string {

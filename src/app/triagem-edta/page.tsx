@@ -292,24 +292,43 @@ export default function TriagemEdtaPage() {
 
   // Helper de detecção unificada de amostra retida na bancada
   const verificarSeEhRetido = (i: ItemTriagemEdta) => {
-    return Boolean(
+    // 1. Se o tubo já foi formalmente liberado para o apoio e colocado na grade com envio hoje, ele NÃO está mais retido
+    const jaFoiLiberadoAoApoio =
+      Boolean(i.data_liberacao_apoio) ||
+      (i.status === "pronto_grade" && i.colocado_grade === true && i.enviar_hemograma_hoje === true && !i.retidoParaFracionar);
+
+    if (jaFoiLiberadoAoApoio) return false;
+
+    // 2. É retido se possui Glicada (HbA1c) para dosagem local na bancada
+    const temGlicada =
+      Boolean(i.tem_glicada) ||
+      i.tipo_destino === "hemograma_glicada" ||
+      i.tipo_destino === "apenas_glicada" ||
+      i.tipo_destino.includes("glic") ||
+      (Array.isArray(i.exames_originais) &&
+        i.exames_originais.some((e: string) =>
+          e.toLowerCase().includes("glic") || e.toLowerCase().includes("hba1c")
+        ));
+
+    // 3. Ou se foi expressamente retido na bancada
+    const retidoExpresso =
       i.status === "retido_envio_posterior" ||
       i.status === "retido_bancada" ||
       (i as any).status === "retido_local" ||
-      Boolean(i.retidoParaFracionar) ||
-      i.tipo_destino === "apenas_glicada" ||
+      Boolean((i as any).retidoParaFracionar) ||
       i.enviar_hemograma_hoje === false ||
-      (Boolean(i.fracionado_glicada) && !i.colocado_grade)
-    );
+      (Boolean(i.fracionado_glicada) && !i.colocado_grade);
+
+    return temGlicada || retidoExpresso;
   };
 
   // CONTADORES DO TOPO
   const totalEdta = itens.length;
   const pendentesFracionar = itens.filter(
-    (i) => i.tipo_destino === "hemograma_glicada" && !i.fracionado_glicada && !verificarSeEhRetido(i)
+    (i) => (i.tipo_destino === "hemograma_glicada" || i.tem_glicada) && !i.fracionado_glicada && !i.colocado_grade
   ).length;
   const concluidosGrade = itens.filter(
-    (i) => (i.status === "pronto_grade" || i.colocado_grade) && !verificarSeEhRetido(i)
+    (i) => (i.status === "pronto_grade" || i.colocado_grade) && i.enviar_hemograma_hoje !== false
   ).length;
   const tubosRetidosLocal = itens.filter((i) => verificarSeEhRetido(i)).length;
 
@@ -1063,11 +1082,7 @@ export default function TriagemEdtaPage() {
 
   // DESPACHAR TODOS OS TUBOS RETIDOS EM LOTE PARA O APOIO DE HOJE
   const liberarTodosRetidosHoje = async () => {
-    const retidos = itens.filter(
-      (i) =>
-        i.status === "retido_envio_posterior" ||
-        (i.enviar_hemograma_hoje === false && (i.tipo_destino === "hemograma_glicada" || i.tem_glicada))
-    );
+    const retidos = itens.filter(verificarSeEhRetido);
     if (retidos.length === 0) return;
 
     tocarSomConfirmado();
@@ -2217,11 +2232,7 @@ export default function TriagemEdtaPage() {
           {/* GAVETA SUTIL: TUBOS RETIDOS NA GRADINHA LOCAL (ENVIO POSTERIOR)        */}
           {/* ======================================================================= */}
           {/* SINALIZADOR DISCRETO DE TUBOS RETIDOS (SEM BLOCO GIGANTE TRAVANDO A TELA) */}
-          {itens.some(
-            (i) =>
-              i.status === "retido_envio_posterior" ||
-              (i.enviar_hemograma_hoje === false && (i.tipo_destino === "hemograma_glicada" || i.tem_glicada))
-          ) && (
+          {tubosRetidosLocal > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-2.5 min-w-0">
                 <span className="p-1.5 rounded-lg bg-amber-200/80 text-amber-900 shrink-0">
@@ -2229,7 +2240,7 @@ export default function TriagemEdtaPage() {
                 </span>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-amber-950 truncate">
-                    {itens.filter((i) => i.status === "retido_envio_posterior" || (i.enviar_hemograma_hoje === false && (i.tipo_destino === "hemograma_glicada" || i.tem_glicada))).length} tubos retidos de glicada na gradinha
+                    {tubosRetidosLocal} {tubosRetidosLocal === 1 ? "tubo retido" : "tubos retidos"} de glicada na gradinha
                   </p>
                   <p className="text-[11px] text-amber-800/80 hidden sm:block">
                     Amostras aguardando liberação do hemograma para o Apoio.

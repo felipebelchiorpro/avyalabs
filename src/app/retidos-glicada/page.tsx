@@ -3,7 +3,14 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { ItemTriagemEdta } from "@/types/urinalise";
-import { formatarProntuario, formatarDataNascimento, normalizarTexto, normalizarDataIso } from "@/lib/extratorBancada";
+import {
+  formatarProntuario,
+  formatarDataNascimento,
+  normalizarTexto,
+  normalizarDataIso,
+  obterHojeIsoLocal,
+  obterOntemIsoLocal,
+} from "@/lib/extratorBancada";
 import {
   Clock,
   Search,
@@ -30,8 +37,8 @@ export default function RetidosGlicadaPage() {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ message: string; type: "success" | "warning" | "error" } | null>(null);
 
-  const hojeIso = new Date().toISOString().split("T")[0];
-  const ontemIso = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const hojeIso = useMemo(() => obterHojeIsoLocal(), []);
+  const ontemIso = useMemo(() => obterOntemIsoLocal(), []);
 
   const formatarData = (dStr: string) => {
     if (!dStr) return "—";
@@ -69,19 +76,41 @@ export default function RetidosGlicadaPage() {
     carregarDados();
   }, []);
 
-  // Filtrar apenas amostras com glicada retidas na gradinha local
+  // Helper centralizado para verificar se o item é um tubo retido de glicada aguardando envio ao apoio
+  const verificarSeEhRetido = (i: ItemTriagemEdta) => {
+    // 1. Se o tubo já foi formalmente liberado para o apoio e colocado na grade com envio hoje, ele NÃO está mais retido
+    const jaFoiLiberadoAoApoio =
+      Boolean(i.data_liberacao_apoio) ||
+      (i.status === "pronto_grade" && i.colocado_grade === true && i.enviar_hemograma_hoje === true && !i.retidoParaFracionar);
+
+    if (jaFoiLiberadoAoApoio) return false;
+
+    // 2. É retido se possui Glicada (HbA1c) para dosagem local na bancada
+    const temGlicada =
+      Boolean(i.tem_glicada) ||
+      i.tipo_destino === "hemograma_glicada" ||
+      i.tipo_destino === "apenas_glicada" ||
+      i.tipo_destino.includes("glic") ||
+      (Array.isArray(i.exames_originais) &&
+        i.exames_originais.some((e: string) =>
+          e.toLowerCase().includes("glic") || e.toLowerCase().includes("hba1c")
+        ));
+
+    // 3. Ou se foi expressamente retido na bancada
+    const retidoExpresso =
+      i.status === "retido_envio_posterior" ||
+      i.status === "retido_bancada" ||
+      (i as any).status === "retido_local" ||
+      Boolean((i as any).retidoParaFracionar) ||
+      i.enviar_hemograma_hoje === false ||
+      (Boolean(i.fracionado_glicada) && !i.colocado_grade);
+
+    return temGlicada || retidoExpresso;
+  };
+
+  // Filtrar todas as amostras retidas na gradinha local (multi-dia)
   const listaRetidos = useMemo(() => {
-    return itens.filter((i) => {
-      const ehRetido =
-        i.status === "retido_envio_posterior" ||
-        i.status === "retido_bancada" ||
-        (i as any).status === "retido_local" ||
-        Boolean((i as any).retidoParaFracionar) ||
-        i.tipo_destino === "apenas_glicada" ||
-        (i.enviar_hemograma_hoje === false && (i.tipo_destino === "hemograma_glicada" || i.tem_glicada)) ||
-        (Boolean(i.fracionado_glicada) && !i.colocado_grade);
-      return ehRetido;
-    });
+    return itens.filter(verificarSeEhRetido);
   }, [itens]);
 
   const contagemHoje = useMemo(
@@ -92,6 +121,18 @@ export default function RetidosGlicadaPage() {
     () => listaRetidos.filter((i) => normalizarDataIso(i.data) === ontemIso).length,
     [listaRetidos, ontemIso]
   );
+
+  // Outras datas históricas que possuem tubos retidos
+  const outrasDatasComRetidos = useMemo(() => {
+    const datas = Array.from(
+      new Set(
+        listaRetidos
+          .map((i) => normalizarDataIso(i.data))
+          .filter((d) => d && d !== hojeIso && d !== ontemIso)
+      )
+    );
+    return datas.sort().reverse();
+  }, [listaRetidos, hojeIso, ontemIso]);
 
   // Filtro de data e busca por nome, prontuário ou data de nascimento
   const listaFiltrada = useMemo(() => {
@@ -141,7 +182,6 @@ export default function RetidosGlicadaPage() {
   const liberarItem = async (item: ItemTriagemEdta) => {
     setIsProcessing(true);
     const agora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    const hojeIso = new Date().toISOString().split("T")[0];
 
     // Atualização otimista na tela
     setItens((prev) =>
@@ -204,7 +244,6 @@ export default function RetidosGlicadaPage() {
     if (itensParaLiberar.length === 0) return;
     setIsProcessing(true);
     const agora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    const hojeIso = new Date().toISOString().split("T")[0];
     const prontsSet = new Set(itensParaLiberar.map((i) => i.prontuario));
 
     // Atualização otimista
@@ -390,6 +429,31 @@ export default function RetidosGlicadaPage() {
                 {contagemOntem}
               </span>
             </button>
+
+            {outrasDatasComRetidos.map((dt) => {
+              const qtd = listaRetidos.filter((i) => normalizarDataIso(i.data) === dt).length;
+              return (
+                <button
+                  key={dt}
+                  type="button"
+                  onClick={() => setDataFiltro(dt)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    dataFiltro === dt
+                      ? "bg-purple-700 text-white shadow-xs"
+                      : "bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200"
+                  }`}
+                >
+                  <span>{formatarData(dt)}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                      dataFiltro === dt ? "bg-white/20 text-white" : "bg-purple-100 text-purple-800"
+                    }`}
+                  >
+                    {qtd}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {/* SELETOR DE DATA MANUAL (CALENDÁRIO) */}
@@ -564,8 +628,16 @@ export default function RetidosGlicadaPage() {
                         </td>
 
                         <td className="py-3 px-3 text-center">
-                          <span className="inline-block bg-purple-100 text-purple-900 border border-purple-200 px-2 py-0.5 rounded-md font-bold text-[10px]">
-                            Glicada + Hemograma
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded-md font-bold text-[10px] border ${
+                              item.tipo_destino === "apenas_glicada"
+                                ? "bg-amber-100 text-amber-900 border-amber-300"
+                                : "bg-purple-100 text-purple-900 border-purple-200"
+                            }`}
+                          >
+                            {item.tipo_destino === "apenas_glicada"
+                              ? "Apenas Glicada (Bancada)"
+                              : "Glicada + Hemograma"}
                           </span>
                         </td>
 
