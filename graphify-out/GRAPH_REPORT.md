@@ -1,7 +1,7 @@
 # Graph Report - Urinalise PWA Automatico  (2026-11-05)
 
 ## Corpus Check
-- 49 files · ~110,396 words
+- 49 files · ~110,688 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 4 file(s) not represented in the graph (top: (none) 2, .ico 1, .css 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `942214dc`
+- Built from commit: `0093fdd6`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -46,12 +46,12 @@
   src/app/vdrl/page.tsx → src/lib/extratorBancada.ts
 - `POST()` --calls--> `salvarOuAtualizarLaudo()`  [EXTRACTED]
   src/app/api/laudos/route.ts → src/lib/googleSheets.ts
-- `RetidosGlicadaPage()` --calls--> `formatarDataNascimento()`  [EXTRACTED]
-  src/app/retidos-glicada/page.tsx → src/lib/extratorBancada.ts
-- `RetidosGlicadaPage()` --calls--> `formatarProntuario()`  [EXTRACTED]
-  src/app/retidos-glicada/page.tsx → src/lib/extratorBancada.ts
-- `RetidosGlicadaPage()` --calls--> `normalizarDataIso()`  [EXTRACTED]
-  src/app/retidos-glicada/page.tsx → src/lib/extratorBancada.ts
+- `TriagemEdtaPage()` --calls--> `ModalSelecionarOperador()`  [EXTRACTED]
+  src/app/triagem-edta/page.tsx → src/components/ModalSelecionarOperador.tsx
+- `TriagemEdtaPage()` --calls--> `normalizarTexto()`  [EXTRACTED]
+  src/app/triagem-edta/page.tsx → src/lib/extratorBancada.ts
+- `TriagemEdtaPage()` --calls--> `processarMatrizLinhasBancada()`  [EXTRACTED]
+  src/app/triagem-edta/page.tsx → src/lib/extratorBancada.ts
 
 ## Import Cycles
 - None detected.
