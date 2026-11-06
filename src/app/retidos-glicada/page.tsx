@@ -59,7 +59,7 @@ export default function RetidosGlicadaPage() {
   const carregarDados = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/triagem-edta");
+      const res = await fetch("/api/triagem-edta?data=todas");
       const data = await res.json();
       if (data.ok && Array.isArray(data.itens)) {
         setItens(data.itens);
