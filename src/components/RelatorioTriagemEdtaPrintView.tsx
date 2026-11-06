@@ -22,9 +22,10 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
   tipoGuia = "ambas",
 }) => {
   // Tubos destinados ao faturamento e envio ao Apoio na remessa de hoje
-  // Exclui tubos retidos na bancada local para envio em outro dia
+  // Exclui tubos retidos na bancada local para envio em outro dia e exclui pacientes com apenas glicada (não vão ao apoio)
   const tubosApoio = itens.filter(
     (item) =>
+      item.tipo_destino !== "apenas_glicada" &&
       (item.tipo_destino === "apenas_hemograma" ||
         item.tipo_destino === "hemograma_glicada" ||
         item.tem_hemograma) &&
@@ -35,8 +36,10 @@ export const RelatorioTriagemEdtaPrintView: React.FC<RelatorioTriagemEdtaPrintVi
   );
 
   // Todos os tubos da rotina do laboratório (para a guia interna do laboratório)
+  // Pacientes com apenas glicada são dosados internamente e não entram no relatório de remessa/faturamento
   const tubosLaboratorio = itens.filter(
     (item) =>
+      item.tipo_destino !== "apenas_glicada" &&
       item.status !== "retido_bancada" &&
       (item.status === "pronto_grade" ||
         item.colocado_grade ||

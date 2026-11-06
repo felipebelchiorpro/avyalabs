@@ -292,6 +292,11 @@ export default function TriagemEdtaPage() {
 
   // Helper de detecção unificada de amostra retida na bancada
   const verificarSeEhRetido = (i: ItemTriagemEdta) => {
+    // 0. Pacientes que têm APENAS glicada (sem hemograma) não vão para o Apoio, logo não precisam ficar na aba/gaveta de retidos
+    if (i.tipo_destino === "apenas_glicada" || (!i.tem_hemograma && i.tipo_destino !== "hemograma_glicada")) {
+      return false;
+    }
+
     // 1. Se o tubo já foi formalmente liberado para o apoio e colocado na grade com envio hoje, ele NÃO está mais retido
     const jaFoiLiberadoAoApoio =
       Boolean(i.data_liberacao_apoio) ||
@@ -299,16 +304,16 @@ export default function TriagemEdtaPage() {
 
     if (jaFoiLiberadoAoApoio) return false;
 
-    // 2. É retido se possui Glicada (HbA1c) para dosagem local na bancada
-    const temGlicada =
-      Boolean(i.tem_glicada) ||
-      i.tipo_destino === "hemograma_glicada" ||
-      i.tipo_destino === "apenas_glicada" ||
-      i.tipo_destino.includes("glic") ||
-      (Array.isArray(i.exames_originais) &&
-        i.exames_originais.some((e: string) =>
-          e.toLowerCase().includes("glic") || e.toLowerCase().includes("hba1c")
-        ));
+    // 2. É retido se possui Hemograma + Glicada (HbA1c) aguardando envio do hemograma ao apoio
+    const temHemogramaEGlicada =
+      (Boolean(i.tem_glicada) ||
+        i.tipo_destino === "hemograma_glicada" ||
+        i.tipo_destino.includes("glic") ||
+        (Array.isArray(i.exames_originais) &&
+          i.exames_originais.some((e: string) =>
+            e.toLowerCase().includes("glic") || e.toLowerCase().includes("hba1c")
+          ))) &&
+      (Boolean(i.tem_hemograma) || i.tipo_destino.includes("hemogr") || i.tipo_destino === "hemograma_glicada");
 
     // 3. Ou se foi expressamente retido na bancada
     const retidoExpresso =
@@ -319,7 +324,7 @@ export default function TriagemEdtaPage() {
       i.enviar_hemograma_hoje === false ||
       (Boolean(i.fracionado_glicada) && !i.colocado_grade);
 
-    return temGlicada || retidoExpresso;
+    return temHemogramaEGlicada || retidoExpresso;
   };
 
   // CONTADORES DO TOPO
