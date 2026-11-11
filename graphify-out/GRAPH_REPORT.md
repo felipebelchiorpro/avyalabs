@@ -1,17 +1,17 @@
 # Graph Report - Urinalise PWA Automatico  (2026-11-11)
 
 ## Corpus Check
-- 53 files · ~116,030 words
+- 53 files · ~116,735 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 5 file(s) not represented in the graph (top: (none) 2, .ico 1, .css 1)
 
 ## Summary
-- 364 nodes · 853 edges · 22 communities (16 shown, 6 thin omitted)
+- 365 nodes · 857 edges · 20 communities (16 shown, 4 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `5fd92444`
+- Built from commit: `b75bc4fc`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -23,16 +23,14 @@
 - package.json
 - compilerOptions
 - dependencies
-- AppLayoutWrapper.tsx
 - @tailwindcss/postcss@^4.3.3
 - eslint.config.mjs
-- exportadorXmlExtensao.ts
+- urina/page.tsx
 - EdtaBarcodeScanner.tsx
 - manifest.json
 - extratorBancada.ts
 - D1PreparedStatement
 - TriagemEdtaReal.tsx
-- D1Database
 - vercel.json
 - postcss.config.mjs
 - next
@@ -40,9 +38,9 @@
 
 ## God Nodes (most connected - your core abstractions)
 1. `react` - 25 edges
-2. `TriagemEdtaPage()` - 22 edges
-3. `formatarProntuario()` - 22 edges
-4. `getD1Database()` - 20 edges
+2. `getD1Database()` - 23 edges
+3. `TriagemEdtaPage()` - 22 edges
+4. `formatarProntuario()` - 22 edges
 5. `next` - 20 edges
 6. `LaudoUrina` - 17 edges
 7. `normalizarProntuario()` - 17 edges
@@ -51,25 +49,25 @@
 10. `compilerOptions` - 16 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `BancadaOperacionalPage()` --calls--> `baixarXlsxUrinalise()`  [EXTRACTED]
-  src/app/urina/page.tsx → src/lib/exportadorXmlExtensao.ts
-- `BancadaOperacionalPage()` --calls--> `baixarXmlUrinalise()`  [EXTRACTED]
-  src/app/urina/page.tsx → src/lib/exportadorXmlExtensao.ts
-- `BancadaOperacionalPage()` --calls--> `gerarStringXmlUrinalise()`  [EXTRACTED]
-  src/app/urina/page.tsx → src/lib/exportadorXmlExtensao.ts
-- `BancadaOperacionalPage()` --calls--> `formatarProntuario()`  [EXTRACTED]
-  src/app/urina/page.tsx → src/lib/extratorBancada.ts
-- `StatusBadgeProps` --references--> `StatusLaudo`  [EXTRACTED]
-  src/components/StatusBadge.tsx → src/types/urinalise.ts
+- `GET()` --calls--> `listarOperadoresD1()`  [EXTRACTED]
+  src/app/api/operadores/route.ts → src/lib/d1Service.ts
+- `isGoogleSheetsConfigured()` --calls--> `isD1Configured()`  [EXTRACTED]
+  src/lib/googleSheets.ts → src/lib/d1Service.ts
+- `criarD1LocalDriver()` --calls--> `normalizarProntuario()`  [EXTRACTED]
+  src/lib/d1Service.ts → src/lib/extratorBancada.ts
+- `GET()` --calls--> `getD1Database()`  [EXTRACTED]
+  src/app/api/test-sheets/route.ts → src/lib/d1Service.ts
+- `GET()` --calls--> `listarRotinaDia()`  [EXTRACTED]
+  src/app/api/paciente/route.ts → src/lib/d1Service.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (22 total, 6 thin omitted)
+## Communities (20 total, 4 thin omitted)
 
 ### Community 0 - "urinalise.ts"
-Cohesion: 0.11
-Nodes (33): lucide-react, react, ConsultaAuditoriaPage(), ImportarRotinaPage(), PainelLaudosPage(), HomeDashboard(), BancadaOperacionalPage(), VALORES_PADRAO_NORMAL (+25 more)
+Cohesion: 0.10
+Nodes (29): lucide-react, react, ConsultaAuditoriaPage(), PainelLaudosPage(), HomeDashboard(), AppLayoutWrapperProps, LaudoPrintViewProps, LinhaBancadaIndividual (+21 more)
 
 ### Community 1 - "triagem-edta/page.tsx"
 Cohesion: 0.21
@@ -81,7 +79,7 @@ Nodes (13): Logo(), LogoProps, ModalSelecionarOperador(), ModalSelecionarOperado
 
 ### Community 3 - "d1Service.ts"
 Cohesion: 0.05
-Nodes (67): dynamic, GET(), POST(), revalidate, dynamic, GET(), POST(), revalidate (+59 more)
+Nodes (62): dynamic, GET(), POST(), revalidate, dynamic, GET(), POST(), revalidate (+54 more)
 
 ### Community 4 - "package.json"
 Cohesion: 0.15
@@ -99,9 +97,9 @@ Nodes (18): dependencies, @emnapi/core@^1.11.3, @emnapi/runtime@^1.11.3, googlea
 Cohesion: 0.33
 Nodes (5): eslintConfig, eslint@^9, eslint-config-next@16.4.3, eslint, eslint-config-next
 
-### Community 11 - "exportadorXmlExtensao.ts"
-Cohesion: 0.20
-Nodes (14): baixarXlsxUrinalise(), baixarXmlUrinalise(), escaparXml(), estaNoIntervaloData(), extrairNumero(), formatarDataPtBr(), gerarStringXmlUrinalise(), ItemXmlUrinalise (+6 more)
+### Community 11 - "urina/page.tsx"
+Cohesion: 0.17
+Nodes (19): BancadaOperacionalPage(), VALORES_PADRAO_NORMAL, VALORES_SEM_URINA, LoteVdrlPage(), BarraAcoesTiragem(), MapaBancadaPrintView(), QuickChipSelect(), QuickChipSelectProps (+11 more)
 
 ### Community 12 - "EdtaBarcodeScanner.tsx"
 Cohesion: 0.33
@@ -112,8 +110,8 @@ Cohesion: 0.20
 Nodes (9): background_color, description, display, icons, name, orientation, short_name, start_url (+1 more)
 
 ### Community 15 - "extratorBancada.ts"
-Cohesion: 0.15
-Nodes (23): dynamic, extractTextFromPdf(), POST(), revalidate, RetidosGlicadaPage(), LoteVdrlPage(), salvarTriagemEdta(), aplicarFlagsExamesNoItem() (+15 more)
+Cohesion: 0.12
+Nodes (27): dynamic, extractTextFromPdf(), POST(), revalidate, ImportarRotinaPage(), RetidosGlicadaPage(), listarTriagemEdta(), salvarTriagemEdta() (+19 more)
 
 ### Community 17 - "TriagemEdtaReal.tsx"
 Cohesion: 0.38
@@ -124,28 +122,28 @@ Cohesion: 0.50
 Nodes (3): buildCommand, framework, installCommand
 
 ### Community 22 - "next"
-Cohesion: 0.08
-Nodes (25): nextConfig, next, dynamic, GET(), revalidate, dynamic, GET(), POST() (+17 more)
+Cohesion: 0.07
+Nodes (28): nextConfig, next, dynamic, GET(), revalidate, dynamic, GET(), POST() (+20 more)
 
 ### Community 23 - "scripts"
 Cohesion: 0.40
 Nodes (5): scripts, build, dev, lint, start
 
 ## Knowledge Gaps
-- **6 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **4 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `next` connect `next` to `urinalise.ts`, `triagem-edta/page.tsx`, `Navbar.tsx`, `d1Service.ts`, `package.json`, `dependencies`, `extratorBancada.ts`?**
+- **Why does `next` connect `next` to `urinalise.ts`, `triagem-edta/page.tsx`, `Navbar.tsx`, `d1Service.ts`, `package.json`, `dependencies`, `urina/page.tsx`, `extratorBancada.ts`?**
   _High betweenness centrality (0.192) - this node is a cross-community bridge._
 - **Should `urinalise.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.10745098039215686 - nodes in this community are weakly interconnected._
-- **Why does `react` connect `urinalise.ts` to `triagem-edta/page.tsx`, `Navbar.tsx`, `package.json`, `dependencies`, `AppLayoutWrapper.tsx`, `EdtaBarcodeScanner.tsx`, `extratorBancada.ts`, `TriagemEdtaReal.tsx`?**
+  _Cohesion score 0.10083256244218317 - nodes in this community are weakly interconnected._
+- **Why does `react` connect `urinalise.ts` to `triagem-edta/page.tsx`, `Navbar.tsx`, `package.json`, `dependencies`, `urina/page.tsx`, `EdtaBarcodeScanner.tsx`, `extratorBancada.ts`, `TriagemEdtaReal.tsx`?**
   _High betweenness centrality (0.106) - this node is a cross-community bridge._
 - **Should `d1Service.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.052614052614052616 - nodes in this community are weakly interconnected._
-- **Why does `lucide-react` connect `urinalise.ts` to `triagem-edta/page.tsx`, `Navbar.tsx`, `package.json`, `dependencies`, `EdtaBarcodeScanner.tsx`, `extratorBancada.ts`, `TriagemEdtaReal.tsx`?**
+  _Cohesion score 0.05333333333333334 - nodes in this community are weakly interconnected._
+- **Why does `lucide-react` connect `urinalise.ts` to `triagem-edta/page.tsx`, `Navbar.tsx`, `package.json`, `dependencies`, `urina/page.tsx`, `EdtaBarcodeScanner.tsx`, `extratorBancada.ts`, `TriagemEdtaReal.tsx`?**
   _High betweenness centrality (0.058) - this node is a cross-community bridge._
 - **Should `package.json` be split into smaller, more focused modules?**
   _Cohesion score 0.14619883040935672 - nodes in this community are weakly interconnected._

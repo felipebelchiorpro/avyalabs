@@ -60,9 +60,9 @@
     "semantic_hash": ""
   },
   "src/app/api/operadores/route.ts": {
-    "mtime": 1794367013.2498066,
-    "seen": 1794367243.5733676,
-    "ast_hash": "1455d8b84c4b1ec88ea995c7307d2f4a",
+    "mtime": 1794373449.9072368,
+    "seen": 1794373545.0308726,
+    "ast_hash": "551b5b2ea7f53643284d772c8cc6644c",
     "semantic_hash": ""
   },
   "src/app/api/paciente/route.ts": {
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "public/graph.html": {
-    "mtime": 1794372887.6088302,
-    "seen": 1794373372.0180335,
-    "ast_hash": "e54303bf964f282207f6d77d621b98a8",
+    "mtime": 1794373372.0529287,
+    "seen": 1794373545.0401554,
+    "ast_hash": "259cca75be035f2ea976f9843a19a3fa",
     "semantic_hash": ""
   },
   "public/file.svg": {
@@ -372,9 +372,9 @@
     "semantic_hash": ""
   },
   "src/lib/d1Service.ts": {
-    "mtime": 1794367223.497454,
-    "seen": 1794367243.5771036,
-    "ast_hash": "063fa4dda64898e17c9b06c0d0878e86",
+    "mtime": 1794373481.9767158,
+    "seen": 1794373545.0367887,
+    "ast_hash": "04f21bed94fa47d090cacb3eeb76dcc2",
     "semantic_hash": ""
   },
   "docs/BANCADALAB_SUS_OBSIDIAN.md": {
@@ -396,9 +396,9 @@
     "semantic_hash": ""
   },
   "src/components/BarraAcoesTiragem.tsx": {
-    "mtime": 1794373181.3394272,
-    "seen": 1794373372.0129406,
-    "ast_hash": "bce2eb5f0efe2d2fce87ffc86a5509bd",
+    "mtime": 1794373401.976902,
+    "seen": 1794373545.0338516,
+    "ast_hash": "1d19bdeb160eeb91fbe9a6429657307c",
     "semantic_hash": ""
   },
   "package-lock.json": {

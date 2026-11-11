@@ -485,12 +485,89 @@ function criarD1LocalDriver(): D1Database {
   };
 }
 
+// Cria um executor D1 via HTTP REST API da Cloudflare para ambientes externos (ex: Vercel)
+function criarD1HttpDriver(accountId: string, databaseId: string, apiToken: string): D1Database {
+  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`;
+
+  return {
+    async exec(query: string) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ sql: query }),
+      });
+      const data = await res.json();
+      return { count: data.result?.[0]?.meta?.changes || 0, duration: data.result?.[0]?.meta?.duration || 0 };
+    },
+    async dump() {
+      return new ArrayBuffer(0);
+    },
+    async batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]> {
+      const out: D1Result<T>[] = [];
+      for (const st of statements) {
+        out.push(await st.run<T>());
+      }
+      return out;
+    },
+    prepare(query: string): D1PreparedStatement {
+      let boundValues: any[] = [];
+      const statement: D1PreparedStatement = {
+        bind(...values: any[]) {
+          boundValues = values;
+          return statement;
+        },
+        async first<T = unknown>(colName?: string): Promise<T | null> {
+          const res = await this.all<T>();
+          if (!res.results || res.results.length === 0) return null;
+          const p: any = res.results[0];
+          return colName ? (p[colName] ?? null) : (p as T);
+        },
+        async raw<T = unknown>(): Promise<T[]> {
+          const res = await this.all<any>();
+          return (res.results || []).map((r) => Object.values(r)) as T[];
+        },
+        async all<T = unknown>(): Promise<D1Result<T>> {
+          try {
+            const res = await fetch(url, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ sql: query, params: boundValues }),
+            });
+            const data = await res.json();
+            if (data.success && data.result?.[0]) {
+              return { success: true, results: (data.result[0].results || []) as T[] };
+            }
+            return { success: false, error: data.errors?.[0]?.message || "Erro na consulta D1" };
+          } catch (err: any) {
+            return { success: false, error: err.message || String(err) };
+          }
+        },
+        async run<T = unknown>(): Promise<D1Result<T>> {
+          try {
+            const res = await fetch(url, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ sql: query, params: boundValues }),
+            });
+            const data = await res.json();
+            return { success: Boolean(data.success), results: (data.result?.[0]?.results || []) as T[] };
+          } catch (err: any) {
+            return { success: false, error: err.message || String(err) };
+          }
+        },
+      };
+      return statement;
+    },
+  };
+}
+
 /**
  * Obtém a conexão ativa com o Cloudflare D1.
  * Prioridade:
  * 1. env.DB injetado pelo Cloudflare Workers/Pages
  * 2. process.env.DB ou globalThis.DB
- * 3. Driver de fallback local persistente (ambiente dev/build)
+ * 3. Cloudflare D1 HTTP REST API (quando CLOUDFLARE_API_TOKEN está na Vercel/Node)
+ * 4. Driver de fallback local persistente (ambiente dev/build)
  */
 export function getD1Database(): D1Database {
   const g = globalThis as any;
@@ -499,6 +576,18 @@ export function getD1Database(): D1Database {
   }
   if (typeof process !== "undefined" && (process.env as any)?.DB?.prepare) {
     return (process.env as any).DB as D1Database;
+  }
+
+  // Suporte a HTTP REST API da Cloudflare na Vercel
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  const databaseId = process.env.CLOUDFLARE_DATABASE_ID || "fbfd9da8-1429-452b-9d35-41393fa63094";
+
+  if (accountId && apiToken && databaseId) {
+    if (!g.__BANCADALAB_D1_HTTP__) {
+      g.__BANCADALAB_D1_HTTP__ = criarD1HttpDriver(accountId, databaseId, apiToken);
+    }
+    return g.__BANCADALAB_D1_HTTP__ as D1Database;
   }
 
   // Driver local em memória/disco
