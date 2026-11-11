@@ -36,9 +36,9 @@
     "semantic_hash": "d7bb2fbe4fc5e286d934d848b799ef7e"
   },
   "src/app/api/extrair-arquivo/route.ts": {
-    "mtime": 1794367024.2167716,
-    "seen": 1794367243.5733576,
-    "ast_hash": "babdb1e6515c0da95c07dd078c4a2615",
+    "mtime": 1794439508.7194135,
+    "seen": 1794439672.9244702,
+    "ast_hash": "093ca16d2539771125ef3311437d0045",
     "semantic_hash": ""
   },
   "src/app/api/laudos-dia/route.ts": {
@@ -90,9 +90,9 @@
     "semantic_hash": ""
   },
   "src/app/api/triagem-edta/route.ts": {
-    "mtime": 1794374423.42275,
-    "seen": 1794374600.3584876,
-    "ast_hash": "ad78ec536bfb7a0508e6a3db324c1c4f",
+    "mtime": 1794439202.304793,
+    "seen": 1794439672.9262128,
+    "ast_hash": "fc6ad8058902c9d2aa507458e996e6f2",
     "semantic_hash": ""
   },
   "src/app/configuracoes/page.tsx": {
@@ -108,9 +108,9 @@
     "semantic_hash": "2b4b022c22c7cbd6ddcdb954a37741cd"
   },
   "src/app/importar/page.tsx": {
-    "mtime": 1794367061.4266899,
-    "seen": 1794367243.5737162,
-    "ast_hash": "505c3e9ba337a8b5de3be5e8f3ed6265",
+    "mtime": 1794439565.6323538,
+    "seen": 1794439672.9265857,
+    "ast_hash": "8ab7f4c64fcc6dc4dbe157e678dc1e0d",
     "semantic_hash": ""
   },
   "src/app/laudos/page.tsx": {
@@ -138,9 +138,9 @@
     "semantic_hash": ""
   },
   "src/app/triagem-edta/page.tsx": {
-    "mtime": 1794374548.802025,
-    "seen": 1794374600.35994,
-    "ast_hash": "c3e5d47d70518f97e214bd6263f69c37",
+    "mtime": 1794439537.4277809,
+    "seen": 1794439672.9274142,
+    "ast_hash": "6933f2cd6d99ed4759c5dfcb609717f8",
     "semantic_hash": ""
   },
   "src/app/vdrl/page.tsx": {
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "public/graph.html": {
-    "mtime": 1794373545.0752378,
-    "seen": 1794374600.366463,
-    "ast_hash": "c220c4c79e82da53b82ca585ecae2db9",
+    "mtime": 1794374600.4003139,
+    "seen": 1794439672.9348755,
+    "ast_hash": "37c4ba7caf5c3244046d2aa59f5a869f",
     "semantic_hash": ""
   },
   "public/file.svg": {
@@ -372,9 +372,9 @@
     "semantic_hash": ""
   },
   "src/lib/d1Service.ts": {
-    "mtime": 1794374402.4348266,
-    "seen": 1794374600.3632128,
-    "ast_hash": "7d25f4dd1c166fdf8ee0bd2493fae6a5",
+    "mtime": 1794439157.6780593,
+    "seen": 1794439672.9319017,
+    "ast_hash": "2a8418423999a57b2c6ec813dd21c5a2",
     "semantic_hash": ""
   },
   "docs/BANCADALAB_SUS_OBSIDIAN.md": {
@@ -390,9 +390,9 @@
     "semantic_hash": ""
   },
   "src/app/urina/page.tsx": {
-    "mtime": 1794373306.568327,
-    "seen": 1794373372.01262,
-    "ast_hash": "efd6d51f1a2c386c15a95c56fc0b9a58",
+    "mtime": 1794439330.5102453,
+    "seen": 1794439672.9274175,
+    "ast_hash": "3221042bcc30aec46aad56bfc3ea766b",
     "semantic_hash": ""
   },
   "src/components/BarraAcoesTiragem.tsx": {
@@ -402,9 +402,9 @@
     "semantic_hash": ""
   },
   "src/components/SidebarLateral.tsx": {
-    "mtime": 1794374106.2897098,
-    "seen": 1794374600.3624852,
-    "ast_hash": "fc1410c741b023c1fbe02ba11077d926",
+    "mtime": 1794374684.513714,
+    "seen": 1794439672.9310234,
+    "ast_hash": "dd20a9e84369e022912c82eebcdf60f8",
     "semantic_hash": ""
   },
   "package-lock.json": {

@@ -23,12 +23,12 @@ export async function GET(request: NextRequest) {
     const data = searchParams.get("data") || undefined;
 
     if (resetPrint) {
-      consumirSinalImpressaoEdta();
+      await consumirSinalImpressaoEdta();
       return NextResponse.json({ ok: true, message: "Sinal de impressão redefinido." });
     }
 
     if (checkPrint) {
-      const sinal = obterSinalImpressaoEdta();
+      const sinal = await obterSinalImpressaoEdta();
       return NextResponse.json({
         ok: true,
         sinalImpressao: sinal,
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
         retidosBancada,
         pendentes,
       },
-      sinalImpressao: obterSinalImpressaoEdta(),
+      sinalImpressao: await obterSinalImpressaoEdta(),
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
     if (acao === "solicitar_impressao") {
       const horaEncerramento = body.horaEncerramento;
       const tipoGuia = body.tipoGuia || "ambas";
-      const sinal = emitirSinalImpressaoEdta(horaEncerramento, tipoGuia);
+      const sinal = await emitirSinalImpressaoEdta(horaEncerramento, tipoGuia);
       return NextResponse.json({
         ok: true,
         message: "Sinal de impressão enviado para a tela do PC!",
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (acao === "confirmar_impressao") {
-      consumirSinalImpressaoEdta();
+      await consumirSinalImpressaoEdta();
       return NextResponse.json({
         ok: true,
         message: "Sinal de impressão confirmado.",
@@ -204,7 +204,11 @@ export async function POST(request: NextRequest) {
 
     if (acao === "atualizar_item") {
       const prontuario = body.prontuario;
-      const updates = body.updates || {};
+      const updates = {
+        ...(body.updates || {}),
+        ...(body.id ? { id: body.id } : {}),
+        ...(body.data ? { data: body.data } : {}),
+      };
       if (!prontuario) {
         return NextResponse.json(
           { ok: false, error: "Prontuário obrigatório para atualizar item." },

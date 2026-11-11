@@ -995,15 +995,19 @@ export default function TriagemEdtaPage() {
       })
     );
 
-    // Persistir no backend
+    // Persistir no backend (com ID/Data exatos e checagem de sucesso real no D1)
     try {
-      await fetch("/api/triagem-edta", {
+      const saveRes = await fetch("/api/triagem-edta", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           acao: "atualizar_item",
+          id: tuboAtivo.id,
+          data: tuboAtivo.data,
           prontuario: tuboAtivo.prontuario,
           updates: {
+            id: tuboAtivo.id,
+            data: tuboAtivo.data,
             nome_paciente: tuboAtivo.nome_paciente,
             data_nascimento: dataNascFinal,
             data_nascimento_digitos: dataNascDigitos,
@@ -1022,6 +1026,23 @@ export default function TriagemEdtaPage() {
         }),
       });
 
+      const saveData = await saveRes.json();
+      if (!saveRes.ok || !saveData.ok) {
+        alert(`Erro ao gravar dados de ${tuboAtivo.nome_paciente} no banco D1: ${saveData.error || "Falha na API"}`);
+        return;
+      }
+
+      if (saveData.item) {
+        setItens((prev) =>
+          prev.map((i) =>
+            (saveData.item.id && i.id === saveData.item.id) ||
+            formatarProntuario(i.prontuario) === formatarProntuario(saveData.item.prontuario)
+              ? saveData.item
+              : i
+          )
+        );
+      }
+
       if (tuboAtivo.tipo_destino === "apenas_glicada") {
         setMensagemSucesso({
           titulo: `✓ Presença confirmada: ${tuboAtivo.nome_paciente} (#${tuboAtivo.prontuario})`,
@@ -1035,14 +1056,15 @@ export default function TriagemEdtaPage() {
       } else {
         setMensagemSucesso({
           titulo: `✓ Tubo de ${tuboAtivo.nome_paciente} confirmado na Grade do Apoio!`,
-          subtitulo: `Status: Pronto na Grade • DN: ${dataNascFinal || "N/A"} • ${
+          subtitulo: `Status: Pronto na Grade • DN: ${dataNascFinal || "N/A"} • ${medicoFinal} • ${
             coletadoDoisTubos ? "2 Tubos (VHS/Apoio)" : "1 Tubo"
           }`,
         });
       }
       setTimeout(() => setMensagemSucesso(null), 3500);
-    } catch (e) {
-      console.warn("Aviso ao salvar status no servidor:", e);
+    } catch (e: any) {
+      console.error("Erro ao salvar status no servidor:", e);
+      alert(`Falha de comunicação com o servidor ao salvar tubo: ${e?.message || "Tente novamente"}`);
     } finally {
       setIsSyncing(false);
       limparTimerAutoAvanco();
@@ -1298,15 +1320,16 @@ export default function TriagemEdtaPage() {
         setIsLoading(false);
       }
     } else {
+      const isCsv = file.name.toLowerCase().endsWith(".csv") || file.name.toLowerCase().endsWith(".txt");
       try {
         const reader = new FileReader();
         reader.onload = async (evt) => {
           try {
             const bstr = evt.target?.result;
-            const wb = XLSX.read(bstr, { type: "binary" });
+            const wb = XLSX.read(bstr, { type: isCsv ? "string" : "binary", raw: isCsv });
             const wsname = wb.SheetNames[0];
             const ws = wb.Sheets[wsname];
-            const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+            const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: isCsv });
 
             const res = processarMatrizLinhasBancada(rows, false);
 
@@ -1340,7 +1363,11 @@ export default function TriagemEdtaPage() {
             setIsLoading(false);
           }
         };
-        reader.readAsBinaryString(file);
+        if (isCsv) {
+          reader.readAsText(file, "UTF-8");
+        } else {
+          reader.readAsBinaryString(file);
+        }
       } catch (err: any) {
         setIsLoading(false);
       }
@@ -1359,7 +1386,10 @@ export default function TriagemEdtaPage() {
 
     // Sincronizar dados mais recentes do servidor antes de imprimir para garantir que todas as datas de nascimento estejam presentes
     try {
-      const resItens = await fetch("/api/triagem-edta");
+      const urlImpressao = dataFiltro
+        ? `/api/triagem-edta?data=${encodeURIComponent(dataFiltro)}`
+        : "/api/triagem-edta";
+      const resItens = await fetch(urlImpressao, { cache: "no-store" });
       const dataItens = await resItens.json();
       if (dataItens.ok && Array.isArray(dataItens.itens)) {
         setItens(dataItens.itens);
@@ -2756,6 +2786,14 @@ export default function TriagemEdtaPage() {
                         const dataNasc = formatarDataNascimento(item.data_nascimento || "");
                         setDataNascConferencia(dataNasc);
                         setEditandoDataNasc(false);
+                        setMedicoSelecionado(
+                          item.solicitante && item.solicitante.trim()
+                            ? item.solicitante.trim()
+                            : medicoPadrao || "Dr(a). Clínico(a) Geral / UBS"
+                        );
+                        setMedicoDetectadoFolha("");
+                        setEditandoMedico(false);
+                        setIsUrgente(Boolean(item.urgencia));
                         setColetadoDoisTubos(
                           item.tem_vhs
                             ? item.coletado_dois_tubos !== false
@@ -2785,6 +2823,11 @@ export default function TriagemEdtaPage() {
                               </span>
                             ) : (
                               <span className="text-slate-400 italic">DN não informada</span>
+                            )}
+                            {item.solicitante && (
+                              <span className="font-semibold text-slate-700 truncate max-w-[170px]" title={item.solicitante}>
+                                • {item.solicitante}
+                              </span>
                             )}
                             <span className="font-mono text-slate-400">
                               (#{item.prontuario})

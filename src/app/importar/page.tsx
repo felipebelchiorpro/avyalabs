@@ -100,13 +100,27 @@ export default function ImportarRotinaPage() {
         if (data.ok && Array.isArray(data.pacientesUnificados)) {
           setPacientes(data.pacientesUnificados);
           setTotalLinhasArquivo(data.totalLidos);
+
+          // Salvar automaticamente a partição de bancada no D1
+          if (data.pacientesUnificados.length > 0) {
+            try {
+              await fetch("/api/rotina", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ itens: data.pacientesUnificados, substituir: true }),
+              });
+            } catch (e) {
+              console.warn("Aviso ao auto-salvar rotina:", e);
+            }
+          }
+
           const msgEdta = data.resultadoMergeEdta?.message
             ? ` | 🟣 ${data.resultadoMergeEdta.message}`
             : data.totalEdta
             ? ` | 🟣 ${data.totalEdta} tubos EDTA na Triagem`
             : "";
           setFeedback({
-            message: `📄 PDF "${file.name}" processado! ${data.pacientesUnificados.length} pacientes de bancada identificados${msgEdta}.`,
+            message: `📄 PDF "${file.name}" processado e salvo no D1! ${data.pacientesUnificados.length} pacientes de bancada${msgEdta}.`,
             type: "success",
           });
         } else {
@@ -118,20 +132,39 @@ export default function ImportarRotinaPage() {
         setIsLoading(false);
       }
     } else {
-      // Leitura de Excel (.xlsx, .xls) ou CSV direto no cliente
+      // Leitura de Excel (.xlsx, .xls) ou CSV direto no cliente (raw: true em CSV evita inversão MM/DD)
+      const isCsv = file.name.toLowerCase().endsWith(".csv") || file.name.toLowerCase().endsWith(".txt");
       try {
         const reader = new FileReader();
         reader.onload = async (evt) => {
           try {
             const bstr = evt.target?.result;
-            const wb = XLSX.read(bstr, { type: "binary" });
+            const wb = XLSX.read(bstr, { type: isCsv ? "string" : "binary", raw: isCsv });
             const wsname = wb.SheetNames[0];
             const ws = wb.Sheets[wsname];
-            const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+            const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: isCsv });
 
             const res = processarMatrizLinhasBancada(rows, filtrarApenasRealizado);
             setPacientes(res.pacientesUnificados);
             setTotalLinhasArquivo(res.totalLidos);
+
+            // Salvar automaticamente partição de bancada no D1
+            let rotinaMsg = "";
+            if (res.pacientesUnificados && res.pacientesUnificados.length > 0) {
+              try {
+                const rotRes = await fetch("/api/rotina", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ itens: res.pacientesUnificados, substituir: true }),
+                });
+                const rotData = await rotRes.json();
+                if (rotData.ok) {
+                  rotinaMsg = " e salvos no D1";
+                }
+              } catch (e) {
+                console.warn("Erro ao auto-salvar rotina:", e);
+              }
+            }
 
             // Sincronizar partição Triagem EDTA via Merge incremental (preservando já triados)
             let edtaMsg = "";
@@ -156,7 +189,7 @@ export default function ImportarRotinaPage() {
             }
 
             setFeedback({
-              message: `📊 Planilha "${file.name}" processada! ${res.totalAproveitados} pacientes de bancada identificados${edtaMsg} (${res.totalDescartadosAutomatizados} descartados).`,
+              message: `📊 Planilha "${file.name}" processada! ${res.totalAproveitados} pacientes de bancada identificados${rotinaMsg}${edtaMsg} (${res.totalDescartadosAutomatizados} descartados).`,
               type: "success",
             });
           } catch (err: any) {
@@ -165,7 +198,11 @@ export default function ImportarRotinaPage() {
             setIsLoading(false);
           }
         };
-        reader.readAsBinaryString(file);
+        if (isCsv) {
+          reader.readAsText(file, "UTF-8");
+        } else {
+          reader.readAsBinaryString(file);
+        }
       } catch (err: any) {
         setIsLoading(false);
         setFeedback({ message: `Erro ao abrir arquivo: ${err.message}`, type: "error" });

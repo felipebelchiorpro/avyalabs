@@ -317,6 +317,8 @@ export default function BancadaOperacionalPage() {
             a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR")
           );
         setRotinaDia(rotinaAtualizada);
+      } else if (!silencioso && dataRotina.error) {
+        mostrarNotificacao(`Aviso ao carregar rotina: ${dataRotina.error}`, "error");
       }
     } catch (e) {
       console.error("Erro ao sincronizar rotina e laudos:", e);
@@ -351,36 +353,45 @@ export default function BancadaOperacionalPage() {
         return;
       }
 
-      if (data.dataReferencia) {
-        setDataHoje(data.dataReferencia);
-      }
+      const dataAlvoUpload = data.dataReferencia || dataHoje || new Date().toISOString().split("T")[0];
+      setDataHoje(dataAlvoUpload);
+      dataHojeRef.current = dataAlvoUpload;
+
+      const listaParaSalvar: ItemRotina[] = listaExtraida.map((item) => ({
+        ...item,
+        data: dataAlvoUpload,
+      }));
 
       setResumoExtracao({
-        totalExamesBancada: data.totalExamesBancada || listaExtraida.length,
-        totalPacientes: listaExtraida.length,
+        totalExamesBancada: data.totalExamesBancada || listaParaSalvar.length,
+        totalPacientes: listaParaSalvar.length,
         totalDescartadosBioquimica: data.totalDescartadosBioquimica || 0,
       });
 
-      // Salvar na rotina do dia (substituindo a rotina anterior) para disponibilizar no celular
+      // Salvar na rotina do dia no D1 para disponibilizar no celular e manter na tela
       const saveRes = await fetch("/api/rotina", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          itens: listaExtraida,
+          itens: listaParaSalvar,
           substituir: true,
         }),
       });
       const saveData = await saveRes.json();
 
       if (saveData.ok) {
-        setRotinaDia(listaExtraida);
-        await carregarDadosSincronizados(true);
+        setRotinaDia(listaParaSalvar);
+        await carregarDadosSincronizados(true, dataAlvoUpload, "");
         mostrarNotificacao(
-          `✅ Tiragem gerada! ${data.totalExamesBancada || listaExtraida.length} exames de bancada (${listaExtraida.length} pacientes) prontos e sincronizados com o celular.`,
+          `✅ Tiragem gerada! ${data.totalExamesBancada || listaParaSalvar.length} exames de bancada (${listaParaSalvar.length} pacientes) salvos no D1 e prontos para imprimir.`,
           "success"
         );
       } else {
-        mostrarNotificacao("Erro ao salvar a rotina extraída no servidor.", "error");
+        setRotinaDia(listaParaSalvar);
+        mostrarNotificacao(
+          `Erro ao salvar a rotina no D1: ${saveData.error || "Verifique a conexão"}`,
+          "error"
+        );
       }
     } catch (err) {
       console.error(err);

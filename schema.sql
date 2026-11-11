@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS rotina_dia (
     prontuario TEXT NOT NULL,                     -- Prontuário original (ex: 0016480)
     nome_paciente TEXT NOT NULL,                  -- Nome completo do paciente em CAIXA ALTA
     idade_sexo TEXT,                              -- Demografia (ex: 45A / F ou SUS)
+    posto_unidade TEXT,                           -- Unidade / UBS / Origem
+    solicitante TEXT,                             -- Médico solicitante
     exame TEXT,                                   -- Lista de exames da guia
     status_coleta TEXT DEFAULT 'REALIZADO',        -- REALIZADO / PENDENTE
     status_laudo TEXT DEFAULT 'PENDENTE',          -- PENDENTE / DIGITADO / CONCLUIDO

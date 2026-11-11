@@ -76,12 +76,12 @@ export async function POST(request: NextRequest) {
         }, { status: 422 });
       }
     } else if (fileName.endsWith(".csv") || fileName.endsWith(".txt")) {
-      // Leitura de CSV preservando acentuação UTF-8 e zeros à esquerda nos prontuários
+      // Leitura de CSV preservando acentuação UTF-8, datas DD/MM/AAAA e zeros à esquerda nos prontuários (raw: true evita inversão MM/DD americana)
       const csvText = buffer.toString("utf-8");
-      const workbook = XLSX.read(csvText, { type: "string", raw: false });
+      const workbook = XLSX.read(csvText, { type: "string", raw: true });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "", raw: false });
+      rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "", raw: true });
     } else {
       // Leitura de Excel (.xlsx, .xls)
       const workbook = XLSX.read(buffer, { type: "buffer", raw: false });

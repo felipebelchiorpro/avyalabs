@@ -317,6 +317,7 @@ function criarD1LocalDriver(): D1Database {
               data,
               prontuario,
               prontuario_normalizado,
+              agendamento,
               data_nascimento,
               data_nascimento_digitos,
               nome_paciente,
@@ -342,9 +343,10 @@ function criarD1LocalDriver(): D1Database {
               const jaTriado = itemAntigo.status !== "pendente" || itemAntigo.colocado_grade;
               db.triagem_edta[idx] = {
                 ...itemAntigo,
+                agendamento: agendamento || itemAntigo.agendamento || "",
                 data_nascimento: data_nascimento || itemAntigo.data_nascimento,
                 data_nascimento_digitos: data_nascimento_digitos || itemAntigo.data_nascimento_digitos,
-                solicitante: itemAntigo.solicitante || solicitante,
+                solicitante: solicitante && !solicitante.includes("Clínico(a) Geral") ? solicitante : (itemAntigo.solicitante || solicitante),
                 urgencia: itemAntigo.urgencia ?? Boolean(urgencia),
                 exames: itemAntigo.exames || exames,
                 status: jaTriado ? itemAntigo.status : (status || itemAntigo.status),
@@ -360,6 +362,7 @@ function criarD1LocalDriver(): D1Database {
                 data,
                 prontuario,
                 prontuario_normalizado,
+                agendamento: agendamento || "",
                 data_nascimento: data_nascimento || "",
                 data_nascimento_digitos: data_nascimento_digitos || "",
                 nome_paciente,
@@ -381,6 +384,28 @@ function criarD1LocalDriver(): D1Database {
               });
             }
             salvarDbLocal(db);
+            return { success: true };
+          }
+
+          // UPDATE triagem_edta
+          if (q.startsWith("UPDATE TRIAGEM_EDTA SET")) {
+            const targetId = boundValues[boundValues.length - 1];
+            const idx = db.triagem_edta.findIndex((r) => r.id === targetId);
+            if (idx >= 0) {
+              const setPart = normalizedQuery.replace(/^UPDATE\s+triagem_edta\s+SET\s+/i, "").replace(/\s+WHERE\s+id\s*=\s*\?$/i, "");
+              const assignments = setPart.split(",").map((s) => s.trim());
+              let valIdx = 0;
+              const updatedRow = { ...db.triagem_edta[idx] };
+              for (const assign of assignments) {
+                const match = assign.match(/^([a-z0-9_]+)\s*=\s*\?$/i);
+                if (match && valIdx < boundValues.length - 1) {
+                  updatedRow[match[1]] = boundValues[valIdx++];
+                }
+              }
+              updatedRow.updated_at = new Date().toISOString();
+              db.triagem_edta[idx] = updatedRow;
+              salvarDbLocal(db);
+            }
             return { success: true };
           }
 
@@ -527,33 +552,34 @@ function criarD1HttpDriver(accountId: string, databaseId: string, apiToken: stri
           return (res.results || []).map((r) => Object.values(r)) as T[];
         },
         async all<T = unknown>(): Promise<D1Result<T>> {
-          try {
-            const res = await fetch(url, {
-              method: "POST",
-              headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ sql: query, params: boundValues }),
-            });
-            const data = await res.json();
-            if (data.success && data.result?.[0]) {
-              return { success: true, results: (data.result[0].results || []) as T[] };
-            }
-            return { success: false, error: data.errors?.[0]?.message || "Erro na consulta D1" };
-          } catch (err: any) {
-            return { success: false, error: err.message || String(err) };
+          const safeParams = boundValues.map((v) => (v === undefined ? null : v));
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ sql: query, params: safeParams }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success || !data.result?.[0]) {
+            const msg = data?.errors?.[0]?.message || `Erro D1 HTTP ${res.status}`;
+            console.error("[D1 HTTP Error - all]", msg, query.slice(0, 120));
+            throw new Error(msg);
           }
+          return { success: true, results: (data.result[0].results || []) as T[] };
         },
         async run<T = unknown>(): Promise<D1Result<T>> {
-          try {
-            const res = await fetch(url, {
-              method: "POST",
-              headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ sql: query, params: boundValues }),
-            });
-            const data = await res.json();
-            return { success: Boolean(data.success), results: (data.result?.[0]?.results || []) as T[] };
-          } catch (err: any) {
-            return { success: false, error: err.message || String(err) };
+          const safeParams = boundValues.map((v) => (v === undefined ? null : v));
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ sql: query, params: safeParams }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            const msg = data?.errors?.[0]?.message || `Erro D1 HTTP ${res.status}`;
+            console.error("[D1 HTTP Error - run]", msg, query.slice(0, 120));
+            throw new Error(msg);
           }
+          return { success: true, results: (data.result?.[0]?.results || []) as T[] };
         },
       };
       return statement;
@@ -664,43 +690,49 @@ export async function salvarRotinaDia(
   const hoje = obterHojeIsoLocal();
   let count = 0;
 
-  for (const item of itens) {
-    const dataItem = normalizarDataIso(item.data) || hoje;
-    const pFormatado = formatarProntuario(item.prontuario);
-    const id = item.id || `rot-${dataItem}-${normalizarProntuario(pFormatado)}`;
+  const upsertSql = `
+    INSERT INTO rotina_dia (
+      id, data, prontuario, nome_paciente, idade_sexo, posto_unidade, solicitante, exame, status_coleta, status_laudo
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      nome_paciente = excluded.nome_paciente,
+      idade_sexo = COALESCE(NULLIF(excluded.idade_sexo, ''), rotina_dia.idade_sexo),
+      posto_unidade = COALESCE(NULLIF(excluded.posto_unidade, ''), rotina_dia.posto_unidade),
+      solicitante = COALESCE(NULLIF(excluded.solicitante, ''), rotina_dia.solicitante),
+      exame = excluded.exame,
+      status_coleta = excluded.status_coleta,
+      status_laudo = CASE
+        WHEN rotina_dia.status_laudo IN ('finalizado', 'CONCLUIDO', 'recoleta') THEN rotina_dia.status_laudo
+        ELSE excluded.status_laudo
+      END,
+      updated_at = datetime('now', 'localtime')
+  `;
 
-    const upsertSql = `
-      INSERT INTO rotina_dia (
-        id, data, prontuario, nome_paciente, idade_sexo, posto_unidade, solicitante, exame, status_coleta, status_laudo
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        nome_paciente = excluded.nome_paciente,
-        idade_sexo = COALESCE(NULLIF(excluded.idade_sexo, ''), rotina_dia.idade_sexo),
-        posto_unidade = COALESCE(NULLIF(excluded.posto_unidade, ''), rotina_dia.posto_unidade),
-        solicitante = COALESCE(NULLIF(excluded.solicitante, ''), rotina_dia.solicitante),
-        exame = excluded.exame,
-        status_coleta = excluded.status_coleta,
-        status_laudo = CASE
-          WHEN rotina_dia.status_laudo IN ('finalizado', 'CONCLUIDO', 'recoleta') THEN rotina_dia.status_laudo
-          ELSE excluded.status_laudo
-        END,
-        updated_at = datetime('now', 'localtime')
-    `;
+  // Executa em chunks paralelos de 8 para evitar timeout serverless da Vercel e acelerar ingestão no D1
+  const CHUNK_SIZE = 8;
+  for (let i = 0; i < itens.length; i += CHUNK_SIZE) {
+    const chunk = itens.slice(i, i + CHUNK_SIZE);
+    await Promise.all(
+      chunk.map(async (item) => {
+        const dataItem = normalizarDataIso(item.data) || hoje;
+        const pFormatado = formatarProntuario(item.prontuario);
+        const id = item.id || `rot-${dataItem}-${normalizarProntuario(pFormatado)}`;
 
-    await db.prepare(upsertSql).bind(
-      id,
-      dataItem,
-      pFormatado,
-      (item.nome_paciente || "").trim().toUpperCase(),
-      item.idade_sexo || "",
-      item.posto_unidade || "UBS Central Caconde",
-      item.solicitante || "Dr(a). Clínico(a) Geral / UBS",
-      item.exame || "",
-      item.status_coleta || "REALIZADO",
-      item.status_laudo || "rascunho"
-    ).run();
-
-    count++;
+        await db.prepare(upsertSql).bind(
+          id,
+          dataItem,
+          pFormatado,
+          (item.nome_paciente || "").trim().toUpperCase(),
+          item.idade_sexo || "",
+          item.posto_unidade || "UBS Central Caconde",
+          item.solicitante || "Dr(a). Clínico(a) Geral / UBS",
+          item.exame || "",
+          item.status_coleta || "REALIZADO",
+          item.status_laudo || "rascunho"
+        ).run();
+        count++;
+      })
+    );
   }
 
   return {
@@ -893,11 +925,24 @@ export async function salvarTriagemEdta(
         agendamento = COALESCE(NULLIF(excluded.agendamento, ''), triagem_edta.agendamento),
         data_nascimento = COALESCE(NULLIF(excluded.data_nascimento, ''), triagem_edta.data_nascimento),
         data_nascimento_digitos = COALESCE(NULLIF(excluded.data_nascimento_digitos, ''), triagem_edta.data_nascimento_digitos),
-        solicitante = COALESCE(NULLIF(excluded.solicitante, ''), triagem_edta.solicitante),
-        urgencia = excluded.urgencia,
-        tem_vhs = excluded.tem_vhs,
-        coletado_dois_tubos = excluded.coletado_dois_tubos,
-        qtd_tubos_coletados = excluded.qtd_tubos_coletados,
+        solicitante = CASE
+          WHEN triagem_edta.solicitante IS NOT NULL
+            AND triagem_edta.solicitante != ''
+            AND triagem_edta.solicitante != 'Dr(a). Clínico(a) Geral / UBS'
+            AND (excluded.solicitante IS NULL OR excluded.solicitante = '' OR excluded.solicitante = 'Dr(a). Clínico(a) Geral / UBS')
+          THEN triagem_edta.solicitante
+          ELSE COALESCE(NULLIF(excluded.solicitante, ''), triagem_edta.solicitante)
+        END,
+        urgencia = CASE WHEN triagem_edta.urgencia = 1 THEN 1 ELSE excluded.urgencia END,
+        tem_vhs = CASE WHEN triagem_edta.tem_vhs = 1 THEN 1 ELSE excluded.tem_vhs END,
+        coletado_dois_tubos = CASE
+          WHEN triagem_edta.status != 'pendente' OR triagem_edta.colocado_grade = 1 THEN triagem_edta.coletado_dois_tubos
+          ELSE excluded.coletado_dois_tubos
+        END,
+        qtd_tubos_coletados = CASE
+          WHEN triagem_edta.status != 'pendente' OR triagem_edta.colocado_grade = 1 THEN triagem_edta.qtd_tubos_coletados
+          ELSE excluded.qtd_tubos_coletados
+        END,
         status = CASE
           WHEN triagem_edta.status != 'pendente' OR triagem_edta.colocado_grade = 1 THEN triagem_edta.status
           ELSE excluded.status
@@ -979,19 +1024,49 @@ export async function atualizarStatusItemEdta(
   const pNorm = normalizarProntuario(prontuario);
   const pForm = formatarProntuario(prontuario);
 
-  // Buscar item atual
-  const item = await db.prepare(`
-    SELECT * FROM triagem_edta
-    WHERE prontuario_normalizado = ? OR prontuario = ?
-    ORDER BY data DESC
-    LIMIT 1
-  `).bind(pNorm, pForm).first<any>();
+  // Buscar item atual com prioridade por ID exato ou data+prontuario
+  let item: any = null;
+  if (updates.id) {
+    item = await db.prepare("SELECT * FROM triagem_edta WHERE id = ?").bind(updates.id).first<any>();
+  }
+  if (!item && updates.data) {
+    const dataNorm = normalizarDataIso(updates.data);
+    item = await db.prepare(`
+      SELECT * FROM triagem_edta
+      WHERE data = ? AND (prontuario_normalizado = ? OR prontuario = ?)
+      LIMIT 1
+    `).bind(dataNorm, pNorm, pForm).first<any>();
+  }
+  if (!item) {
+    item = await db.prepare(`
+      SELECT * FROM triagem_edta
+      WHERE prontuario_normalizado = ? OR prontuario = ?
+      ORDER BY data DESC
+      LIMIT 1
+    `).bind(pNorm, pForm).first<any>();
+  }
 
   if (!item) return null;
 
   const camposAtualizar: string[] = [];
   const valores: any[] = [];
 
+  if (updates.nome_paciente !== undefined && updates.nome_paciente.trim()) {
+    camposAtualizar.push("nome_paciente = ?");
+    valores.push(updates.nome_paciente.trim().toUpperCase());
+  }
+  if (updates.data_nascimento !== undefined) {
+    camposAtualizar.push("data_nascimento = ?");
+    valores.push(updates.data_nascimento);
+  }
+  if (updates.data_nascimento_digitos !== undefined) {
+    camposAtualizar.push("data_nascimento_digitos = ?");
+    valores.push(updates.data_nascimento_digitos);
+  }
+  if (updates.agendamento !== undefined) {
+    camposAtualizar.push("agendamento = ?");
+    valores.push(updates.agendamento);
+  }
   if (updates.status !== undefined) {
     camposAtualizar.push("status = ?");
     valores.push(updates.status);
@@ -1032,6 +1107,10 @@ export async function atualizarStatusItemEdta(
     camposAtualizar.push("coletado_dois_tubos = ?");
     valores.push(updates.coletado_dois_tubos ? 1 : 0);
   }
+  if (updates.qtd_tubos_coletados !== undefined) {
+    camposAtualizar.push("qtd_tubos_coletados = ?");
+    valores.push(Number(updates.qtd_tubos_coletados) || 1);
+  }
 
   camposAtualizar.push("updated_at = datetime('now', 'localtime')");
 
@@ -1051,8 +1130,9 @@ export async function atualizarStatusItemEdta(
     data: atualizado.data,
     prontuario: atualizado.prontuario,
     prontuario_normalizado: atualizado.prontuario_normalizado,
-    data_nascimento: atualizado.data_nascimento,
-    data_nascimento_digitos: atualizado.data_nascimento_digitos,
+    agendamento: atualizado.agendamento || "",
+    data_nascimento: atualizado.data_nascimento || "",
+    data_nascimento_digitos: atualizado.data_nascimento_digitos || "",
     nome_paciente: atualizado.nome_paciente,
     tipo_destino: destino,
     tem_hemograma: temHemo,
@@ -1451,16 +1531,27 @@ export interface SinalImpressaoState {
   solicitadoEm?: string;
 }
 
-export function emitirSinalImpressaoEdta(
+export async function emitirSinalImpressaoEdta(
   horaEncerramento?: string,
   tipoGuia: "apoio" | "urgente" | "ambas" = "ambas"
-): SinalImpressaoState {
+): Promise<SinalImpressaoState> {
   const db = getD1Database();
   const ts = Date.now();
   const dataHoraLocal = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
+  const state: SinalImpressaoState = {
+    ativo: true,
+    timestamp: ts,
+    horaEncerramento,
+    tipoGuia,
+    solicitadoEm: dataHoraLocal,
+  };
+
+  const g = globalThis as any;
+  if (g) g.__ULTIMO_SINAL_IMPRESSAO__ = state;
+
   try {
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO sinal_impressao_edta (id, timestamp, hora_encerramento, tipo_guia, solicitado_em)
       VALUES ('current', ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
@@ -1469,19 +1560,28 @@ export function emitirSinalImpressaoEdta(
         tipo_guia = excluded.tipo_guia,
         solicitado_em = excluded.solicitado_em
     `).bind(ts, horaEncerramento || "", tipoGuia, dataHoraLocal).run();
-  } catch (_) {}
+  } catch (e) {
+    console.warn("Aviso ao salvar sinal de impressão no D1:", e);
+  }
 
-  return {
-    ativo: true,
-    timestamp: ts,
-    horaEncerramento,
-    tipoGuia,
-    solicitadoEm: dataHoraLocal,
-  };
+  return state;
 }
 
-export function obterSinalImpressaoEdta(): SinalImpressaoState {
+export async function obterSinalImpressaoEdta(): Promise<SinalImpressaoState> {
   const db = getD1Database();
+  try {
+    const row = await db.prepare("SELECT * FROM sinal_impressao_edta WHERE id = 'current'").first<any>();
+    if (row && row.timestamp && Date.now() - Number(row.timestamp) < 300000) {
+      return {
+        ativo: true,
+        timestamp: Number(row.timestamp),
+        horaEncerramento: row.hora_encerramento || "",
+        tipoGuia: row.tipo_guia || "ambas",
+        solicitadoEm: row.solicitado_em || "",
+      };
+    }
+  } catch (_) {}
+
   try {
     const g = globalThis as any;
     if (g && g.__ULTIMO_SINAL_IMPRESSAO__) {
@@ -1493,13 +1593,13 @@ export function obterSinalImpressaoEdta(): SinalImpressaoState {
   return { ativo: false };
 }
 
-export function consumirSinalImpressaoEdta(): void {
+export async function consumirSinalImpressaoEdta(): Promise<void> {
   const g = globalThis as any;
   if (g) {
     g.__ULTIMO_SINAL_IMPRESSAO__ = null;
   }
   try {
     const db = getD1Database();
-    db.prepare("DELETE FROM sinal_impressao_edta WHERE id = 'current'").run();
+    await db.prepare("DELETE FROM sinal_impressao_edta WHERE id = 'current'").run();
   } catch (_) {}
 }
