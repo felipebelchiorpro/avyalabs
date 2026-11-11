@@ -84,9 +84,12 @@ export default function TriagemEdtaPage() {
   const [manualDataNasc, setManualDataNasc] = useState<string>("");
   const manualProntRef = useRef<HTMLInputElement>(null);
 
-  // Integração Conecta SUS & Cruzamento por Agendamento
+  // Integração Conecta SUS & Cruzamento por Agendamento (via Extensão Chrome ou D1)
   const [agendamento, setAgendamento] = useState<string>("");
   const [carregandoEnriquecimento, setCarregandoEnriquecimento] = useState<boolean>(false);
+  const [extensaoConectada, setExtensaoConectada] = useState<boolean>(false);
+  const [progressoExtensao, setProgressoExtensao] = useState<string>("");
+  const [erroExtensao, setErroExtensao] = useState<string>("");
   const [pacienteInfo, setPacienteInfo] = useState<{
     nome: string;
     prontuario: string;
@@ -232,6 +235,56 @@ export default function TriagemEdtaPage() {
       window.removeEventListener("operador-atualizado", handleOperadorUpdate);
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     };
+  }, []);
+
+  // Integração Bidirecional com Extensão Chrome (Opção B: Conecta SUS em segundo plano)
+  useEffect(() => {
+    if (document.documentElement.getAttribute("data-bancadalab-extensao") === "ativa") {
+      setExtensaoConectada(true);
+    }
+    window.postMessage({ type: "BANCADALAB_PING_EXTENSAO" }, "*");
+
+    const handleExtensionMessage = (event: MessageEvent) => {
+      if (event.source !== window || !event.data) return;
+
+      if (event.data.type === "BANCADALAB_EXTENSAO_PRONTA") {
+        setExtensaoConectada(true);
+        return;
+      }
+
+      if (event.data.type === "BANCADALAB_PROGRESSO_CONECTASUS") {
+        setProgressoExtensao(`Passo ${event.data.step}/7: ${event.data.mensagem}`);
+        setErroExtensao("");
+        return;
+      }
+
+      if (event.data.type === "BANCADALAB_RETORNO_CONECTASUS") {
+        setCarregandoEnriquecimento(false);
+        setProgressoExtensao("");
+        setErroExtensao("");
+        const pac = event.data.paciente;
+        if (pac) {
+          setPacienteInfo(pac);
+          setMensagemSucesso({
+            titulo: `✅ Dados reais de ${pac.nome} importados do Conecta SUS!`,
+            subtitulo: `DN: ${pac.dataNascimento || "N/A"} • ${pac.medicoSolicitante || ""} • ${event.data.salvoNoD1 ? "Salvo no D1!" : "Capturado"}`,
+          });
+          setTimeout(() => setMensagemSucesso(null), 5000);
+          tocarSomConfirmado();
+          carregarDadosEdta(true);
+        }
+        return;
+      }
+
+      if (event.data.type === "BANCADALAB_ERRO_CONECTASUS") {
+        setCarregandoEnriquecimento(false);
+        setProgressoExtensao("");
+        setErroExtensao(event.data.error || "Falha ao consultar Conecta SUS pela extensão.");
+      }
+    };
+
+    window.addEventListener("message", handleExtensionMessage);
+    return () => window.removeEventListener("message", handleExtensionMessage);
   }, []);
 
   const carregarDadosEdta = async (silencioso = false, dataFiltroEscolhida?: string) => {
@@ -734,18 +787,41 @@ export default function TriagemEdtaPage() {
     processarIdentificacaoPaciente(manualProntuario, manualDataNasc);
   };
 
-  // Localizar e Enriquecer Paciente via Conecta SUS & Nuvem Cloudflare D1
+  // Localizar e Enriquecer Paciente via Extensão Chrome (Conecta SUS) ou Fallback D1
   const handleBuscarEnriquecer = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const prontAlvo = manualProntuario.trim();
     const agendAlvo = agendamento.trim();
 
     if (!prontAlvo && !agendAlvo) {
-      alert("Por favor, informe o Prontuário ou o Número do Agendamento.");
+      alert("Por favor, informe o Prontuário e o Número do Agendamento.");
       return;
     }
 
+    setErroExtensao("");
+    setProgressoExtensao("");
     setCarregandoEnriquecimento(true);
+
+    // Se a extensão do Chrome está ativa, dispara a busca em segundo plano no Conecta SUS (Opção B)
+    const extAtiva =
+      extensaoConectada ||
+      document.documentElement.getAttribute("data-bancadalab-extensao") === "ativa";
+
+    if (extAtiva) {
+      setProgressoExtensao("Conectando à aba do Conecta SUS em segundo plano...");
+      window.postMessage(
+        {
+          type: "BANCADALAB_BUSCAR_CONECTASUS",
+          prontuario: prontAlvo || agendAlvo,
+          agendamento: agendAlvo || prontAlvo,
+          bancadaUrl: window.location.origin,
+        },
+        "*"
+      );
+      return;
+    }
+
+    // Fallback direto no banco D1 quando sem a extensão do Chrome (ex: celular)
     try {
       const res = await fetch("/api/triagem-edta", {
         method: "POST",
@@ -2325,11 +2401,24 @@ export default function TriagemEdtaPage() {
           <div className="glass-card p-4 sm:p-5 border-cyan-500/30 text-white space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
                     Integração Conecta SUS • D1
                   </span>
-                  <span className="text-[11px] text-slate-400">Cruzamento de Agendamento</span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                      extensaoConectada
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                        : "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        extensaoConectada ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                      }`}
+                    />
+                    {extensaoConectada ? "Extensão Chrome Conectada" : "Modo Banco D1 (Sem Extensão)"}
+                  </span>
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-white mt-0.5 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-cyan-400" />
@@ -2337,9 +2426,32 @@ export default function TriagemEdtaPage() {
                 </h3>
               </div>
               <div className="text-[11px] text-slate-400">
-                Consulte o Conecta SUS e registre a passagem dos tubos roxos no banco D1.
+                Consulte o Conecta SUS em segundo plano e registre os tubos roxos no banco D1.
               </div>
             </div>
+
+            {progressoExtensao && (
+              <div className="p-2.5 rounded-xl bg-cyan-500/15 border border-cyan-400/30 text-cyan-200 text-xs font-semibold flex items-center gap-2">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0 text-cyan-300" />
+                <span>{progressoExtensao}</span>
+              </div>
+            )}
+
+            {erroExtensao && (
+              <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-400/30 text-rose-200 text-xs font-semibold flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>{erroExtensao}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setErroExtensao("")}
+                  className="text-rose-300 hover:text-white cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
             {/* Formulário de Busca e Enriquecimento */}
             <form onSubmit={handleBuscarEnriquecer} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">

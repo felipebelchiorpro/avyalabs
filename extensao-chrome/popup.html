@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>BancadaLab SUS • Extensão Conecta SUS</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      margin: 0;
+      width: 360px;
+      background: #090d16;
+      color: #f8fafc;
+      padding: 14px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .title { font-size: 14px; font-weight: 800; color: #fff; }
+    .badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(8, 145, 178, 0.15);
+      color: #22d3ee;
+      border: 1px solid rgba(34, 211, 238, 0.3);
+    }
+    .badge.err {
+      background: rgba(220, 38, 38, 0.15);
+      color: #f87171;
+      border-color: rgba(248, 113, 113, 0.3);
+    }
+    .card {
+      background: rgba(18, 24, 38, 0.85);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    label { display: block; font-size: 11px; color: #94a3b8; margin-bottom: 4px; font-weight: 600; }
+    input {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 7px;
+      padding: 7px 9px;
+      color: #fff;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    input:focus { outline: none; border-color: #22d3ee; }
+    .row { display: flex; gap: 6px; }
+    button {
+      width: 100%;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .btn-primary { background: #0891b2; color: #fff; }
+    .btn-primary:hover { background: #06b6d4; }
+    .btn-sec { background: rgba(255,255,255,0.08); color: #cbd5e1; margin-top: 6px; }
+    .btn-sec:hover { background: rgba(255,255,255,0.14); }
+    .logs {
+      max-height: 165px;
+      overflow-y: auto;
+      font-size: 11px;
+      line-height: 1.4;
+      color: #cbd5e1;
+    }
+    .log-item { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .log-item.error { color: #fca5a5; }
+    .log-item.success { color: #6ee7b7; }
+    .log-time { color: #64748b; font-size: 10px; margin-right: 4px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="title">BancadaLab <span style="color:#22d3ee">SUS</span></div>
+      <div style="font-size:10px;color:#64748b">Ponte Automática Conecta SUS → D1</div>
+    </div>
+    <span id="status-conecta" class="badge">Verificando...</span>
+  </div>
+
+  <div class="card">
+    <label>URL do BancadaLab (Vercel)</label>
+    <input id="api-url" type="text" placeholder="https://seu-projeto.vercel.app" />
+    <button id="btn-salvar-url" class="btn-sec" style="margin-top:0">Salvar URL</button>
+  </div>
+
+  <div class="card">
+    <label>Teste Rápido Direto (Prontuário + Agendamento)</label>
+    <div class="row">
+      <input id="teste-prontuario" type="text" placeholder="Prontuário (ex: 0016480)" />
+      <input id="teste-agendamento" type="text" placeholder="Agendamento (ex: 104582)" />
+    </div>
+    <button id="btn-testar" class="btn-primary">Testar Busca no Conecta SUS</button>
+  </div>
+
+  <div class="card" style="margin-bottom:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <label style="margin:0">Logs de Execução</label>
+      <a href="#" id="btn-limpar-logs" style="font-size:10px;color:#38bdf8;text-decoration:none">Limpar</a>
+    </div>
+    <div id="logs" class="logs">Aguardando primeira busca...</div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
