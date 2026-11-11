@@ -9,9 +9,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "bancadalab_db",
-      "database_id": "bancadalab-d1-production"
+      "database_name": "bancadalab-db",
+      "database_id": "fbfd9da8-1429-452b-9d35-41393fa63094"
     }
   ]
 }
-
