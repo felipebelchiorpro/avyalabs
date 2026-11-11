@@ -10,7 +10,7 @@ import {
   emitirSinalImpressaoEdta,
   obterSinalImpressaoEdta,
   consumirSinalImpressaoEdta,
-} from "@/lib/googleSheets";
+} from "@/lib/d1Service";
 import { formatarProntuario, normalizarProntuario } from "@/lib/extratorBancada";
 import { ItemTriagemEdta } from "@/types/urinalise";
 
@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Blindagem de data no D1: filtra pelo dia solicitado (ou hoje por padrão)
     const itens = await listarTriagemEdta(data);
     const todosItens = await listarTriagemEdta("todas");
     const datasDisponiveis = Array.from(new Set(todosItens.map((i) => i.data).filter(Boolean))).sort().reverse();
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     return NextResponse.json(
-      { ok: false, error: error.message || "Erro ao consultar Triagem EDTA" },
+      { ok: false, error: error.message || "Erro ao consultar Triagem EDTA no D1" },
       { status: 500 }
     );
   }
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json({
         ok: true,
-        message: "Status do tubo EDTA atualizado com sucesso!",
+        message: "Status do tubo EDTA atualizado com sucesso no D1!",
         item: itemAtualizado,
       });
     }
@@ -140,10 +141,10 @@ export async function POST(request: NextRequest) {
         );
       }
       const resultado = await excluirItemEdta(prontuario, data);
-      return NextResponse.json(resultado);
+      return NextResponse.json({ ok: resultado, message: "Item excluído do D1 com sucesso." });
     }
 
-    // Default: Salvar lista com lógica de Merge / Upsert incremental
+    // Default: Salvar lista com lógica de Merge / Upsert atômico
     const itens: ItemTriagemEdta[] = body.itens || [];
     const substituir = body.substituir === true;
 
@@ -158,9 +159,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ...resultado, ok: true });
   } catch (error: any) {
     return NextResponse.json(
-      { ok: false, error: error.message || "Erro ao atualizar Triagem EDTA" },
+      { ok: false, error: error.message || "Erro ao atualizar Triagem EDTA no D1" },
       { status: 500 }
     );
   }
 }
-

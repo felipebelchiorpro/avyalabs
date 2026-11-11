@@ -36,63 +36,63 @@
     "semantic_hash": "d7bb2fbe4fc5e286d934d848b799ef7e"
   },
   "src/app/api/extrair-arquivo/route.ts": {
-    "mtime": 1793735601.2544105,
-    "seen": 1793914653.9417167,
-    "ast_hash": "44724fc142b9aea60eea00aa874af405",
-    "semantic_hash": "44724fc142b9aea60eea00aa874af405"
+    "mtime": 1794367024.2167716,
+    "seen": 1794367243.5733576,
+    "ast_hash": "babdb1e6515c0da95c07dd078c4a2615",
+    "semantic_hash": ""
   },
   "src/app/api/laudos-dia/route.ts": {
-    "mtime": 1793738111.2139652,
-    "seen": 1793914653.9417193,
-    "ast_hash": "8309f5ebabca95e39c6caa97a04fa354",
-    "semantic_hash": "8309f5ebabca95e39c6caa97a04fa354"
+    "mtime": 1794366989.392774,
+    "seen": 1794367243.573361,
+    "ast_hash": "8016b7e8ce7b196b7ad9f01fe82dcd39",
+    "semantic_hash": ""
   },
   "src/app/api/laudos/route.ts": {
-    "mtime": 1793738095.5853474,
-    "seen": 1793914653.941722,
-    "ast_hash": "ffc8cb2a7223718742e24871ede663d2",
-    "semantic_hash": "ffc8cb2a7223718742e24871ede663d2"
+    "mtime": 1794366982.4886801,
+    "seen": 1794367243.5733635,
+    "ast_hash": "7288b564efba70611f0c9005e59609e1",
+    "semantic_hash": ""
   },
   "src/app/api/medicos/route.ts": {
-    "mtime": 1793680669.7781641,
-    "seen": 1793914653.9417243,
-    "ast_hash": "5641756bfccd1b1d4a805d14f2b89057",
-    "semantic_hash": "5641756bfccd1b1d4a805d14f2b89057"
+    "mtime": 1794367005.1982749,
+    "seen": 1794367243.5733652,
+    "ast_hash": "0e3590a418b38d1e381ea76e528d2c22",
+    "semantic_hash": ""
   },
   "src/app/api/operadores/route.ts": {
-    "mtime": 1793680684.5253046,
-    "seen": 1793914653.9417267,
-    "ast_hash": "0ff190ab20284e12742a175f2ce8afc7",
-    "semantic_hash": "0ff190ab20284e12742a175f2ce8afc7"
+    "mtime": 1794367013.2498066,
+    "seen": 1794367243.5733676,
+    "ast_hash": "1455d8b84c4b1ec88ea995c7307d2f4a",
+    "semantic_hash": ""
   },
   "src/app/api/paciente/route.ts": {
-    "mtime": 1793678334.2772357,
-    "seen": 1793914653.9417307,
-    "ast_hash": "67cecc79510f69583d0bd3905689b489",
-    "semantic_hash": "67cecc79510f69583d0bd3905689b489"
+    "mtime": 1794366997.5388823,
+    "seen": 1794367243.5733693,
+    "ast_hash": "513def954c444870ae10ac6d3f144f27",
+    "semantic_hash": ""
   },
   "src/app/api/rotina/route.ts": {
-    "mtime": 1793738128.412639,
-    "seen": 1793914653.9417334,
-    "ast_hash": "0b2e54661c0fdd3eba4669431aa44984",
-    "semantic_hash": "0b2e54661c0fdd3eba4669431aa44984"
+    "mtime": 1794366947.1704197,
+    "seen": 1794367243.573371,
+    "ast_hash": "a43f1a7698604a452f3503a3b7aacfcc",
+    "semantic_hash": ""
   },
   "src/app/api/salvar-laudo/route.ts": {
-    "mtime": 1793678334.3022122,
-    "seen": 1793914653.9417357,
-    "ast_hash": "0cfa34114cfa9991bb2d9c2ef29f6752",
-    "semantic_hash": "0cfa34114cfa9991bb2d9c2ef29f6752"
+    "mtime": 1794366971.4595623,
+    "seen": 1794367243.5733724,
+    "ast_hash": "b632238bca78e0855b20caa19f1d4ba2",
+    "semantic_hash": ""
   },
   "src/app/api/test-sheets/route.ts": {
-    "mtime": 1793678334.3132083,
-    "seen": 1793914653.941738,
-    "ast_hash": "3709200254b480d7ab1a144d50d59e8a",
-    "semantic_hash": "3709200254b480d7ab1a144d50d59e8a"
+    "mtime": 1794367132.6486487,
+    "seen": 1794367243.5733745,
+    "ast_hash": "612c3005457ea9ff7cba6dd1d494e90c",
+    "semantic_hash": ""
   },
   "src/app/api/triagem-edta/route.ts": {
-    "mtime": 1793915728.9982154,
-    "seen": 1793915905.6809514,
-    "ast_hash": "49a30f0d28109cef274c33b58e496215",
+    "mtime": 1794366965.2224872,
+    "seen": 1794367243.5733762,
+    "ast_hash": "7667ebedf3bac3afbacdfcff5d224cbd",
     "semantic_hash": ""
   },
   "src/app/configuracoes/page.tsx": {
@@ -108,10 +108,10 @@
     "semantic_hash": "2b4b022c22c7cbd6ddcdb954a37741cd"
   },
   "src/app/importar/page.tsx": {
-    "mtime": 1793735894.8700407,
-    "seen": 1793914653.9417484,
-    "ast_hash": "29fc3c2530b8ece445f570632fcfd34a",
-    "semantic_hash": "29fc3c2530b8ece445f570632fcfd34a"
+    "mtime": 1794367061.4266899,
+    "seen": 1794367243.5737162,
+    "ast_hash": "505c3e9ba337a8b5de3be5e8f3ed6265",
+    "semantic_hash": ""
   },
   "src/app/laudos/page.tsx": {
     "mtime": 1793912557.2251291,
@@ -240,9 +240,9 @@
     "semantic_hash": ""
   },
   "src/lib/googleSheets.ts": {
-    "mtime": 1793924123.6317377,
-    "seen": 1793924426.8890274,
-    "ast_hash": "8e6f45903219a656333b2c2811ee8956",
+    "mtime": 1794367073.5030365,
+    "seen": 1794367243.577423,
+    "ast_hash": "09b499687b7fa261235e1433abd1830f",
     "semantic_hash": ""
   },
   "src/lib/medicosStore.ts": {
@@ -369,6 +369,24 @@
     "mtime": 1793918032.9834526,
     "seen": 1793918047.8540313,
     "ast_hash": "d751713988987e9331980363e24189ce",
+    "semantic_hash": ""
+  },
+  "src/lib/d1Service.ts": {
+    "mtime": 1794367223.497454,
+    "seen": 1794367243.5771036,
+    "ast_hash": "063fa4dda64898e17c9b06c0d0878e86",
+    "semantic_hash": ""
+  },
+  "docs/BANCADALAB_SUS_OBSIDIAN.md": {
+    "mtime": 1794177924.5803077,
+    "seen": 1794367243.5797493,
+    "ast_hash": "4b3fd4cec0805ebe872c5f414375e31a",
+    "semantic_hash": ""
+  },
+  "docs/REGRAS_BANCO_PLANILHAS_SETORES.md": {
+    "mtime": 1794366212.2450051,
+    "seen": 1794367243.5797591,
+    "ast_hash": "bcec370c81b3ff97316c9644100fcd81",
     "semantic_hash": ""
   },
   "package-lock.json": {

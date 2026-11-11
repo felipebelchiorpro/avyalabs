@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
-import { listarLaudos, isGoogleSheetsConfigured } from "@/lib/googleSheets";
+import { listarLaudos, isD1Configured } from "@/lib/d1Service";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,18 +12,18 @@ export async function GET(request: NextRequest) {
     const ate = searchParams.get("ate") || searchParams.get("dataFim") || undefined;
 
     const laudos = await listarLaudos({ data, de, ate });
-    const sheetsAtivo = isGoogleSheetsConfigured();
+    const d1Ativo = isD1Configured();
 
     return NextResponse.json({
       ok: true,
       dataFiltro: data || (de && ate ? `${de} até ${ate}` : "todas"),
       total: laudos.length,
-      isGoogleSheets: sheetsAtivo,
+      isD1: d1Ativo,
       laudos,
     });
   } catch (error: any) {
     return NextResponse.json(
-      { ok: false, error: error.message || "Erro ao consultar laudos do dia" },
+      { ok: false, error: error.message || "Erro ao consultar laudos do dia no D1" },
       { status: 500 }
     );
   }

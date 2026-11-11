@@ -5,7 +5,7 @@ export const revalidate = 0;
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { processarMatrizLinhasBancada } from "@/lib/extratorBancada";
-import { salvarTriagemEdta } from "@/lib/googleSheets";
+import { salvarTriagemEdta } from "@/lib/d1Service";
 
 async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   const pdfParseModule: any = await import("pdf-parse");

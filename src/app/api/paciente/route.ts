@@ -1,8 +1,8 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
-import { listarRotinaDia, listarLaudos } from "@/lib/googleSheets";
+import { listarRotinaDia, listarLaudos } from "@/lib/d1Service";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
 
     const termoNorm = termo.toLowerCase();
 
+    // No D1, rotina lista por padrão o dia de hoje
     const [rotina, laudos] = await Promise.all([
       listarRotinaDia(),
       listarLaudos(),
@@ -53,12 +54,12 @@ export async function GET(request: NextRequest) {
       ok: true,
       encontrado: Boolean(pacienteRotina || laudoExistente),
       paciente: pacienteRotina || null,
-      laudoExistente: laudoExistente || null,
+      ultimoLaudo: laudoExistente || null,
       sugestoes,
     });
   } catch (error: any) {
     return NextResponse.json(
-      { ok: false, error: error.message || "Erro ao buscar paciente" },
+      { ok: false, error: error.message || "Erro ao consultar dados do paciente no D1" },
       { status: 500 }
     );
   }

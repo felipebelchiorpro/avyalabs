@@ -264,8 +264,8 @@ export default function ImportarRotinaPage() {
     setPacientes(pacientes.filter((p) => p.prontuario !== prontuario));
   };
 
-  // Salvar na aba Rotina_Dia do Google Sheets
-  const salvarNoGoogleSheets = async () => {
+  // Salvar na tabela Rotina_Dia do Cloudflare D1
+  const salvarNoBancoD1 = async () => {
     if (pacientes.length === 0) {
       setFeedback({ message: "Nenhum paciente na lista para salvar.", type: "error" });
       return;
@@ -628,12 +628,12 @@ export default function ImportarRotinaPage() {
 
               <button
                 type="button"
-                onClick={salvarNoGoogleSheets}
+                onClick={salvarNoBancoD1}
                 disabled={isLoading || pacientes.length === 0}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition flex items-center gap-1.5 active:scale-95"
               >
                 <CheckCircle className="w-4 h-4" />
-                <span>{isLoading ? "Salvando..." : "Salvar na Aba Rotina_Dia (Google Sheets)"}</span>
+                <span>{isLoading ? "Salvando..." : "Salvar na Rotina Diária (Cloudflare D1)"}</span>
               </button>
             </div>
           </div>

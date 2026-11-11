@@ -1,8 +1,8 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
-import { salvarOuAtualizarLaudo } from "@/lib/googleSheets";
+import { salvarOuAtualizarLaudo } from "@/lib/d1Service";
 import { LaudoUrina } from "@/types/urinalise";
 
 export async function POST(request: NextRequest) {
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     return NextResponse.json(
-      { ok: false, error: error.message || "Erro ao salvar laudo de urina" },
+      { ok: false, error: error.message || "Erro ao salvar laudo de urina no D1" },
       { status: 500 }
     );
   }

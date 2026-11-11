@@ -6,7 +6,7 @@ import {
   listarRotinaDia,
   salvarRotinaDia,
   buscarPacientePorProntuario,
-} from "@/lib/googleSheets";
+} from "@/lib/d1Service";
 import { RotinaItem } from "@/types/urinalise";
 
 export async function GET(request: NextRequest) {
@@ -26,11 +26,12 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Blindagem de data: filtra estritamente por hoje se nenhuma data for informada
     const rotina = await listarRotinaDia({ data, de, ate });
     return NextResponse.json({ ok: true, rotina });
   } catch (error: any) {
     return NextResponse.json(
-      { ok: false, error: error.message || "Erro ao buscar rotina" },
+      { ok: false, error: error.message || "Erro ao buscar rotina no D1" },
       { status: 500 }
     );
   }
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ...resultado, ok: true });
   } catch (error: any) {
     return NextResponse.json(
-      { ok: false, error: error.message || "Erro ao salvar rotina" },
+      { ok: false, error: error.message || "Erro ao salvar rotina no D1" },
       { status: 500 }
     );
   }

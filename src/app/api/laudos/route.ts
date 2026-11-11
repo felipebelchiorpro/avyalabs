@@ -5,8 +5,8 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   listarLaudos,
   salvarOuAtualizarLaudo,
-  isGoogleSheetsConfigured,
-} from "@/lib/googleSheets";
+  isD1Configured,
+} from "@/lib/d1Service";
 import { LaudoUrina } from "@/types/urinalise";
 
 export async function GET(request: NextRequest) {
@@ -22,12 +22,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       ok: true,
       total: laudos.length,
-      isGoogleSheets: isGoogleSheetsConfigured(),
+      isD1: isD1Configured(),
       laudos,
     });
   } catch (error: any) {
     return NextResponse.json(
-      { ok: false, error: error.message || "Erro ao consultar laudos" },
+      { ok: false, error: error.message || "Erro ao consultar laudos no D1" },
       { status: 500 }
     );
   }
@@ -57,13 +57,13 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({
       ok: true,
-      acao: resultado.acao,
+      acao: "salvo_d1",
       message: resultado.message,
       laudo: resultado.laudo,
     });
   } catch (error: any) {
     return NextResponse.json(
-      { ok: false, error: error.message || "Erro ao salvar laudo" },
+      { ok: false, error: error.message || "Erro ao salvar laudo no D1" },
       { status: 500 }
     );
   }
