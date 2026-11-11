@@ -236,3 +236,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   return true; // Mantém o canal de resposta assíncrona aberto
 });
+

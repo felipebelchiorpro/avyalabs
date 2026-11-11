@@ -21,3 +21,4 @@ Esta extensão automatiza em **segundo plano** (Opção B) a consulta de pacient
 3. O selo no topo do módulo mudará para **"Extensão Chrome Conectada"**.
 4. Digite o **Prontuário Municipal** e o **Número do Agendamento** de um paciente de hoje e clique em **Localizar & Enriquecer**.
 5. Acompanhe os passos em tempo real na tela (ou clicando no ícone da extensão para ver os logs detalhados).
+

@@ -70,3 +70,4 @@ document.getElementById("btn-limpar-logs").addEventListener("click", async (e) =
 
 chrome.storage.onChanged.addListener(() => atualizarStatus());
 atualizarStatus();
+

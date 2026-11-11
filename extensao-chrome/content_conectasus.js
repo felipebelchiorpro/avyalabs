@@ -39,6 +39,27 @@
     return rect.width > 0 && rect.height > 0;
   }
 
+  // Dispara sequência completa de clique compatível com Angular, PrimeNG, React, Vue e HTML padrão
+  function clicarForte(el) {
+    if (!el) return false;
+    try {
+      el.scrollIntoView({ block: "center", behavior: "instant" });
+    } catch (_) {}
+    try {
+      el.focus();
+    } catch (_) {}
+    const opts = { bubbles: true, cancelable: true, view: window };
+    try { el.dispatchEvent(new PointerEvent("pointerdown", opts)); } catch (_) {}
+    try { el.dispatchEvent(new MouseEvent("mousedown", opts)); } catch (_) {}
+    try { el.dispatchEvent(new PointerEvent("pointerup", opts)); } catch (_) {}
+    try { el.dispatchEvent(new MouseEvent("mouseup", opts)); } catch (_) {}
+    try { el.dispatchEvent(new MouseEvent("click", opts)); } catch (_) {}
+    try {
+      if (typeof el.click === "function") el.click();
+    } catch (_) {}
+    return true;
+  }
+
   // Dispara digitação compatível com React, Angular, Vue e HTML padrão
   function preencherInput(input, valor) {
     if (!input) return false;
@@ -265,7 +286,7 @@
               executando = false;
               return;
             }
-            menuExameLab.click();
+            clicarForte(menuExameLab);
             await sleep(450);
           }
 
@@ -281,7 +302,7 @@
 
           job.step = 2;
           await salvarJob(job);
-          linkAgendamento.click();
+          clicarForte(linkAgendamento);
           await sleep(800);
         } else {
           job.step = 2;
@@ -316,7 +337,7 @@
         }
 
         selecionarOpcaoSelect(selectFiltro, "prontuario municipal");
-        await sleep(300);
+        await sleep(400);
 
         // Encontra o campo de texto próximo ao select de filtro ou por placeholder
         let inputBusca = encontrarInputPorRotulo(["prontuario", "pesquisar", "buscar", "valor", "termo"]);
@@ -336,7 +357,7 @@
         }
 
         preencherInput(inputBusca, job.prontuario);
-        await sleep(250);
+        await sleep(300);
 
         const btnBuscar = encontrarBotaoBuscar(selectFiltro.closest("form, .card, .panel") || document);
         if (!btnBuscar) {
@@ -347,8 +368,8 @@
 
         job.step = 3;
         await salvarJob(job);
-        btnBuscar.click();
-        await sleep(1000);
+        clicarForte(btnBuscar);
+        await sleep(1100);
       }
 
       ({ bancadalab_job: job } = await chrome.storage.local.get("bancadalab_job"));
@@ -361,13 +382,18 @@
       // PASSO 3: Na tabela de resultados, clicar na "lupinha" de ações do paciente
       // -----------------------------------------------------------------
       if (job.step === 3) {
-        await reportarProgresso(3, "Localizando paciente nos resultados e abrindo perfil (lupinha)...");
+        await reportarProgresso(3, "Localizando paciente na tabela e clicando na lupinha azul...");
 
         const alvoNorm = normPront(job.prontuario);
 
         const acaoLupa = await esperarPor(() => {
           const linhas = Array.from(document.querySelectorAll("table tbody tr")).filter(isVisible);
           if (linhas.length === 0) return null;
+
+          // Aguarda terminar eventual loading de tabela (spinner / Carregando)
+          if (linhas.length === 1 && norm(linhas[0].textContent).includes("carregando")) {
+            return null;
+          }
 
           // Tenta achar a linha com o prontuário exato (ou normalizado sem zeros)
           let linhaAlvo = linhas.find((tr) => {
@@ -379,54 +405,80 @@
           });
 
           // Se só retornou 1 linha válida após o filtro, usa ela
-          if (!linhaAlvo && linhas.length === 1 && !norm(linhas[0].textContent).includes("nenhum registro")) {
+          if (
+            !linhaAlvo &&
+            linhas.length === 1 &&
+            !norm(linhas[0].textContent).includes("nenhum registro") &&
+            !norm(linhas[0].textContent).includes("nenhum resultado")
+          ) {
             linhaAlvo = linhas[0];
           }
 
           if (!linhaAlvo) return null;
 
-          // Aproveita e extrai dados parciais que já possam estar nessa linha
+          // Extrai Nome (coluna 0) e Data de Nascimento (coluna 1 ou padrão DD/MM/AAAA) direto da tabela
           const tds = Array.from(linhaAlvo.querySelectorAll("td"));
+          let nomeTabela = "";
+          let dnTabela = "";
+          if (tds[0]) {
+            const txtNome = (tds[0].textContent || "").trim();
+            if (txtNome && txtNome.length >= 3 && !/^\d+$/.test(txtNome)) {
+              nomeTabela = txtNome;
+            }
+          }
           for (const td of tds) {
             const txt = (td.textContent || "").trim();
             const dn = txt.match(/(\d{2}\/\d{2}\/\d{4})/);
-            if (dn && !job.pacienteParcial?.dataNascimento) {
-              job.pacienteParcial = { ...(job.pacienteParcial || {}), dataNascimento: dn[1] };
+            if (dn && !dnTabela) {
+              dnTabela = dn[1];
             }
           }
 
-          // Procura o botão/link da lupinha na coluna de ações
-          const botoes = Array.from(linhaAlvo.querySelectorAll("a, button, [role='button']")).filter(isVisible);
-          const lupa =
-            botoes.find((b) => {
-              const html = norm(b.innerHTML);
-              const title = norm(`${b.getAttribute("title") || ""} ${b.getAttribute("aria-label") || ""}`);
-              return (
-                html.includes("search") ||
-                html.includes("lupa") ||
-                html.includes("eye") ||
-                html.includes("zoom") ||
-                title.includes("visualizar") ||
-                title.includes("perfil") ||
-                title.includes("detalhe") ||
-                title.includes("abrir") ||
-                title.includes("exame")
-              );
-            }) || botoes[0];
+          // Localiza prioritariamente na última coluna (Ações) onde fica o botão azul da lupinha
+          const ultimaCelula = tds[tds.length - 1] || linhaAlvo;
+          const candidatosAcoes = Array.from(
+            ultimaCelula.querySelectorAll("button, a, [role='button'], .btn, span, i, svg")
+          ).filter(isVisible);
 
-          return lupa ? { linhaAlvo, lupa } : null;
-        }, 10000);
+          const lupa =
+            candidatosAcoes.find((el) => el.tagName === "BUTTON" || el.tagName === "A") ||
+            candidatosAcoes.find((el) => el.getAttribute("role") === "button" || el.classList.contains("btn")) ||
+            candidatosAcoes[0] ||
+            Array.from(linhaAlvo.querySelectorAll("button, a, [role='button']")).filter(isVisible)[0];
+
+          return lupa ? { linhaAlvo, ultimaCelula, lupa, nomeTabela, dnTabela } : null;
+        }, 12000);
 
         if (!acaoLupa) {
-          await reportarErro(3, `Paciente com prontuário ${job.prontuario} não localizado na tabela.`);
+          await reportarErro(3, `Paciente com prontuário ${job.prontuario} ou botão da lupinha não localizados na tabela.`);
           executando = false;
           return;
         }
 
+        // Salva Nome e Data de Nascimento extraídos já da listagem de pacientes
+        job.pacienteParcial = {
+          ...(job.pacienteParcial || {}),
+          nome: acaoLupa.nomeTabela || job.pacienteParcial?.nome || "",
+          dataNascimento: acaoLupa.dnTabela || job.pacienteParcial?.dataNascimento || "",
+        };
         job.step = 4;
         await salvarJob(job);
-        acaoLupa.lupa.click();
-        await sleep(900);
+
+        await reportarProgresso(3, `Clicando na lupinha (${acaoLupa.lupa.tagName}) do paciente ${acaoLupa.nomeTabela || job.prontuario}...`);
+        clicarForte(acaoLupa.lupa);
+
+        // Aguarda transição para o perfil; se ainda estiver na lista após 1.3s, clica no ícone interno ou elemento pai
+        await sleep(1300);
+        const aindaNaLista = Array.from(document.querySelectorAll("h1, h2, h3, h4, .card-title, th")).some((el) =>
+          norm(el.textContent).includes("lista de paciente")
+        );
+        if (aindaNaLista && isVisible(acaoLupa.ultimaCelula)) {
+          const iconeInterno = acaoLupa.lupa.querySelector("i, svg, span") || acaoLupa.ultimaCelula.querySelector("i, svg, button, a");
+          if (iconeInterno && iconeInterno !== acaoLupa.lupa) {
+            clicarForte(iconeInterno);
+            await sleep(900);
+          }
+        }
       }
 
       ({ bancadalab_job: job } = await chrome.storage.local.get("bancadalab_job"));
@@ -443,7 +495,7 @@
 
         const abaExames = await esperarPor(
           () => encontrarClicavelPorTexto("exames agendados", document),
-          10000
+          12000
         );
 
         if (!abaExames) {
@@ -461,8 +513,8 @@
 
         job.step = 5;
         await salvarJob(job);
-        abaExames.click();
-        await sleep(800);
+        clicarForte(abaExames);
+        await sleep(900);
       }
 
       ({ bancadalab_job: job } = await chrome.storage.local.get("bancadalab_job"));
@@ -482,20 +534,37 @@
         if (perfilAtual.nome) job.pacienteParcial.nome = perfilAtual.nome;
         if (perfilAtual.dataNascimento) job.pacienteParcial.dataNascimento = perfilAtual.dataNascimento;
 
+        // Se existir um <select> de filtro parecido com a tela anterior contendo "agendamento", seleciona-o
+        const selectAgend = Array.from(document.querySelectorAll("select")).filter(isVisible).find((sel) =>
+          Array.from(sel.options || []).some((opt) => norm(opt.textContent).includes("agendamento"))
+        );
+        if (selectAgend) {
+          selecionarOpcaoSelect(selectAgend, "agendamento");
+          await sleep(300);
+        }
+
         const inputAgendamento = await esperarPor(
-          () =>
-            encontrarInputPorRotulo([
+          () => {
+            let inp = encontrarInputPorRotulo([
               "numero do agendamento",
               "nº agendamento",
               "agendamento",
               "codigo agendamento",
-            ]),
+            ]);
+            if (!inp && selectAgend) {
+              const bloco = selectAgend.closest("form, .row, .card-body, div");
+              if (bloco) {
+                inp = Array.from(bloco.querySelectorAll("input[type='text'], input[type='search'], input:not([type])")).find(isVisible);
+              }
+            }
+            return inp;
+          },
           7000
         );
 
         if (inputAgendamento) {
           preencherInput(inputAgendamento, job.agendamento);
-          await sleep(250);
+          await sleep(300);
 
           const escopoTab =
             inputAgendamento.closest(".tab-pane, .card, form, section, main") || document;
@@ -503,8 +572,8 @@
           if (btnBuscar) {
             job.step = 6;
             await salvarJob(job);
-            btnBuscar.click();
-            await sleep(900);
+            clicarForte(btnBuscar);
+            await sleep(1000);
           } else {
             job.step = 6;
             await salvarJob(job);
@@ -662,3 +731,4 @@
     }
   });
 })();
+
