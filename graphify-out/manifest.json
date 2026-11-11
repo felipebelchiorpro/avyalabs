@@ -90,9 +90,9 @@
     "semantic_hash": ""
   },
   "src/app/api/triagem-edta/route.ts": {
-    "mtime": 1794366965.2224872,
-    "seen": 1794367243.5733762,
-    "ast_hash": "7667ebedf3bac3afbacdfcff5d224cbd",
+    "mtime": 1794374423.42275,
+    "seen": 1794374600.3584876,
+    "ast_hash": "ad78ec536bfb7a0508e6a3db324c1c4f",
     "semantic_hash": ""
   },
   "src/app/configuracoes/page.tsx": {
@@ -120,9 +120,9 @@
     "semantic_hash": "a58213322dd3047da19839051aa9ceb2"
   },
   "src/app/layout.tsx": {
-    "mtime": 1794373221.9653213,
-    "seen": 1794373372.0120833,
-    "ast_hash": "ce69951bebaff13e15192c68c99f7181",
+    "mtime": 1794374123.2213008,
+    "seen": 1794374600.3594155,
+    "ast_hash": "b014508187cd4bc2d1f65c93ab8554f9",
     "semantic_hash": ""
   },
   "src/app/page.tsx": {
@@ -138,9 +138,9 @@
     "semantic_hash": ""
   },
   "src/app/triagem-edta/page.tsx": {
-    "mtime": 1793925208.0603106,
-    "seen": 1793925251.2008164,
-    "ast_hash": "bbdabc2ec7d9bf1260f922201e5bed1f",
+    "mtime": 1794374548.802025,
+    "seen": 1794374600.35994,
+    "ast_hash": "c3e5d47d70518f97e214bd6263f69c37",
     "semantic_hash": ""
   },
   "src/app/vdrl/page.tsx": {
@@ -264,9 +264,9 @@
     "semantic_hash": "09ec26e0851aa182a891bfc3f007674d"
   },
   "src/types/urinalise.ts": {
-    "mtime": 1793918799.740631,
-    "seen": 1793919138.0149658,
-    "ast_hash": "05123f9796ac952bdac6685e8b2a3c4b",
+    "mtime": 1794374352.032486,
+    "seen": 1794374600.3645592,
+    "ast_hash": "76a3fa9e023ff01f8ac6ba70f1536aa4",
     "semantic_hash": ""
   },
   "tsconfig.json": {
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "public/graph.html": {
-    "mtime": 1794373372.0529287,
-    "seen": 1794373545.0401554,
-    "ast_hash": "259cca75be035f2ea976f9843a19a3fa",
+    "mtime": 1794373545.0752378,
+    "seen": 1794374600.366463,
+    "ast_hash": "c220c4c79e82da53b82ca585ecae2db9",
     "semantic_hash": ""
   },
   "public/file.svg": {
@@ -372,9 +372,9 @@
     "semantic_hash": ""
   },
   "src/lib/d1Service.ts": {
-    "mtime": 1794373481.9767158,
-    "seen": 1794373545.0367887,
-    "ast_hash": "04f21bed94fa47d090cacb3eeb76dcc2",
+    "mtime": 1794374402.4348266,
+    "seen": 1794374600.3632128,
+    "ast_hash": "7d25f4dd1c166fdf8ee0bd2493fae6a5",
     "semantic_hash": ""
   },
   "docs/BANCADALAB_SUS_OBSIDIAN.md": {
@@ -399,6 +399,12 @@
     "mtime": 1794373401.976902,
     "seen": 1794373545.0338516,
     "ast_hash": "1d19bdeb160eeb91fbe9a6429657307c",
+    "semantic_hash": ""
+  },
+  "src/components/SidebarLateral.tsx": {
+    "mtime": 1794374106.2897098,
+    "seen": 1794374600.3624852,
+    "ast_hash": "fc1410c741b023c1fbe02ba11077d926",
     "semantic_hash": ""
   },
   "package-lock.json": {

@@ -140,6 +140,7 @@ export interface ItemTriagemEdta {
   data: string; // YYYY-MM-DD
   prontuario: string;
   prontuario_normalizado?: string; // sem zeros à esquerda (ex: "24087")
+  agendamento?: string; // Número do agendamento Conecta SUS (ex: "104582")
   nome_paciente: string;
   data_nascimento?: string; // DD/MM/AAAA
   data_nascimento_digitos?: string; // 8 dígitos (ex: "23122025")

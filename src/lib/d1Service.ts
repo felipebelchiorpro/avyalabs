@@ -799,6 +799,7 @@ export async function listarTriagemEdta(dataFiltro?: string): Promise<ItemTriage
       data: r.data,
       prontuario: r.prontuario,
       prontuario_normalizado: r.prontuario_normalizado,
+      agendamento: r.agendamento || "",
       data_nascimento: r.data_nascimento || "",
       data_nascimento_digitos: r.data_nascimento_digitos || "",
       nome_paciente: r.nome_paciente,
@@ -883,12 +884,13 @@ export async function salvarTriagemEdta(
 
     const upsertSql = `
       INSERT INTO triagem_edta (
-        id, data, prontuario, prontuario_normalizado, data_nascimento, data_nascimento_digitos,
+        id, data, prontuario, prontuario_normalizado, agendamento, data_nascimento, data_nascimento_digitos,
         nome_paciente, tipo_destino, status, fracionado_glicada, colocado_grade, horario_bipado,
         exames, solicitante, urgencia, tem_vhs, coletado_dois_tubos, qtd_tubos_coletados,
         enviar_hemograma_hoje, data_liberacao_apoio
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
+        agendamento = COALESCE(NULLIF(excluded.agendamento, ''), triagem_edta.agendamento),
         data_nascimento = COALESCE(NULLIF(excluded.data_nascimento, ''), triagem_edta.data_nascimento),
         data_nascimento_digitos = COALESCE(NULLIF(excluded.data_nascimento_digitos, ''), triagem_edta.data_nascimento_digitos),
         solicitante = COALESCE(NULLIF(excluded.solicitante, ''), triagem_edta.solicitante),
@@ -918,6 +920,7 @@ export async function salvarTriagemEdta(
       dataItem,
       pFormatado,
       pNorm,
+      item.agendamento || "",
       item.data_nascimento || "",
       item.data_nascimento_digitos || "",
       (item.nome_paciente || "").trim().toUpperCase(),

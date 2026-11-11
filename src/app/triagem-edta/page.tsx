@@ -84,6 +84,20 @@ export default function TriagemEdtaPage() {
   const [manualDataNasc, setManualDataNasc] = useState<string>("");
   const manualProntRef = useRef<HTMLInputElement>(null);
 
+  // Integração Conecta SUS & Cruzamento por Agendamento
+  const [agendamento, setAgendamento] = useState<string>("");
+  const [carregandoEnriquecimento, setCarregandoEnriquecimento] = useState<boolean>(false);
+  const [pacienteInfo, setPacienteInfo] = useState<{
+    nome: string;
+    prontuario: string;
+    agendamento?: string;
+    dataNascimento?: string;
+    medicoSolicitante?: string;
+    exames?: string[];
+    tipoDestino?: string;
+    status?: string;
+  } | null>(null);
+
   // Tubo Ativo em Destaque no Card de Ação
   const [tuboAtivo, setTuboAtivo] = useState<ItemTriagemEdta | null>(null);
   const [isUrgente, setIsUrgente] = useState<boolean>(false);
@@ -718,6 +732,92 @@ export default function TriagemEdtaPage() {
     if (e) e.preventDefault();
     if (!manualProntuario.trim()) return;
     processarIdentificacaoPaciente(manualProntuario, manualDataNasc);
+  };
+
+  // Localizar e Enriquecer Paciente via Conecta SUS & Nuvem Cloudflare D1
+  const handleBuscarEnriquecer = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const prontAlvo = manualProntuario.trim();
+    const agendAlvo = agendamento.trim();
+
+    if (!prontAlvo && !agendAlvo) {
+      alert("Por favor, informe o Prontuário ou o Número do Agendamento.");
+      return;
+    }
+
+    setCarregandoEnriquecimento(true);
+    try {
+      const res = await fetch("/api/triagem-edta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prontuario: prontAlvo || agendAlvo,
+          agendamento: agendAlvo || prontAlvo,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.paciente) {
+        setPacienteInfo(data.paciente);
+        setMensagemSucesso({
+          titulo: `✅ Dados de ${data.paciente.nome} localizados!`,
+          subtitulo: `Prontuário #${data.paciente.prontuario} • Agendamento #${data.paciente.agendamento || agendAlvo}`,
+        });
+        setTimeout(() => setMensagemSucesso(null), 4000);
+
+        // Se o paciente já existe na lista do dia, abre o card de conferência de bancada
+        processarIdentificacaoPaciente(
+          data.paciente.prontuario,
+          data.paciente.dataNascimento,
+          data.paciente.medicoSolicitante,
+          data.paciente.nome
+        );
+      } else {
+        alert("Erro ao buscar dados: " + (data.error || "Paciente não encontrado"));
+      }
+    } catch (error) {
+      console.error("Erro na requisição:", error);
+      alert("Falha na comunicação com o servidor Conecta SUS / D1.");
+    } finally {
+      setCarregandoEnriquecimento(false);
+    }
+  };
+
+  // Salvar Paciente Enriquecido Diretamente no D1
+  const handleSalvarPacienteEnriquecidoNoD1 = async () => {
+    if (!pacienteInfo) return;
+    setIsSyncing(true);
+    try {
+      const res = await fetch("/api/triagem-edta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prontuario: pacienteInfo.prontuario,
+          agendamento: pacienteInfo.agendamento || agendamento,
+          nome: pacienteInfo.nome,
+          dataNascimento: pacienteInfo.dataNascimento,
+          medicoSolicitante: pacienteInfo.medicoSolicitante,
+          exames: pacienteInfo.exames,
+          salvar: true,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMensagemSucesso({
+          titulo: `🚀 Paciente ${pacienteInfo.nome} salvo com sucesso no D1!`,
+          subtitulo: `Tubo registrado e pronto para triagem e faturamento.`,
+        });
+        setTimeout(() => setMensagemSucesso(null), 3500);
+        await carregarDadosEdta(true);
+      } else {
+        alert(data.error || "Erro ao salvar paciente no D1.");
+      }
+    } catch (err) {
+      console.error("Erro ao salvar:", err);
+      alert("Erro ao conectar com a Cloudflare D1.");
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   // Limpeza de timer de auto-avanço
@@ -2190,6 +2290,159 @@ export default function TriagemEdtaPage() {
               </button>
             </div>
           )}
+
+          {/* MÓDULO CONECTA SUS • CRUZAMENTO POR PRONTUÁRIO & AGENDAMENTO */}
+          <div className="glass-card p-4 sm:p-5 border-cyan-500/30 text-white space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    Integração Conecta SUS • D1
+                  </span>
+                  <span className="text-[11px] text-slate-400">Cruzamento de Agendamento</span>
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-white mt-0.5 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                  Triagem EDTA & Cruzamento de Agendamento
+                </h3>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Consulte o Conecta SUS e registre a passagem dos tubos roxos no banco D1.
+              </div>
+            </div>
+
+            {/* Formulário de Busca e Enriquecimento */}
+            <form onSubmit={handleBuscarEnriquecer} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+              <div className="sm:col-span-5">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Hash className="w-3.5 h-3.5 text-cyan-400" />
+                  Prontuário Municipal
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: 0016480"
+                  value={manualProntuario}
+                  onChange={(e) => setManualProntuario(e.target.value.replace(/^['"]+|['"]+$/g, ""))}
+                  className="w-full px-3.5 py-2.5 glass-input text-xs sm:text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                />
+              </div>
+
+              <div className="sm:col-span-4">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+                  Número do Agendamento
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: 104582"
+                  value={agendamento}
+                  onChange={(e) => setAgendamento(e.target.value)}
+                  className="w-full px-3.5 py-2.5 glass-input text-xs sm:text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                />
+              </div>
+
+              <div className="sm:col-span-3">
+                <button
+                  type="submit"
+                  disabled={carregandoEnriquecimento}
+                  className="w-full py-2.5 px-4 bg-cyan-600 hover:bg-cyan-500 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl transition duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-cyan-600/20 disabled:opacity-50"
+                >
+                  {carregandoEnriquecimento ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-cyan-200" />
+                      <span>Buscando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 text-cyan-200" />
+                      <span>Localizar & Enriquecer</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            {/* Exibição dos Dados do Paciente Enriquecido */}
+            {pacienteInfo && (
+              <div className="mt-4 p-4 rounded-xl bg-cyan-950/40 border border-cyan-500/40 space-y-3 animate-in fade-in zoom-in-98 duration-150">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-cyan-500/20 pb-3">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400">
+                      Paciente Localizado no Conecta SUS / D1
+                    </span>
+                    <h4 className="text-base sm:text-lg font-black text-white">{pacienteInfo.nome}</h4>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded-lg text-xs font-bold">
+                      Prontuário: {pacienteInfo.prontuario}
+                    </span>
+                    {pacienteInfo.agendamento && (
+                      <span className="px-2.5 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-lg text-xs font-bold">
+                        Agendamento: {pacienteInfo.agendamento}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="bg-white/5 p-2.5 rounded-lg border border-white/5">
+                    <span className="text-slate-400 block text-[11px] font-medium">Data de Nascimento:</span>
+                    <span className="text-white font-bold text-xs sm:text-sm">{pacienteInfo.dataNascimento || "--/--/----"}</span>
+                  </div>
+                  <div className="bg-white/5 p-2.5 rounded-lg border border-white/5">
+                    <span className="text-slate-400 block text-[11px] font-medium">Médico Solicitante:</span>
+                    <span className="text-white font-bold text-xs sm:text-sm">{pacienteInfo.medicoSolicitante || "Dr(a). Clínico(a) Geral"}</span>
+                  </div>
+                </div>
+
+                {/* Lista de Exames Vinculados */}
+                {pacienteInfo.exames && pacienteInfo.exames.length > 0 && (
+                  <div>
+                    <span className="text-[11px] text-cyan-300 block mb-1.5 font-bold uppercase tracking-wider">
+                      Exames a Realizar na Rotina:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {pacienteInfo.exames.map((exame: string, idx: number) => (
+                        <span key={idx} className="px-2.5 py-1 bg-cyan-500/10 border border-cyan-500/25 rounded-md text-[11.5px] font-semibold text-cyan-200">
+                          {exame}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Botões de Ação Imediata de Bancada */}
+                <div className="flex flex-col sm:flex-row items-center gap-2 pt-2 border-t border-cyan-500/20">
+                  <button
+                    type="button"
+                    disabled={isSyncing}
+                    onClick={() => {
+                      processarIdentificacaoPaciente(
+                        pacienteInfo.prontuario,
+                        pacienteInfo.dataNascimento,
+                        pacienteInfo.medicoSolicitante,
+                        pacienteInfo.nome
+                      );
+                    }}
+                    className="w-full sm:flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                    <span>Abrir Conferência de Bancada & Confirmar</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isSyncing}
+                    onClick={handleSalvarPacienteEnriquecidoNoD1}
+                    className="w-full sm:w-auto py-2.5 px-4 bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer border border-white/20"
+                  >
+                    <UploadCloud className="w-4 h-4 text-cyan-300" />
+                    <span>Salvar no Cloudflare D1</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* FALLBACK MANUAL RÁPIDO NO TOPO: [Prontuário] e [Data de Nascimento] */}
           <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-xs space-y-2">

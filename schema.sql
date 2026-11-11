@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS triagem_edta (
     data TEXT NOT NULL,                            -- Data no formato ISO: YYYY-MM-DD
     prontuario TEXT NOT NULL,                     -- Prontuário com zeros (ex: 0016480)
     prontuario_normalizado TEXT NOT NULL,         -- Prontuário sem zeros (ex: 16480)
+    agendamento TEXT,                             -- Número do agendamento Conecta SUS (ex: 104582)
     data_nascimento TEXT,                         -- DD/MM/AAAA
     data_nascimento_digitos TEXT,                 -- DDMMAAAA
     nome_paciente TEXT NOT NULL,                  -- Nome completo
