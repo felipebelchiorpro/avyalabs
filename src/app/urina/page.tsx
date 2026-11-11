@@ -36,6 +36,7 @@ import {
   FileCode,
   Copy,
 } from "lucide-react";
+import BarraAcoesTiragem from "@/components/BarraAcoesTiragem";
 
 const VALORES_PADRAO_NORMAL = {
   volume: "60 mL",
@@ -1377,6 +1378,7 @@ export default function BancadaOperacionalPage() {
       {/* ============================================================== */}
       {modoTela === "desktop" ? (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5 space-y-6 print:hidden">
+          <BarraAcoesTiragem />
           {/* 1. CENTRAL DE TIRAGEM DO DIA E IMPRESSÃO */}
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">

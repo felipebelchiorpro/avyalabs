@@ -120,10 +120,10 @@
     "semantic_hash": "a58213322dd3047da19839051aa9ceb2"
   },
   "src/app/layout.tsx": {
-    "mtime": 1793739818.9319732,
-    "seen": 1793914653.9417536,
-    "ast_hash": "80a1f2728fbe2d594edcca450089b00b",
-    "semantic_hash": "80a1f2728fbe2d594edcca450089b00b"
+    "mtime": 1794373221.9653213,
+    "seen": 1794373372.0120833,
+    "ast_hash": "ce69951bebaff13e15192c68c99f7181",
+    "semantic_hash": ""
   },
   "src/app/page.tsx": {
     "mtime": 1794372821.1810908,
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "public/graph.html": {
-    "mtime": 1794372719.9530592,
-    "seen": 1794372887.5734415,
-    "ast_hash": "1c6f6bcf026f03dc93c69b9e5bc34f36",
+    "mtime": 1794372887.6088302,
+    "seen": 1794373372.0180335,
+    "ast_hash": "e54303bf964f282207f6d77d621b98a8",
     "semantic_hash": ""
   },
   "public/file.svg": {
@@ -390,9 +390,15 @@
     "semantic_hash": ""
   },
   "src/app/urina/page.tsx": {
-    "mtime": 1793913059.0605361,
-    "seen": 1794372887.5679739,
-    "ast_hash": "7882cd0db3ed17f538ea9ff17e9cc07a",
+    "mtime": 1794373306.568327,
+    "seen": 1794373372.01262,
+    "ast_hash": "efd6d51f1a2c386c15a95c56fc0b9a58",
+    "semantic_hash": ""
+  },
+  "src/components/BarraAcoesTiragem.tsx": {
+    "mtime": 1794373181.3394272,
+    "seen": 1794373372.0129406,
+    "ast_hash": "bce2eb5f0efe2d2fce87ffc86a5509bd",
     "semantic_hash": ""
   },
   "package-lock.json": {
