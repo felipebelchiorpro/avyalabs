@@ -126,10 +126,10 @@
     "semantic_hash": "80a1f2728fbe2d594edcca450089b00b"
   },
   "src/app/page.tsx": {
-    "mtime": 1793913059.0605361,
-    "seen": 1793914653.941756,
-    "ast_hash": "7882cd0db3ed17f538ea9ff17e9cc07a",
-    "semantic_hash": "7882cd0db3ed17f538ea9ff17e9cc07a"
+    "mtime": 1794372821.1810908,
+    "seen": 1794372887.56765,
+    "ast_hash": "83b46567b0a6b5d2f5f098d5ccd8da48",
+    "semantic_hash": ""
   },
   "src/app/retidos-glicada/page.tsx": {
     "mtime": 1793925666.0508826,
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "public/graph.html": {
-    "mtime": 1794367243.6151905,
-    "seen": 1794372719.8905962,
-    "ast_hash": "6c39b414b07f3005b3ab720ffde8ecb4",
+    "mtime": 1794372719.9530592,
+    "seen": 1794372887.5734415,
+    "ast_hash": "1c6f6bcf026f03dc93c69b9e5bc34f36",
     "semantic_hash": ""
   },
   "public/file.svg": {
@@ -387,6 +387,12 @@
     "mtime": 1794366212.2450051,
     "seen": 1794367243.5797591,
     "ast_hash": "bcec370c81b3ff97316c9644100fcd81",
+    "semantic_hash": ""
+  },
+  "src/app/urina/page.tsx": {
+    "mtime": 1793913059.0605361,
+    "seen": 1794372887.5679739,
+    "ast_hash": "7882cd0db3ed17f538ea9ff17e9cc07a",
     "semantic_hash": ""
   },
   "package-lock.json": {
