@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { RotinaItem, LabConfig, DEFAULT_LAB_CONFIG } from "@/types/urinalise";
 import { MapaBancadaPrintView } from "@/components/MapaBancadaPrintView";
-import { processarMatrizLinhasBancada } from "@/lib/extratorBancada";
+import { processarMatrizLinhasBancada, obterHojeIsoLocal } from "@/lib/extratorBancada";
 import {
   UploadCloud,
   FileSpreadsheet,
@@ -48,7 +48,7 @@ export default function ImportarRotinaPage() {
   // Carregar rotina existente na inicialização
   useEffect(() => {
     document.title = "Urinálise & PSO SUS | Importar Rotina";
-    setDataHoje(new Date().toISOString().split("T")[0]);
+    setDataHoje(obterHojeIsoLocal());
     const savedConfig = localStorage.getItem("urinalise_lab_config");
     if (savedConfig) {
       try {
@@ -266,7 +266,7 @@ export default function ImportarRotinaPage() {
 
     const novoItem: RotinaItem = {
       id: `manual-${Date.now()}`,
-      data: new Date().toISOString().split("T")[0],
+      data: obterHojeIsoLocal(),
       prontuario: manualForm.prontuario.trim(),
       nome_paciente: manualForm.nome_paciente.trim(),
       idade_sexo: manualForm.idade_sexo.trim() || "Não informado",

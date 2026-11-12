@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { LaudoUrina, RotinaItem } from "@/types/urinalise";
+import { obterHojeIsoLocal } from "@/lib/extratorBancada";
 
 function escaparXml(valor: any): string {
   if (valor === null || valor === undefined) return "";
@@ -366,7 +367,7 @@ export function baixarXmlUrinalise(
   dataFim?: string
 ): { sucesso: boolean; totalItens: number; nomeArquivo: string } {
   const xmlString = gerarStringXmlUrinalise(dataAlvo, rotina, laudos, dataFim);
-  const de = (dataAlvo || new Date().toISOString().split("T")[0]).split("T")[0];
+  const de = (dataAlvo || obterHojeIsoLocal()).split("T")[0];
   const ate = (dataFim || "").split("T")[0];
   const ehPeriodo = Boolean(ate && ate !== de);
 
@@ -443,7 +444,7 @@ export function baixarXlsxUrinalise(
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "AutoLaudo_Urina");
 
-  const de = (dataAlvo || new Date().toISOString().split("T")[0]).split("T")[0];
+  const de = (dataAlvo || obterHojeIsoLocal()).split("T")[0];
   const ate = (dataFim || "").split("T")[0];
   const ehPeriodo = Boolean(ate && ate !== de);
 

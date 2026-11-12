@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { QuickChipSelect } from "@/components/QuickChipSelect";
 import type { LaudoUrina, ItemRotina, StatusLaudo } from "@/types/urinalise";
-import { formatarProntuario, normalizarDataIso } from "@/lib/extratorBancada";
+import { formatarProntuario, normalizarDataIso, obterHojeIsoLocal, obterOntemIsoLocal } from "@/lib/extratorBancada";
 import { MapaBancadaPrintView } from "@/components/MapaBancadaPrintView";
 import { RelatorioBancadaDiaPrintView } from "@/components/RelatorioBancadaDiaPrintView";
 import {
@@ -207,7 +207,7 @@ export default function BancadaOperacionalPage() {
 
   // Carregar a rotina do dia e detectar automaticamente se é Computador ou Celular
   useEffect(() => {
-    setDataHoje(new Date().toISOString().split("T")[0]);
+    setDataHoje(obterHojeIsoLocal());
     carregarDadosSincronizados();
 
     if (typeof window !== "undefined") {
@@ -269,7 +269,7 @@ export default function BancadaOperacionalPage() {
     if (!silencioso) setIsSyncing(true);
     try {
       const dataAlvo =
-        dataFiltro !== undefined ? dataFiltro : dataHoje || new Date().toISOString().split("T")[0];
+        dataFiltro !== undefined ? dataFiltro : dataHoje || obterHojeIsoLocal();
       const fim =
         dataFimFiltro !== undefined
           ? dataFimFiltro
@@ -353,7 +353,7 @@ export default function BancadaOperacionalPage() {
         return;
       }
 
-      const dataAlvoUpload = data.dataReferencia || dataHoje || new Date().toISOString().split("T")[0];
+      const dataAlvoUpload = data.dataReferencia || dataHoje || obterHojeIsoLocal();
       setDataHoje(dataAlvoUpload);
       dataHojeRef.current = dataAlvoUpload;
 
@@ -1145,7 +1145,7 @@ export default function BancadaOperacionalPage() {
           idade_sexo: r.idade_sexo,
           posto_unidade: r.posto_unidade,
           solicitante: r.solicitante,
-          data_hora: dataHoje || new Date().toISOString().split("T")[0],
+          data_hora: dataHoje || obterHojeIsoLocal(),
           status: (r.status_laudo || (r.tem_laudo ? "finalizado" : "rascunho")) as StatusLaudo,
           observacoes: "",
           tem_urina: Boolean(r.tem_urina),
@@ -1307,7 +1307,7 @@ export default function BancadaOperacionalPage() {
 
   const handleBaixarXlsx = () => {
     try {
-      const dataAlvo = dataHoje || new Date().toISOString().split("T")[0];
+      const dataAlvo = dataHoje || obterHojeIsoLocal();
       const fim = modoFiltroData === "periodo" ? dataFimPeriodo : undefined;
       const res = baixarXlsxUrinalise(dataAlvo, rotinaDoDia, laudosDoDia, fim);
       const rotuloData =
@@ -1328,7 +1328,7 @@ export default function BancadaOperacionalPage() {
 
   const handleBaixarXml = () => {
     try {
-      const dataAlvo = dataHoje || new Date().toISOString().split("T")[0];
+      const dataAlvo = dataHoje || obterHojeIsoLocal();
       const fim = modoFiltroData === "periodo" ? dataFimPeriodo : undefined;
       const res = baixarXmlUrinalise(dataAlvo, rotinaDoDia, laudosDoDia, fim);
       const rotuloData =
@@ -1348,7 +1348,7 @@ export default function BancadaOperacionalPage() {
   };
 
   const handleAbrirPreviaXml = () => {
-    const dataAlvo = dataHoje || new Date().toISOString().split("T")[0];
+    const dataAlvo = dataHoje || obterHojeIsoLocal();
     const fim = modoFiltroData === "periodo" ? dataFimPeriodo : undefined;
     const xml = gerarStringXmlUrinalise(dataAlvo, rotinaDoDia, laudosDoDia, fim);
     setConteudoXmlPreview(xml);
@@ -1433,7 +1433,7 @@ export default function BancadaOperacionalPage() {
                         type="button"
                         onClick={() => {
                           setModoFiltroData("periodo");
-                          const h = new Date().toISOString().split("T")[0];
+                          const h = obterHojeIsoLocal();
                           const seteDiasAtras = new Date(Date.now() - 6 * 86400000)
                             .toISOString()
                             .split("T")[0];
@@ -1469,12 +1469,12 @@ export default function BancadaOperacionalPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const h = new Date().toISOString().split("T")[0];
+                            const h = obterHojeIsoLocal();
                             setDataHoje(h);
                             carregarDadosSincronizados(false, h, "");
                           }}
                           className={`px-2 py-1 rounded-lg text-[11px] font-black transition cursor-pointer ${
-                            dataHoje === new Date().toISOString().split("T")[0]
+                            dataHoje === obterHojeIsoLocal()
                               ? "bg-sky-700 text-white shadow-2xs"
                               : "bg-white hover:bg-slate-200 text-slate-700 border border-slate-200"
                           }`}
@@ -1484,12 +1484,12 @@ export default function BancadaOperacionalPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const o = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+                            const o = obterOntemIsoLocal();
                             setDataHoje(o);
                             carregarDadosSincronizados(false, o, "");
                           }}
                           className={`px-2 py-1 rounded-lg text-[11px] font-black transition cursor-pointer ${
-                            dataHoje === new Date(Date.now() - 86400000).toISOString().split("T")[0]
+                            dataHoje === obterOntemIsoLocal()
                               ? "bg-sky-700 text-white shadow-2xs"
                               : "bg-white hover:bg-slate-200 text-slate-700 border border-slate-200"
                           }`}
@@ -1525,7 +1525,7 @@ export default function BancadaOperacionalPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const h = new Date().toISOString().split("T")[0];
+                            const h = obterHojeIsoLocal();
                             const seteDias = new Date(Date.now() - 6 * 86400000)
                               .toISOString()
                               .split("T")[0];
@@ -1540,7 +1540,7 @@ export default function BancadaOperacionalPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const h = new Date().toISOString().split("T")[0];
+                            const h = obterHojeIsoLocal();
                             const quinzeDias = new Date(Date.now() - 14 * 86400000)
                               .toISOString()
                               .split("T")[0];
@@ -2327,12 +2327,12 @@ export default function BancadaOperacionalPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const h = new Date().toISOString().split("T")[0];
+                  const h = obterHojeIsoLocal();
                   setDataHoje(h);
                   carregarDadosSincronizados(false, h);
                 }}
                 className={`px-2 py-0.5 rounded-md text-[10.5px] font-black transition ${
-                  dataHoje === new Date().toISOString().split("T")[0]
+                  dataHoje === obterHojeIsoLocal()
                     ? "bg-sky-700 text-white shadow-2xs"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
@@ -2342,12 +2342,12 @@ export default function BancadaOperacionalPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const o = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+                  const o = obterOntemIsoLocal();
                   setDataHoje(o);
                   carregarDadosSincronizados(false, o);
                 }}
                 className={`px-2 py-0.5 rounded-md text-[10.5px] font-black transition ${
-                  dataHoje === new Date(Date.now() - 86400000).toISOString().split("T")[0]
+                  dataHoje === obterOntemIsoLocal()
                     ? "bg-sky-700 text-white shadow-2xs"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}

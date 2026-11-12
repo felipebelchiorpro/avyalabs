@@ -90,9 +90,9 @@
     "semantic_hash": ""
   },
   "src/app/api/triagem-edta/route.ts": {
-    "mtime": 1794439202.304793,
-    "seen": 1794439672.9262128,
-    "ast_hash": "fc6ad8058902c9d2aa507458e996e6f2",
+    "mtime": 1794442080.3444836,
+    "seen": 1794442721.391613,
+    "ast_hash": "83798de21afe9ab1cd4b9cae7044c183",
     "semantic_hash": ""
   },
   "src/app/configuracoes/page.tsx": {
@@ -102,22 +102,22 @@
     "semantic_hash": "6948e2e50164214aa3dc41bfddc760eb"
   },
   "src/app/consulta/page.tsx": {
-    "mtime": 1793738523.9023018,
-    "seen": 1793914653.9417462,
-    "ast_hash": "2b4b022c22c7cbd6ddcdb954a37741cd",
-    "semantic_hash": "2b4b022c22c7cbd6ddcdb954a37741cd"
+    "mtime": 1794442516.696673,
+    "seen": 1794442721.3917747,
+    "ast_hash": "570d56d0ddc92adcb8f21f232318084d",
+    "semantic_hash": ""
   },
   "src/app/importar/page.tsx": {
-    "mtime": 1794439565.6323538,
-    "seen": 1794439672.9265857,
-    "ast_hash": "8ab7f4c64fcc6dc4dbe157e678dc1e0d",
+    "mtime": 1794442348.2199574,
+    "seen": 1794442721.3917773,
+    "ast_hash": "5f1603626268075a03c11a5e6f25e5e5",
     "semantic_hash": ""
   },
   "src/app/laudos/page.tsx": {
-    "mtime": 1793912557.2251291,
-    "seen": 1793914653.9417512,
-    "ast_hash": "a58213322dd3047da19839051aa9ceb2",
-    "semantic_hash": "a58213322dd3047da19839051aa9ceb2"
+    "mtime": 1794442423.8937924,
+    "seen": 1794442721.3917794,
+    "ast_hash": "a131a4ece5fbc93fab7ac1ad78d23036",
+    "semantic_hash": ""
   },
   "src/app/layout.tsx": {
     "mtime": 1794374123.2213008,
@@ -138,16 +138,16 @@
     "semantic_hash": ""
   },
   "src/app/triagem-edta/page.tsx": {
-    "mtime": 1794440509.9264982,
-    "seen": 1794440603.9025111,
-    "ast_hash": "861b30346288cde885c9d788d7b3a29c",
+    "mtime": 1794442235.9481468,
+    "seen": 1794442721.3924258,
+    "ast_hash": "385f659b636ead854ae5385a399bdbf5",
     "semantic_hash": ""
   },
   "src/app/vdrl/page.tsx": {
-    "mtime": 1793679075.3960662,
-    "seen": 1793914653.9417644,
-    "ast_hash": "c771c65c54264fb650805f660c06155b",
-    "semantic_hash": "c771c65c54264fb650805f660c06155b"
+    "mtime": 1794442450.9885085,
+    "seen": 1794442721.3924305,
+    "ast_hash": "baf677b27ca9ef0489ed34add62177fe",
+    "semantic_hash": ""
   },
   "src/components/AppLayoutWrapper.tsx": {
     "mtime": 1793739804.564174,
@@ -228,15 +228,15 @@
     "semantic_hash": "a7ff1f0db8bb7d2933629cd0a65a5961"
   },
   "src/lib/exportadorXmlExtensao.ts": {
-    "mtime": 1793738646.160845,
-    "seen": 1793914653.9418228,
-    "ast_hash": "bbce58305c5ac15559366a80496c3170",
-    "semantic_hash": "bbce58305c5ac15559366a80496c3170"
+    "mtime": 1794442553.4942229,
+    "seen": 1794442721.3957083,
+    "ast_hash": "2d93901390990796d04b56f863a0e77a",
+    "semantic_hash": ""
   },
   "src/lib/extratorBancada.ts": {
-    "mtime": 1793924083.741115,
-    "seen": 1793924426.8890238,
-    "ast_hash": "eddf6e3edbc4728162d777f9d54dd6a3",
+    "mtime": 1794442037.493134,
+    "seen": 1794442721.3957129,
+    "ast_hash": "1de907502e53e70b7522d9a2a942a464",
     "semantic_hash": ""
   },
   "src/lib/googleSheets.ts": {
@@ -252,10 +252,10 @@
     "semantic_hash": "2f1af89792076e82259df8f56f70664c"
   },
   "src/lib/mockData.ts": {
-    "mtime": 1792990056.9911234,
-    "seen": 1793914653.9418328,
-    "ast_hash": "9bbf1f0149550541e05f6d3b9b1e4a91",
-    "semantic_hash": "9bbf1f0149550541e05f6d3b9b1e4a91"
+    "mtime": 1794442615.9622202,
+    "seen": 1794442721.3961399,
+    "ast_hash": "96294b61ff890030feda9a26f518d150",
+    "semantic_hash": ""
   },
   "src/lib/operadoresStore.ts": {
     "mtime": 1793680767.7345939,
@@ -282,9 +282,9 @@
     "semantic_hash": "a5d3c2b506af26d3cac3f5fb91671129"
   },
   "src/components/TriagemEdtaReal.tsx": {
-    "mtime": 1793919103.309168,
-    "seen": 1793919138.0149436,
-    "ast_hash": "0ec312d6965fa5931fe4518c9d157b43",
+    "mtime": 1794442592.832963,
+    "seen": 1794442721.3951876,
+    "ast_hash": "3a5b960b87cc6ba185511ad75e0b7292",
     "semantic_hash": ""
   },
   ".agents/rules/ui-ux-pro-max.md": {
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "public/graph.html": {
-    "mtime": 1794441169.3677964,
-    "seen": 1794441635.9109955,
-    "ast_hash": "66ad7afa57e281428e97007ce560fc07",
+    "mtime": 1794441635.9481072,
+    "seen": 1794442721.3986466,
+    "ast_hash": "0a36ea9e2268d7d738cd4ac9a0d7410c",
     "semantic_hash": ""
   },
   "public/file.svg": {
@@ -390,9 +390,9 @@
     "semantic_hash": ""
   },
   "src/app/urina/page.tsx": {
-    "mtime": 1794439330.5102453,
-    "seen": 1794439672.9274175,
-    "ast_hash": "3221042bcc30aec46aad56bfc3ea766b",
+    "mtime": 1794442274.3783731,
+    "seen": 1794442721.3924289,
+    "ast_hash": "428c50a5dfbb8221ba9638ad417326df",
     "semantic_hash": ""
   },
   "src/components/BarraAcoesTiragem.tsx": {

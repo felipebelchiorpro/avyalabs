@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { obterHojeIsoLocal } from "@/lib/extratorBancada";
 import {
   Search,
   CheckCircle2,
@@ -50,7 +51,7 @@ export default function TriagemEdtaReal({
   medicosCadastrados = [],
 }: TriagemEdtaRealProps) {
   const [dataSelecionada, setDataSelecionada] = useState<string>(
-    new Date().toISOString().split("T")[0]
+    obterHojeIsoLocal()
   );
   const [prontuarioInput, setProntuarioInput] = useState("");
   const [dataNascInput, setDataNascInput] = useState("");

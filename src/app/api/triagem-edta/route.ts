@@ -11,7 +11,7 @@ import {
   obterSinalImpressaoEdta,
   consumirSinalImpressaoEdta,
 } from "@/lib/d1Service";
-import { formatarProntuario, normalizarProntuario } from "@/lib/extratorBancada";
+import { formatarProntuario, normalizarProntuario, obterHojeIsoLocal } from "@/lib/extratorBancada";
 import { ItemTriagemEdta } from "@/types/urinalise";
 
 export async function GET(request: NextRequest) {
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     if (body.prontuario && body.agendamento) {
       const pBusca = formatarProntuario(body.prontuario);
       const pNorm = normalizarProntuario(body.prontuario);
-      const dataHoje = new Date().toISOString().split("T")[0];
+      const dataHoje = obterHojeIsoLocal();
 
       // Se o payload inclui nome ou salvar=true, salvamos/enriquecemos no D1
       if (body.nome || body.salvar === true) {

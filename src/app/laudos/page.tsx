@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { LaudoUrina, StatusLaudo, LabConfig, DEFAULT_LAB_CONFIG } from "@/types/urinalise";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RelatorioBancadaDiaPrintView } from "@/components/RelatorioBancadaDiaPrintView";
+import { obterHojeIsoLocal, obterOntemIsoLocal, obterDataDeslocadaIsoLocal } from "@/lib/extratorBancada";
 import {
   Printer,
   Search,
@@ -34,7 +35,7 @@ export default function PainelLaudosPage() {
   const [imprimindoTodos, setImprimindoTodos] = useState<boolean>(false);
 
   useEffect(() => {
-    setDataSelecionada(new Date().toISOString().split("T")[0]);
+    setDataSelecionada(obterHojeIsoLocal());
   }, []);
 
   useEffect(() => {
@@ -72,9 +73,9 @@ export default function PainelLaudosPage() {
   const [datasRapidas, setDatasRapidas] = useState({ hoje: "", ontem: "", anteontem: "" });
 
   useEffect(() => {
-    const h = new Date().toISOString().split("T")[0];
-    const o = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-    const a = new Date(Date.now() - 172800000).toISOString().split("T")[0];
+    const h = obterHojeIsoLocal();
+    const o = obterOntemIsoLocal();
+    const a = obterDataDeslocadaIsoLocal(2);
     setDatasRapidas({ hoje: h, ontem: o, anteontem: a });
   }, []);
 

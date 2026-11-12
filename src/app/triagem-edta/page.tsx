@@ -14,6 +14,8 @@ import {
   normalizarDigitosData,
   normalizarTexto,
   processarMatrizLinhasBancada,
+  obterHojeIsoLocal,
+  obterOntemIsoLocal,
 } from "@/lib/extratorBancada";
 import {
   obterMedicosCadastrados,
@@ -68,10 +70,12 @@ export default function TriagemEdtaPage() {
   const [horaEncerramento, setHoraEncerramento] = useState<string>("");
   const [labConfig, setLabConfig] = useState<LabConfig>(DEFAULT_LAB_CONFIG);
 
-  // Navegação e Filtros de Data e Status da Triagem EDTA
-  const hojeIso = new Date().toISOString().split("T")[0];
-  const ontemIso = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-  const [dataFiltro, setDataFiltro] = useState<string>("");
+  // Navegação e Filtros de Data e Status da Triagem EDTA (Fuso Oficial de Brasília / Caconde)
+  const hojeIso = obterHojeIsoLocal();
+  const ontemIso = obterOntemIsoLocal();
+  const [dataFiltro, setDataFiltro] = useState<string>(hojeIso);
+  const dataFiltroRef = useRef<string>(hojeIso);
+  dataFiltroRef.current = dataFiltro;
   const [datasDisponiveis, setDatasDisponiveis] = useState<string[]>([]);
   const [filtroStatusLista, setFiltroStatusLista] = useState<"todos" | "pendentes" | "na_grade" | "retidos">("todos");
 
@@ -166,7 +170,7 @@ export default function TriagemEdtaPage() {
   // 1. Inicialização
   useEffect(() => {
     document.title = "Triagem EDTA • Hemograma & HbA1c • Laboratório Caconde";
-    setDataReferencia(new Date().toISOString().split("T")[0]);
+    setDataReferencia(obterHojeIsoLocal());
 
     // Carregar configurações de laboratório
     const savedConfig = localStorage.getItem("urinalise_lab_config");
@@ -290,9 +294,12 @@ export default function TriagemEdtaPage() {
   const carregarDadosEdta = async (silencioso = false, dataFiltroEscolhida?: string) => {
     if (!silencioso) setIsLoading(true);
     try {
-      const dataParaBuscar = dataFiltroEscolhida !== undefined ? dataFiltroEscolhida : dataFiltro;
-      const url = dataParaBuscar ? `/api/triagem-edta?data=${encodeURIComponent(dataParaBuscar)}` : "/api/triagem-edta";
-      const res = await fetch(url);
+      const dataParaBuscar = dataFiltroEscolhida !== undefined ? dataFiltroEscolhida : dataFiltroRef.current;
+      const url =
+        dataParaBuscar === ""
+          ? "/api/triagem-edta?data=todas"
+          : `/api/triagem-edta?data=${encodeURIComponent(dataParaBuscar)}`;
+      const res = await fetch(url, { cache: "no-store" });
       const data = await res.json();
       if (data.ok && Array.isArray(data.itens)) {
         setItens(data.itens);
@@ -314,6 +321,7 @@ export default function TriagemEdtaPage() {
 
   const selecionarDataFiltro = (novaData: string) => {
     setDataFiltro(novaData);
+    dataFiltroRef.current = novaData;
     carregarDadosEdta(false, novaData);
   };
 
@@ -542,7 +550,7 @@ export default function TriagemEdtaPage() {
         minute: "2-digit",
         second: "2-digit",
       });
-      const hojeIso = new Date().toISOString().split("T")[0];
+      const hojeIso = obterHojeIsoLocal();
       const dnFinal = formatarDataNascimento((dataNascDetectada || item.data_nascimento || "").trim());
       const dnDigitos = normalizarDigitosData(dnFinal);
       const temDoisTubos =
@@ -978,7 +986,7 @@ export default function TriagemEdtaPage() {
       minute: "2-digit",
       second: "2-digit",
     });
-    const hojeIso = new Date().toISOString().split("T")[0];
+    const hojeIso = obterHojeIsoLocal();
 
     let vaiEnviarHoje = forcarEnviarHoje !== undefined ? forcarEnviarHoje : enviarHemogramaHoje;
     if (forcarEnviarHoje !== undefined) {
@@ -1221,7 +1229,7 @@ export default function TriagemEdtaPage() {
       minute: "2-digit",
       second: "2-digit",
     });
-    const hojeIso = new Date().toISOString().split("T")[0];
+    const hojeIso = obterHojeIsoLocal();
 
     const itemAtualizado: ItemTriagemEdta = {
       ...itemRetido,
@@ -1305,7 +1313,7 @@ export default function TriagemEdtaPage() {
       minute: "2-digit",
       second: "2-digit",
     });
-    const hojeIso = new Date().toISOString().split("T")[0];
+    const hojeIso = obterHojeIsoLocal();
 
     const prontuariosRetidos = new Set(
       retidos.map((r) => (r.prontuario_normalizado || normalizarProntuario(r.prontuario)).toLowerCase())
@@ -1462,9 +1470,10 @@ export default function TriagemEdtaPage() {
 
     // Sincronizar dados mais recentes do servidor antes de imprimir para garantir que todas as datas de nascimento estejam presentes
     try {
-      const urlImpressao = dataFiltro
-        ? `/api/triagem-edta?data=${encodeURIComponent(dataFiltro)}`
-        : "/api/triagem-edta";
+      const urlImpressao =
+        dataFiltro === ""
+          ? "/api/triagem-edta?data=todas"
+          : `/api/triagem-edta?data=${encodeURIComponent(dataFiltro)}`;
       const resItens = await fetch(urlImpressao, { cache: "no-store" });
       const dataItens = await resItens.json();
       if (dataItens.ok && Array.isArray(dataItens.itens)) {

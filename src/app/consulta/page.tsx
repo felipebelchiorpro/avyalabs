@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 import { LaudoUrina, StatusLaudo, VALORES_PADRAO_NORMAL } from "@/types/urinalise";
 import { StatusBadge } from "@/components/StatusBadge";
 import { QuickChipSelect } from "@/components/QuickChipSelect";
+import { obterHojeIsoLocal, obterOntemIsoLocal, obterDataDeslocadaIsoLocal } from "@/lib/extratorBancada";
 import {
   Search,
   Calendar,
@@ -259,9 +260,9 @@ export default function ConsultaAuditoriaPage() {
   const [datasRapidas, setDatasRapidas] = useState({ hoje: "", ontem: "", anteontem: "" });
 
   useEffect(() => {
-    const h = new Date().toISOString().split("T")[0];
-    const o = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-    const a = new Date(Date.now() - 172800000).toISOString().split("T")[0];
+    const h = obterHojeIsoLocal();
+    const o = obterOntemIsoLocal();
+    const a = obterDataDeslocadaIsoLocal(2);
     setDatasRapidas({ hoje: h, ontem: o, anteontem: a });
   }, []);
 
@@ -379,7 +380,7 @@ export default function ConsultaAuditoriaPage() {
             <button
               type="button"
               onClick={() => {
-                const seteDias = new Date(Date.now() - 6 * 86400000).toISOString().split("T")[0];
+                const seteDias = obterDataDeslocadaIsoLocal(6);
                 setDataFiltro(seteDias);
                 setDataFimFiltro(hojeStr);
               }}
@@ -394,7 +395,7 @@ export default function ConsultaAuditoriaPage() {
             <button
               type="button"
               onClick={() => {
-                const quinzeDias = new Date(Date.now() - 14 * 86400000).toISOString().split("T")[0];
+                const quinzeDias = obterDataDeslocadaIsoLocal(14);
                 setDataFiltro(quinzeDias);
                 setDataFimFiltro(hojeStr);
               }}

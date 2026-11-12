@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { ItemRotina, LaudoUrina, VALORES_PADRAO_NORMAL } from "@/types/urinalise";
-import { formatarProntuario } from "@/lib/extratorBancada";
+import { formatarProntuario, obterHojeIsoLocal } from "@/lib/extratorBancada";
 import {
   Package,
   Printer,
@@ -36,7 +36,7 @@ export default function LoteVdrlPage() {
   const [mostrarMapaPrint, setMostrarMapaPrint] = useState<boolean>(false);
 
   useEffect(() => {
-    setDataRodagem(new Date().toISOString().split("T")[0]);
+    setDataRodagem(obterHojeIsoLocal());
     carregarDados();
   }, []);
 

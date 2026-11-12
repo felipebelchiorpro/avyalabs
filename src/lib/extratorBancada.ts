@@ -54,27 +54,46 @@ export function normalizarDataIso(val: string | undefined): string {
 }
 
 /**
- * Retorna a data de hoje no fuso horário local do dispositivo no formato YYYY-MM-DD
- * Evita o bug de fuso horário UTC (onde após 21:00 no Brasil vira o dia seguinte)
+ * Retorna a data de hoje no fuso horário oficial de Brasília/Caconde (America/Sao_Paulo) no formato YYYY-MM-DD.
+ * Funciona tanto no navegador quanto em servidores UTC (Vercel EUA), evitando virar o dia após as 21:00.
  */
 export function obterHojeIsoLocal(): string {
-  const d = new Date();
-  const ano = d.getFullYear();
-  const mes = String(d.getMonth() + 1).padStart(2, "0");
-  const dia = String(d.getDate()).padStart(2, "0");
-  return `${ano}-${mes}-${dia}`;
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+  } catch {
+    const d = new Date(Date.now() - 3 * 3600 * 1000);
+    return d.toISOString().split("T")[0];
+  }
 }
 
 /**
- * Retorna a data de ontem no fuso horário local do dispositivo no formato YYYY-MM-DD
+ * Retorna a data de ontem no fuso horário de Brasília/Caconde (America/Sao_Paulo) no formato YYYY-MM-DD.
  */
 export function obterOntemIsoLocal(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  const ano = d.getFullYear();
-  const mes = String(d.getMonth() + 1).padStart(2, "0");
-  const dia = String(d.getDate()).padStart(2, "0");
-  return `${ano}-${mes}-${dia}`;
+  return obterDataDeslocadaIsoLocal(1);
+}
+
+/**
+ * Retorna a data de N dias atrás no fuso horário de Brasília/Caconde (America/Sao_Paulo) no formato YYYY-MM-DD.
+ */
+export function obterDataDeslocadaIsoLocal(diasAtras = 0): string {
+  try {
+    const d = new Date(Date.now() - diasAtras * 86400000);
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+  } catch {
+    const d = new Date(Date.now() - diasAtras * 86400000 - 3 * 3600 * 1000);
+    return d.toISOString().split("T")[0];
+  }
 }
 
 /**
@@ -606,8 +625,8 @@ export function aplicarFlagsExamesNoItem(item: ItemRotina): ItemRotina {
 
   return {
     ...item,
-    data: item.data || item.data_rotina || new Date().toISOString().split("T")[0],
-    data_rotina: item.data_rotina || item.data || new Date().toISOString().split("T")[0],
+    data: item.data || item.data_rotina || obterHojeIsoLocal(),
+    data_rotina: item.data_rotina || item.data || obterHojeIsoLocal(),
     status_coleta: item.status_coleta || "REALIZADO",
     prontuario: formatarProntuario(item.prontuario),
     tem_urina,
@@ -639,7 +658,7 @@ export function extrairExamesBancadaConectaSUS(
 ): ResultadoExtracaoBancada {
   if (!rows || rows.length === 0) {
     return {
-      dataReferencia: new Date().toISOString().split("T")[0],
+      dataReferencia: obterHojeIsoLocal(),
       totalLinhasBrutas: 0,
       totalExamesBancada: 0,
       totalDescartadosBioquimica: 0,
@@ -725,7 +744,7 @@ export function extrairExamesBancadaConectaSUS(
     idxExame = 5;
   }
 
-  let dataReferencia = new Date().toISOString().split("T")[0];
+  let dataReferencia = obterHojeIsoLocal();
   let totalLinhasBrutas = 0;
   let totalExamesBancada = 0;
   let totalDescartadosBioquimica = 0;
