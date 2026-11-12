@@ -257,7 +257,7 @@ export default function TriagemEdtaPage() {
       }
 
       if (event.data.type === "BANCADALAB_PROGRESSO_CONECTASUS") {
-        setProgressoExtensao(`Passo ${event.data.step}/7: ${event.data.mensagem}`);
+        setProgressoExtensao(`Etapa ${event.data.step}/3: ${event.data.mensagem}`);
         setErroExtensao("");
         return;
       }

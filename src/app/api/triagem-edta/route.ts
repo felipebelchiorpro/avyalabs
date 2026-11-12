@@ -11,7 +11,12 @@ import {
   obterSinalImpressaoEdta,
   consumirSinalImpressaoEdta,
 } from "@/lib/d1Service";
-import { formatarProntuario, normalizarProntuario, obterHojeIsoLocal } from "@/lib/extratorBancada";
+import {
+  formatarProntuario,
+  normalizarProntuario,
+  normalizarDigitosData,
+  obterHojeIsoLocal,
+} from "@/lib/extratorBancada";
 import { ItemTriagemEdta } from "@/types/urinalise";
 
 export async function GET(request: NextRequest) {
@@ -104,6 +109,7 @@ export async function POST(request: NextRequest) {
 
         const temGlicada = examesRecebidos.some((e: string) => /glicad|hba1c/i.test(e));
         const temHemograma = examesRecebidos.some((e: string) => /hemogr/i.test(e)) || (!temGlicada);
+        const temVhs = examesRecebidos.some((e: string) => /vhs|hemossedimenta/i.test(e));
         const destino: "hemograma_glicada" | "apenas_glicada" | "apenas_hemograma" =
           temHemograma && temGlicada ? "hemograma_glicada" : (temGlicada ? "apenas_glicada" : "apenas_hemograma");
 
@@ -114,7 +120,10 @@ export async function POST(request: NextRequest) {
           agendamento: String(body.agendamento),
           nome_paciente: nomePaciente,
           data_nascimento: dataNasc,
+          data_nascimento_digitos: normalizarDigitosData(dataNasc),
           solicitante: medico,
+          urgencia: Boolean(body.urgencia),
+          tem_vhs: temVhs,
           tipo_destino: destino,
           tem_hemograma: temHemograma,
           tem_glicada: temGlicada,
@@ -124,20 +133,22 @@ export async function POST(request: NextRequest) {
           exames_originais: examesRecebidos,
         };
 
-        await salvarTriagemEdta([novoItem], false);
+        const resultadoSave = await salvarTriagemEdta([novoItem], false);
+        const itemSalvo = resultadoSave.itens?.[0] || novoItem;
 
         return NextResponse.json({
           ok: true,
           success: true,
+          item: itemSalvo,
           paciente: {
-            nome: nomePaciente,
-            prontuario: pBusca,
+            nome: itemSalvo.nome_paciente || nomePaciente,
+            prontuario: itemSalvo.prontuario || pBusca,
             agendamento: body.agendamento,
-            dataNascimento: dataNasc,
-            medicoSolicitante: medico,
+            dataNascimento: itemSalvo.data_nascimento || dataNasc,
+            medicoSolicitante: itemSalvo.solicitante || medico,
             exames: examesRecebidos,
-            tipoDestino: destino,
-            status: "pendente",
+            tipoDestino: itemSalvo.tipo_destino || destino,
+            status: itemSalvo.status || "pendente",
           },
           message: "Paciente salvo e registrado na Triagem EDTA do D1 com sucesso!",
         });

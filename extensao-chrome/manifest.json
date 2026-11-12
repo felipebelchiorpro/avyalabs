@@ -1,15 +1,17 @@
 {
   "manifest_version": 3,
   "name": "BancadaLab SUS • Conecta SUS Ponte",
-  "version": "1.0.0",
-  "description": "Automatiza a busca de pacientes e agendamentos no Conecta SUS de Caconde em segundo plano para o BancadaLab PWA (Cloudflare D1).",
+  "version": "2.0.0",
+  "description": "Consulta instantânea via API interna do Conecta SUS (Caconde) em segundo plano e grava no Cloudflare D1 do BancadaLab.",
   "permissions": [
     "tabs",
     "storage",
-    "scripting"
+    "scripting",
+    "webRequest"
   ],
   "host_permissions": [
     "https://caconde.conectasus.com.br/*",
+    "https://api-saude.conectasus.com.br/*",
     "https://*.vercel.app/*",
     "http://localhost:*/*"
   ],
@@ -42,4 +44,3 @@
     }
   ]
 }
-

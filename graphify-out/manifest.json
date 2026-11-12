@@ -90,9 +90,9 @@
     "semantic_hash": ""
   },
   "src/app/api/triagem-edta/route.ts": {
-    "mtime": 1794442080.3444836,
-    "seen": 1794442721.391613,
-    "ast_hash": "83798de21afe9ab1cd4b9cae7044c183",
+    "mtime": 1794443464.422199,
+    "seen": 1794443575.5966501,
+    "ast_hash": "3084188b49a241a3f4afeb6a302c7cf1",
     "semantic_hash": ""
   },
   "src/app/configuracoes/page.tsx": {
@@ -138,9 +138,9 @@
     "semantic_hash": ""
   },
   "src/app/triagem-edta/page.tsx": {
-    "mtime": 1794442235.9481468,
-    "seen": 1794442721.3924258,
-    "ast_hash": "385f659b636ead854ae5385a399bdbf5",
+    "mtime": 1794443493.1897302,
+    "seen": 1794443575.598318,
+    "ast_hash": "52ff07722c6c240ad6f7911b3c5d4c49",
     "semantic_hash": ""
   },
   "src/app/vdrl/page.tsx": {
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "public/graph.html": {
-    "mtime": 1794441635.9481072,
-    "seen": 1794442721.3986466,
-    "ast_hash": "0a36ea9e2268d7d738cd4ac9a0d7410c",
+    "mtime": 1794442721.4434302,
+    "seen": 1794443575.6057503,
+    "ast_hash": "261dab0f668873d71356c7548d857f52",
     "semantic_hash": ""
   },
   "public/file.svg": {
@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "extensao-chrome/background.js": {
-    "mtime": 1794440635.371499,
-    "seen": 1794441169.286599,
-    "ast_hash": "7325c1340bf6d17a42b74d08d8412289",
+    "mtime": 1794443399.42442,
+    "seen": 1794443575.5941625,
+    "ast_hash": "f237950effcb73a5be0b90551a5f963d",
     "semantic_hash": ""
   },
   "extensao-chrome/content_bancadalab.js": {
@@ -420,15 +420,15 @@
     "semantic_hash": ""
   },
   "extensao-chrome/content_conectasus.js": {
-    "mtime": 1794441610.993814,
-    "seen": 1794441635.8990288,
-    "ast_hash": "4a7578a05a449e218d1e505eddfebe80",
+    "mtime": 1794443416.8849993,
+    "seen": 1794443575.594329,
+    "ast_hash": "fb8123c47152a6f964eb10d5eb91a3ac",
     "semantic_hash": ""
   },
   "extensao-chrome/manifest.json": {
-    "mtime": 1794440635.7412243,
-    "seen": 1794441169.2866123,
-    "ast_hash": "446de0f954cdfc5528c8eaec02fbf4ab",
+    "mtime": 1794443358.9666378,
+    "seen": 1794443575.594332,
+    "ast_hash": "7111198bd0c62211796aa4b759426069",
     "semantic_hash": ""
   },
   "extensao-chrome/popup.js": {

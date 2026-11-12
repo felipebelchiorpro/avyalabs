@@ -1,14 +1,14 @@
 {
-  "0": "urinalise.ts",
+  "0": "importar/page.tsx",
   "1": "triagem-edta/page.tsx",
-  "2": "react",
+  "2": "layout.tsx",
   "3": "d1Service.ts",
   "4": "content_conectasus.js",
   "5": "compilerOptions",
   "6": "devDependencies",
-  "7": "extrair-arquivo/route.ts",
+  "7": "next",
   "8": "extensao-chrome/manifest.json",
-  "9": "obterHojeIsoLocal",
+  "9": "urinalise.ts",
   "10": "background.js",
   "11": "popup.js",
   "12": "content_bancadalab.js",
@@ -22,10 +22,11 @@
   "20": "configurar_planilha_google.js",
   "21": "postcss.config.mjs",
   "22": "laudos/route.ts",
-  "23": "formatarProntuario",
+  "23": "extratorBancada.ts",
   "24": "package.json",
   "25": "TriagemEdtaReal.tsx",
   "26": "scripts",
-  "27": "@types/react-dom@^19",
-  "28": "typescript@^5"
+  "27": "eslint.config.mjs",
+  "28": "EdtaBarcodeScanner.tsx",
+  "29": "D1Database"
 }
