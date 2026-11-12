@@ -1,5 +1,5 @@
 {
-  "0": "importar/page.tsx",
+  "0": "extrair-arquivo/route.ts",
   "1": "triagem-edta/page.tsx",
   "2": "layout.tsx",
   "3": "d1Service.ts",
@@ -23,10 +23,9 @@
   "21": "postcss.config.mjs",
   "22": "laudos/route.ts",
   "23": "extratorBancada.ts",
-  "24": "package.json",
+  "24": "d1Service.ts",
   "25": "TriagemEdtaReal.tsx",
   "26": "scripts",
   "27": "eslint.config.mjs",
-  "28": "EdtaBarcodeScanner.tsx",
-  "29": "D1Database"
+  "28": "EdtaBarcodeScanner.tsx"
 }

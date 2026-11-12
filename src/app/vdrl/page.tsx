@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { ItemRotina, LaudoUrina, VALORES_PADRAO_NORMAL } from "@/types/urinalise";
-import { formatarProntuario, obterHojeIsoLocal } from "@/lib/extratorBancada";
+import {
+  formatarProntuario,
+  normalizarDataIso,
+  obterHojeIsoLocal,
+  obterOntemIsoLocal,
+} from "@/lib/extratorBancada";
 import {
   Package,
   Printer,
@@ -34,6 +39,21 @@ export default function LoteVdrlPage() {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   // Modal de impressão do mapa da bancada
   const [mostrarMapaPrint, setMostrarMapaPrint] = useState<boolean>(false);
+  const [mostrarHistoricoFinalizados, setMostrarHistoricoFinalizados] = useState<boolean>(false);
+
+  const hojeIso = useMemo(() => obterHojeIsoLocal(), []);
+  const ontemIso = useMemo(() => obterOntemIsoLocal(), []);
+
+  const getChaveVdrl = (pront: string, data?: string) => `${normalizarDataIso(data) || hojeIso}::${formatarProntuario(pront)}`;
+
+  const formatarDataCurta = (dStr?: string) => {
+    const norm = normalizarDataIso(dStr);
+    if (!norm) return "Hoje";
+    if (norm === hojeIso) return "Hoje";
+    if (norm === ontemIso) return "Ontem";
+    const [ano, mes, dia] = norm.split("-");
+    return `${dia}/${mes}/${ano}`;
+  };
 
   useEffect(() => {
     setDataRodagem(obterHojeIsoLocal());
@@ -51,8 +71,8 @@ export default function LoteVdrlPage() {
     setIsLoading(true);
     try {
       const [resRot, resLaudos] = await Promise.all([
-        fetch("/api/rotina"),
-        fetch("/api/laudos"),
+        fetch("/api/rotina?data=todas"),
+        fetch("/api/laudos?data=todas"),
       ]);
 
       const dataRot = await resRot.json();
@@ -64,23 +84,40 @@ export default function LoteVdrlPage() {
       setRotina(listaRotina);
       setLaudos(listaLaudos);
 
-      // Auto-selecionar os que têm VDRL e ainda não foram finalizados
-      const prontsPendentes = new Set<string>();
+      const hojeAtual = obterHojeIsoLocal();
+      // Auto-selecionar os que têm VDRL de hoje ou acumulados de dias anteriores e ainda não foram finalizados
+      const chavesPendentes = new Set<string>();
       const titIniciais: Record<string, string> = {};
 
       listaRotina.forEach((p) => {
         if (!p.tem_vdrl) return;
         const pront = formatarProntuario(p.prontuario);
-        const l = listaLaudos.find((la) => formatarProntuario(la.prontuario) === pront);
-        const estaFinalizado = l && l.status === "finalizado" && !l.vdrl_acumular_lote && l.resultado_vdrl !== "Aguardando lote semanal";
+        const dataItem = normalizarDataIso(p.data || p.data_rotina) || hojeAtual;
+        const chave = `${dataItem}::${pront}`;
+
+        const l =
+          listaLaudos.find(
+            (la) =>
+              formatarProntuario(la.prontuario) === pront &&
+              normalizarDataIso((la as any).data_atendimento || la.data_hora?.split("T")[0]) === dataItem
+          ) || listaLaudos.find((la) => formatarProntuario(la.prontuario) === pront);
+
+        const estaFinalizado =
+          l &&
+          l.status === "finalizado" &&
+          !l.vdrl_acumular_lote &&
+          l.resultado_vdrl !== "Aguardando lote semanal";
 
         if (!estaFinalizado) {
-          prontsPendentes.add(pront);
-          titIniciais[pront] = (l?.resultado_vdrl && l.resultado_vdrl !== "Aguardando lote semanal") ? l.resultado_vdrl : "Não Reagente";
+          chavesPendentes.add(chave);
+          titIniciais[chave] =
+            l?.resultado_vdrl && l.resultado_vdrl !== "Aguardando lote semanal"
+              ? l.resultado_vdrl
+              : "Não Reagente";
         }
       });
 
-      setSelecionados(prontsPendentes);
+      setSelecionados(chavesPendentes);
       setTitulacoes(titIniciais);
     } catch (err: any) {
       console.error("Erro ao carregar dados do VDRL:", err);
@@ -90,17 +127,27 @@ export default function LoteVdrlPage() {
     }
   };
 
-  // Filtrar todos os pacientes que têm VDRL solicitado
+  // Filtrar pacientes com VDRL: hoje (todos) + dias anteriores pendentes/acumulados (e finalizados se toggle ativo)
   const todosVdrl = useMemo(() => {
     return rotina
       .filter((p) => Boolean(p.tem_vdrl))
       .map((p) => {
         const pront = formatarProntuario(p.prontuario);
-        const l = laudos.find((la) => formatarProntuario(la.prontuario) === pront);
+        const dataItem = normalizarDataIso(p.data || p.data_rotina) || hojeIso;
+        const chave = `${dataItem}::${pront}`;
+        const l =
+          laudos.find(
+            (la) =>
+              formatarProntuario(la.prontuario) === pront &&
+              normalizarDataIso((la as any).data_atendimento || la.data_hora?.split("T")[0]) === dataItem
+          ) || laudos.find((la) => formatarProntuario(la.prontuario) === pront);
+
         const estaAcumulado = Boolean(l?.vdrl_acumular_lote || l?.resultado_vdrl === "Aguardando lote semanal");
         const estaFinalizado = Boolean(l && l.status === "finalizado" && !estaAcumulado);
         return {
           ...p,
+          data: dataItem,
+          chave,
           prontuario: pront,
           laudo: l || null,
           estaAcumulado,
@@ -108,8 +155,17 @@ export default function LoteVdrlPage() {
           resultadoGravado: l?.resultado_vdrl || "",
         };
       })
-      .sort((a, b) => a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR"));
-  }, [rotina, laudos]);
+      .filter((item) => {
+        if (mostrarHistoricoFinalizados) return true;
+        // Por padrão mostra todos de hoje + quaisquer acumulados/pendentes de dias anteriores
+        return item.data === hojeIso || !item.estaFinalizado;
+      })
+      .sort((a, b) => {
+        if (a.estaFinalizado !== b.estaFinalizado) return a.estaFinalizado ? 1 : -1;
+        if (a.data !== b.data) return b.data.localeCompare(a.data);
+        return a.nome_paciente.localeCompare(b.nome_paciente, "pt-BR");
+      });
+  }, [rotina, laudos, hojeIso, mostrarHistoricoFinalizados]);
 
   // Lista com filtro de busca
   const vdrlFiltrados = useMemo(() => {
@@ -128,11 +184,11 @@ export default function LoteVdrlPage() {
   const finalizadosCount = todosVdrl.filter((p) => p.estaFinalizado).length;
 
   // Alternar seleção individual para montagem do dia
-  const toggleSelecionado = (pront: string) => {
+  const toggleSelecionado = (chave: string) => {
     setSelecionados((prev) => {
       const novo = new Set(prev);
-      if (novo.has(pront)) novo.delete(pront);
-      else novo.add(pront);
+      if (novo.has(chave)) novo.delete(chave);
+      else novo.add(chave);
       return novo;
     });
   };
@@ -141,7 +197,7 @@ export default function LoteVdrlPage() {
   const selecionarTodosPendentes = () => {
     const novo = new Set<string>();
     todosVdrl.forEach((p) => {
-      if (!p.estaFinalizado) novo.add(p.prontuario);
+      if (!p.estaFinalizado) novo.add(p.chave);
     });
     setSelecionados(novo);
   };
@@ -158,11 +214,58 @@ export default function LoteVdrlPage() {
       return;
     }
     const novo = { ...titulacoes };
-    selecionados.forEach((pront) => {
-      novo[pront] = "Não Reagente";
+    selecionados.forEach((chave) => {
+      novo[chave] = "Não Reagente";
     });
     setTitulacoes(novo);
-    mostrarNotificacao(`${selecionados.size} amostras definidas como 'Não Reagente'. Clique em Salvar Todo o Lote para confirmar no Google Sheets.`, "success");
+    mostrarNotificacao(`${selecionados.size} amostras definidas como 'Não Reagente'. Clique em Salvar e Liberar Marcados para gravar no D1.`, "success");
+  };
+
+  // Salvar selecionados como ACUMULADOS para outro dia (em lote no D1)
+  const acumularSelecionadosParaOutroDia = async () => {
+    if (selecionados.size === 0) {
+      mostrarNotificacao("Selecione ao menos um paciente para guardar no lote para outro dia.", "warning");
+      return;
+    }
+    setIsSaving(true);
+    let sucessos = 0;
+    try {
+      const listaParaAcumular = todosVdrl.filter((p) => selecionados.has(p.chave));
+      for (const pac of listaParaAcumular) {
+        const laudoExistente = pac.laudo;
+        const payload: Partial<LaudoUrina> & { data_atendimento?: string } = {
+          ...(laudoExistente || VALORES_PADRAO_NORMAL),
+          prontuario: pac.prontuario,
+          nome_paciente: pac.nome_paciente,
+          idade_sexo: pac.idade_sexo || "SUS",
+          posto_unidade: pac.posto_unidade || "Conecta SUS",
+          solicitante: pac.solicitante || "Conecta SUS",
+          status: "rascunho",
+          tem_vdrl: true,
+          resultado_vdrl: "Aguardando lote semanal",
+          vdrl_acumular_lote: true,
+          data_atendimento: pac.data,
+          data_hora: laudoExistente?.data_hora || `${pac.data}T12:00:00`,
+        };
+
+        const res = await fetch("/api/laudos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.ok) sucessos++;
+      }
+      mostrarNotificacao(
+        `${sucessos} amostra(s) salvas no D1 como Lote Acumulado! Elas permanecerão visíveis aqui nos próximos dias até você rodar a placa.`,
+        "warning"
+      );
+      await carregarDados();
+    } catch (err: any) {
+      mostrarNotificacao(`Erro ao acumular lote: ${err.message}`, "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Salvar todo o lote montado
@@ -174,14 +277,14 @@ export default function LoteVdrlPage() {
     setIsSaving(true);
     let sucessos = 0;
     try {
-      const listaParaSalvar = todosVdrl.filter((p) => selecionados.has(p.prontuario));
+      const listaParaSalvar = todosVdrl.filter((p) => selecionados.has(p.chave));
 
       for (const pac of listaParaSalvar) {
         const pront = pac.prontuario;
-        const resVdrl = titulacoes[pront] || "Não Reagente";
+        const resVdrl = titulacoes[pac.chave] || "Não Reagente";
         const laudoExistente = pac.laudo;
 
-        const payload: Partial<LaudoUrina> = {
+        const payload: Partial<LaudoUrina> & { data_atendimento?: string } = {
           ...(laudoExistente || VALORES_PADRAO_NORMAL),
           prontuario: pront,
           nome_paciente: pac.nome_paciente,
@@ -192,7 +295,8 @@ export default function LoteVdrlPage() {
           tem_vdrl: true,
           resultado_vdrl: resVdrl,
           vdrl_acumular_lote: false,
-          data_hora: laudoExistente?.data_hora || new Date().toISOString(),
+          data_atendimento: pac.data,
+          data_hora: laudoExistente?.data_hora || `${pac.data}T12:00:00`,
         };
 
         const res = await fetch("/api/laudos", {
@@ -203,19 +307,10 @@ export default function LoteVdrlPage() {
         const data = await res.json();
         if (data.ok && data.laudo) {
           sucessos++;
-          setLaudos((prev) => {
-            const idx = prev.findIndex((l) => formatarProntuario(l.prontuario) === pront);
-            if (idx >= 0) {
-              const copia = [...prev];
-              copia[idx] = data.laudo;
-              return copia;
-            }
-            return [data.laudo, ...prev];
-          });
         }
       }
-      mostrarNotificacao(`Lote concluído com sucesso! ${sucessos} laudos de VDRL salvos e liberados no Google Sheets.`, "success");
-      carregarDados();
+      mostrarNotificacao(`Lote concluído com sucesso! ${sucessos} laudo(s) de VDRL gravados no Cloudflare D1.`, "success");
+      await carregarDados();
     } catch (err: any) {
       console.error("Erro ao salvar lote de VDRL:", err);
       mostrarNotificacao(`Erro ao gravar lote: ${err.message}`, "error");
@@ -227,11 +322,11 @@ export default function LoteVdrlPage() {
   // Salvar individualmente um paciente
   const salvarIndividual = async (pac: typeof todosVdrl[0]) => {
     const pront = pac.prontuario;
-    const resVdrl = titulacoes[pront] || "Não Reagente";
+    const resVdrl = titulacoes[pac.chave] || "Não Reagente";
     const laudoExistente = pac.laudo;
 
     try {
-      const payload: Partial<LaudoUrina> = {
+      const payload: Partial<LaudoUrina> & { data_atendimento?: string } = {
         ...(laudoExistente || VALORES_PADRAO_NORMAL),
         prontuario: pront,
         nome_paciente: pac.nome_paciente,
@@ -242,7 +337,8 @@ export default function LoteVdrlPage() {
         tem_vdrl: true,
         resultado_vdrl: resVdrl,
         vdrl_acumular_lote: false,
-        data_hora: laudoExistente?.data_hora || new Date().toISOString(),
+        data_atendimento: pac.data,
+        data_hora: laudoExistente?.data_hora || `${pac.data}T12:00:00`,
       };
 
       const res = await fetch("/api/laudos", {
@@ -252,16 +348,8 @@ export default function LoteVdrlPage() {
       });
       const data = await res.json();
       if (data.ok && data.laudo) {
-        setLaudos((prev) => {
-          const idx = prev.findIndex((l) => formatarProntuario(l.prontuario) === pront);
-          if (idx >= 0) {
-            const copia = [...prev];
-            copia[idx] = data.laudo;
-            return copia;
-          }
-          return [data.laudo, ...prev];
-        });
-        mostrarNotificacao(`VDRL de ${pac.nome_paciente.split(" ")[0]} salvo como '${resVdrl}'!`, "success");
+        mostrarNotificacao(`VDRL de ${pac.nome_paciente.split(" ")[0]} salvo como '${resVdrl}' no D1!`, "success");
+        await carregarDados();
       }
     } catch (err: any) {
       mostrarNotificacao(`Erro ao salvar: ${err.message}`, "error");
@@ -272,14 +360,19 @@ export default function LoteVdrlPage() {
   const marcarContinuarAcumulado = async (pac: typeof todosVdrl[0]) => {
     const pront = pac.prontuario;
     try {
-      const payload: Partial<LaudoUrina> = {
+      const payload: Partial<LaudoUrina> & { data_atendimento?: string } = {
         ...(pac.laudo || VALORES_PADRAO_NORMAL),
         prontuario: pront,
         nome_paciente: pac.nome_paciente,
+        idade_sexo: pac.idade_sexo || "SUS",
+        posto_unidade: pac.posto_unidade || "Conecta SUS",
+        solicitante: pac.solicitante || "Conecta SUS",
         status: "rascunho",
         tem_vdrl: true,
         resultado_vdrl: "Aguardando lote semanal",
         vdrl_acumular_lote: true,
+        data_atendimento: pac.data,
+        data_hora: pac.laudo?.data_hora || `${pac.data}T12:00:00`,
       };
 
       await fetch("/api/laudos", {
@@ -288,15 +381,16 @@ export default function LoteVdrlPage() {
         body: JSON.stringify(payload),
       });
 
-      mostrarNotificacao(`VDRL de ${pac.nome_paciente.split(" ")[0]} mantido acumulado para o próximo lote.`, "warning");
-      carregarDados();
+      mostrarNotificacao(`VDRL de ${pac.nome_paciente.split(" ")[0]} salvo para outro dia (Lote Acumulado no D1).`, "warning");
+      await carregarDados();
     } catch (err: any) {
       mostrarNotificacao("Erro ao atualizar status.", "error");
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100/90 py-6 px-3 sm:px-6 max-w-7xl mx-auto">
+    <>
+    <div className="min-h-screen bg-slate-100/90 py-6 px-3 sm:px-6 max-w-7xl mx-auto print:hidden">
       {/* TOAST FLUTUANTE */}
       {toast && (
         <div className="fixed top-16 right-3 left-3 sm:left-auto z-50 max-w-md animate-in fade-in duration-200">
@@ -409,28 +503,50 @@ export default function LoteVdrlPage() {
             >
               Desmarcar Todos
             </button>
+            <button
+              type="button"
+              onClick={() => setMostrarHistoricoFinalizados((v) => !v)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                mostrarHistoricoFinalizados
+                  ? "bg-purple-100 text-purple-900 border-purple-300"
+                  : "bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200"
+              }`}
+            >
+              {mostrarHistoricoFinalizados ? "Ocultar Lotes Antigos Liberados" : "Ver Histórico Liberado"}
+            </button>
           </div>
 
           {/* AÇÕES DE LANÇAMENTO EM MASSA */}
           <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
+              onClick={acumularSelecionadosParaOutroDia}
+              disabled={isSaving || selecionados.size === 0}
+              className="min-h-[40px] px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black transition flex items-center gap-1.5 disabled:opacity-40 cursor-pointer active:scale-95 shadow-sm"
+              title="Salva os pacientes selecionados no D1 para realizar o lote em outro dia"
+            >
+              <Package className="w-3.5 h-3.5" />
+              <span>Salvar p/ Outro Dia ({selecionados.size})</span>
+            </button>
+
+            <button
+              type="button"
               onClick={definirSelecionadosNaoReagente}
               disabled={selecionados.size === 0}
-              className="px-3.5 py-2 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-950 text-xs font-black border border-purple-300 transition flex items-center gap-1.5 disabled:opacity-40 cursor-pointer active:scale-95"
+              className="min-h-[40px] px-3.5 py-2 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-950 text-xs font-black border border-purple-300 transition flex items-center gap-1.5 disabled:opacity-40 cursor-pointer active:scale-95"
             >
               <Sparkles className="w-3.5 h-3.5 text-purple-700" />
-              <span>⚡ Definir Marcados como NÃO REAGENTE</span>
+              <span>Definir Marcados como NÃO REAGENTE</span>
             </button>
 
             <button
               type="button"
               disabled={isSaving || selecionados.size === 0}
               onClick={salvarLote}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/20 transition flex items-center gap-2 disabled:opacity-40 cursor-pointer active:scale-95"
+              className="min-h-[40px] px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/20 transition flex items-center gap-2 disabled:opacity-40 cursor-pointer active:scale-95"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>{isSaving ? "Gravando no Sheets..." : `Salvar e Liberar Marcados (${selecionados.size})`}</span>
+              <span>{isSaving ? "Gravando no D1..." : `Salvar e Liberar Marcados (${selecionados.size})`}</span>
             </button>
           </div>
         </div>
@@ -480,12 +596,13 @@ export default function LoteVdrlPage() {
           <div className="divide-y divide-slate-100">
             {vdrlFiltrados.map((pac, idx) => {
               const pront = pac.prontuario;
-              const estaSelecionado = selecionados.has(pront);
-              const titAtual = titulacoes[pront] || (pac.resultadoGravado !== "Aguardando lote semanal" ? pac.resultadoGravado : "") || "Não Reagente";
+              const chave = pac.chave;
+              const estaSelecionado = selecionados.has(chave);
+              const titAtual = titulacoes[chave] || (pac.resultadoGravado !== "Aguardando lote semanal" ? pac.resultadoGravado : "") || "Não Reagente";
 
               return (
                 <div
-                  key={pront + idx}
+                  key={chave + "-" + idx}
                   className={`p-4 transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 ${
                     estaSelecionado ? "bg-purple-50/30" : "bg-white hover:bg-slate-50"
                   }`}
@@ -495,7 +612,7 @@ export default function LoteVdrlPage() {
                     <input
                       type="checkbox"
                       checked={estaSelecionado}
-                      onChange={() => toggleSelecionado(pront)}
+                      onChange={() => toggleSelecionado(chave)}
                       className="mt-1 w-4 h-4 text-purple-700 rounded border-slate-300 focus:ring-purple-500 cursor-pointer"
                     />
 
@@ -518,17 +635,17 @@ export default function LoteVdrlPage() {
                           </span>
                         ) : pac.estaAcumulado ? (
                           <span className="text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full">
-                            📦 Acumulado no Lote
+                            Acumulado p/ Outro Dia
                           </span>
                         ) : (
                           <span className="text-[10px] font-black bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">
-                            ⏳ Pendente
+                            Pendente
                           </span>
                         )}
                       </div>
 
                       <div className="text-xs text-slate-500 mt-1 flex items-center gap-3 flex-wrap">
-                        <span>Data da Coleta: <strong>{pac.data || pac.data_rotina || "Hoje"}</strong></span>
+                        <span>Data da Coleta: <strong>{formatarDataCurta(pac.data || pac.data_rotina)}</strong></span>
                         <span>Posto: <strong>{pac.posto_unidade || "Conecta SUS"}</strong></span>
                         {pac.idade_sexo && <span>Idade: <strong>{pac.idade_sexo}</strong></span>}
                       </div>
@@ -554,8 +671,8 @@ export default function LoteVdrlPage() {
                           key={chip.val}
                           type="button"
                           onClick={() => {
-                            setTitulacoes((prev) => ({ ...prev, [pront]: chip.val }));
-                            if (!estaSelecionado) toggleSelecionado(pront);
+                            setTitulacoes((prev) => ({ ...prev, [chave]: chip.val }));
+                            if (!estaSelecionado) toggleSelecionado(chave);
                           }}
                           className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer active:scale-95 ${
                             ativo
@@ -585,7 +702,7 @@ export default function LoteVdrlPage() {
                           className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold rounded-lg cursor-pointer active:scale-95"
                           title="Manter guardado no refrigerador para fazer em outro dia"
                         >
-                          📦 Acumular
+                          Acumular p/ Outro Dia
                         </button>
                       )}
                     </div>
@@ -596,6 +713,7 @@ export default function LoteVdrlPage() {
           </div>
         )}
       </div>
+    </div>
 
       {/* MODAL DE PRÉVIA & IMPRESSÃO DO MAPA DE BANCADA DA PLACA VDRL */}
       {mostrarMapaPrint && (
@@ -681,9 +799,9 @@ export default function LoteVdrlPage() {
 
                     {/* Amostras dos Pacientes */}
                     {todosVdrl.map((p, i) => {
-                      const res = titulacoes[p.prontuario] || (p.resultadoGravado !== "Aguardando lote semanal" ? p.resultadoGravado : "") || "";
+                      const res = titulacoes[p.chave] || (p.resultadoGravado !== "Aguardando lote semanal" ? p.resultadoGravado : "") || "";
                       return (
-                        <tr key={p.prontuario + i} className={i % 2 === 1 ? "bg-slate-50" : "bg-white"}>
+                        <tr key={p.chave + i} className={i % 2 === 1 ? "bg-slate-50" : "bg-white"}>
                           <td className="border border-black p-2 text-center font-black font-mono">
                             #{i + 1}
                           </td>
@@ -694,7 +812,7 @@ export default function LoteVdrlPage() {
                             {p.nome_paciente}
                           </td>
                           <td className="border border-black p-2 text-center font-mono text-[11px]">
-                            {p.data || p.data_rotina || "-"}
+                            {formatarDataCurta(p.data || p.data_rotina)}
                           </td>
                           <td className="border border-black p-2 text-center font-bold">
                             {res.toLowerCase().includes("reagente 1") ? "REAGENTE" : res || "___________"}
@@ -719,6 +837,49 @@ export default function LoteVdrlPage() {
           </div>
         </div>
       )}
-    </div>
+
+      {/* FOLHA DE IMPRESSÃO A4 EXCLUSIVA PARA @media print */}
+      <div className="hidden print:block p-4 bg-white text-black font-sans">
+        <div className="text-center border-b-2 border-black pb-2 mb-3">
+          <div className="text-[10px] font-black uppercase tracking-wider">
+            SISTEMA ÚNICO DE SAÚDE — SUS | LABORATÓRIO MUNICIPAL DE CACONDE
+          </div>
+          <h2 className="text-sm font-black uppercase mt-0.5">
+            MAPA DE BANCADA — LOTE SEMANAL DE VDRL (SÍFILIS)
+          </h2>
+          <div className="text-[11px] mt-1 flex items-center justify-center gap-4">
+            <span>Data da Rodagem: <strong>{dataRodagem.split("-").reverse().join("/")}</strong></span>
+            <span>Total de Amostras: <strong>{todosVdrl.length}</strong></span>
+          </div>
+        </div>
+        <table className="w-full border-collapse border border-black text-[11px]">
+          <thead>
+            <tr className="bg-slate-200 border-b border-black text-[10px] uppercase font-bold text-center">
+              <th className="border border-black p-1 w-10">Poço</th>
+              <th className="border border-black p-1 w-22">Prontuário</th>
+              <th className="border border-black p-1 text-left">Paciente</th>
+              <th className="border border-black p-1 w-20">Coleta</th>
+              <th className="border border-black p-1 w-24">Triagem</th>
+              <th className="border border-black p-1 w-28">Titulação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {todosVdrl.map((p, i) => {
+              const res = titulacoes[p.chave] || (p.resultadoGravado !== "Aguardando lote semanal" ? p.resultadoGravado : "") || "";
+              return (
+                <tr key={p.chave + "-print-" + i}>
+                  <td className="border border-black p-1 text-center font-mono font-bold">#{i + 1}</td>
+                  <td className="border border-black p-1 text-center font-mono font-bold">{p.prontuario}</td>
+                  <td className="border border-black p-1 font-bold uppercase">{p.nome_paciente}</td>
+                  <td className="border border-black p-1 text-center font-mono">{formatarDataCurta(p.data || p.data_rotina)}</td>
+                  <td className="border border-black p-1 text-center font-bold">{res.toLowerCase().includes("reagente 1") ? "REAGENTE" : res || "________"}</td>
+                  <td className="border border-black p-1 text-center font-mono font-bold">{res || "________"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

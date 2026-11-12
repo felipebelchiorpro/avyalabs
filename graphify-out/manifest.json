@@ -90,9 +90,9 @@
     "semantic_hash": ""
   },
   "src/app/api/triagem-edta/route.ts": {
-    "mtime": 1794443464.422199,
-    "seen": 1794443575.5966501,
-    "ast_hash": "3084188b49a241a3f4afeb6a302c7cf1",
+    "mtime": 1794444832.2220545,
+    "seen": 1794444882.64718,
+    "ast_hash": "237c7835e8bab0199044a1b37d1b563c",
     "semantic_hash": ""
   },
   "src/app/configuracoes/page.tsx": {
@@ -132,21 +132,21 @@
     "semantic_hash": ""
   },
   "src/app/retidos-glicada/page.tsx": {
-    "mtime": 1793925666.0508826,
-    "seen": 1793925707.012259,
-    "ast_hash": "63c34d2c208e1221a17df1969e0f8566",
+    "mtime": 1794444687.9972973,
+    "seen": 1794444882.6486259,
+    "ast_hash": "eeee9da21d2757579a0ae1c5eb187c33",
     "semantic_hash": ""
   },
   "src/app/triagem-edta/page.tsx": {
-    "mtime": 1794443493.1897302,
-    "seen": 1794443575.598318,
-    "ast_hash": "52ff07722c6c240ad6f7911b3c5d4c49",
+    "mtime": 1794444605.7730813,
+    "seen": 1794444882.6486292,
+    "ast_hash": "c8c6538851ddc3f17fc333fc5cae7b8e",
     "semantic_hash": ""
   },
   "src/app/vdrl/page.tsx": {
-    "mtime": 1794442450.9885085,
-    "seen": 1794442721.3924305,
-    "ast_hash": "baf677b27ca9ef0489ed34add62177fe",
+    "mtime": 1794444802.287298,
+    "seen": 1794444882.648799,
+    "ast_hash": "071ccc621cd0444e69283f96da88f7de",
     "semantic_hash": ""
   },
   "src/components/AppLayoutWrapper.tsx": {
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "public/graph.html": {
-    "mtime": 1794442721.4434302,
-    "seen": 1794443575.6057503,
-    "ast_hash": "261dab0f668873d71356c7548d857f52",
+    "mtime": 1794443575.6433942,
+    "seen": 1794444882.6546824,
+    "ast_hash": "d44df5d07fb3a84bcfed5c18e280e901",
     "semantic_hash": ""
   },
   "public/file.svg": {
@@ -372,9 +372,9 @@
     "semantic_hash": ""
   },
   "src/lib/d1Service.ts": {
-    "mtime": 1794439157.6780593,
-    "seen": 1794439672.9319017,
-    "ast_hash": "2a8418423999a57b2c6ec813dd21c5a2",
+    "mtime": 1794444499.6317115,
+    "seen": 1794444882.6514912,
+    "ast_hash": "657c4f79b917620aab0812949cea2622",
     "semantic_hash": ""
   },
   "docs/BANCADALAB_SUS_OBSIDIAN.md": {

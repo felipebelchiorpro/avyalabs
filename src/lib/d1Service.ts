@@ -24,6 +24,7 @@ import {
   formatarProntuario,
   normalizarProntuario,
   obterHojeIsoLocal,
+  aplicarFlagsExamesNoItem,
 } from "@/lib/extratorBancada";
 
 // ==========================================
@@ -430,13 +431,14 @@ function criarD1LocalDriver(): D1Database {
               "cetona", "bilirrubina", "urobilinogenio", "sangue", "nitrito",
               "leucocitos_campo", "hemacias_campo", "celulas_epiteliais", "cilindros", "cristais",
               "bacterias", "leveduras", "muco", "filamento_muco", "parasitas", "outros_elementos",
-              "observacoes", "responsavel_tecnico", "solicitante", "posto_unidade", "idade_sexo",
-              "status", "resultado_vdrl", "vdrl_acumular_lote", "dengue_ns1", "dengue_igm",
-              "dengue_igg", "resultado_abo_rh"
+              "observacoes", "responsavel_tecnico", "solicitante", "posto_unidade", "idade", "sexo",
+              "status", "resultado_vdrl", "vdrl_titulacao", "vdrl_lote", "dengue_ns1", "dengue_igm",
+              "dengue_igg", "resultado_abo_rh", "fator_rh"
             ];
             colunas.forEach((col, i) => {
               laudoObj[col] = boundValues[i] !== undefined ? boundValues[i] : "";
             });
+            laudoObj.vdrl_acumular_lote = laudoObj.vdrl_lote === "ACUMULADO" || laudoObj.resultado_vdrl === "Aguardando lote semanal";
             laudoObj.updated_at = new Date().toISOString();
 
             if (idx >= 0) {
@@ -660,18 +662,20 @@ export async function listarRotinaDia(filtro?: {
 
   const { results = [] } = await stmt.all<any>();
 
-  return results.map((r) => ({
-    id: r.id,
-    data: r.data,
-    prontuario: r.prontuario,
-    nome_paciente: r.nome_paciente,
-    idade_sexo: r.idade_sexo || "",
-    posto_unidade: r.posto_unidade || "UBS Central Caconde",
-    solicitante: r.solicitante || "Dr(a). Clínico(a) Geral / UBS",
-    exame: r.exame || "",
-    status_coleta: r.status_coleta || "REALIZADO",
-    status_laudo: (r.status_laudo as StatusLaudo) || "rascunho",
-  }));
+  return results.map((r) =>
+    aplicarFlagsExamesNoItem({
+      id: r.id,
+      data: r.data,
+      prontuario: r.prontuario,
+      nome_paciente: r.nome_paciente,
+      idade_sexo: r.idade_sexo || "",
+      posto_unidade: r.posto_unidade || "UBS Central Caconde",
+      solicitante: r.solicitante || "Dr(a). Clínico(a) Geral / UBS",
+      exame: r.exame || "",
+      status_coleta: r.status_coleta || "REALIZADO",
+      status_laudo: (r.status_laudo as StatusLaudo) || "rascunho",
+    })
+  );
 }
 
 /**
@@ -767,7 +771,7 @@ export async function buscarPacientePorProntuario(prontuario: string): Promise<{
 
   let paciente: RotinaItem | null = null;
   if (pacienteRes) {
-    paciente = {
+    paciente = aplicarFlagsExamesNoItem({
       id: pacienteRes.id,
       data: pacienteRes.data,
       prontuario: pacienteRes.prontuario,
@@ -778,7 +782,7 @@ export async function buscarPacientePorProntuario(prontuario: string): Promise<{
       exame: pacienteRes.exame || "",
       status_coleta: pacienteRes.status_coleta || "REALIZADO",
       status_laudo: (pacienteRes.status_laudo as StatusLaudo) || "rascunho",
-    };
+    });
   }
 
   // Busca último laudo registrado
@@ -898,7 +902,7 @@ export async function salvarTriagemEdta(
 
     if (existente) {
       const jaTriado = existente.status !== "pendente" || existente.colocado_grade;
-      if (jaTriado) {
+      if (jaTriado && !substituirExistente) {
         jaTriadosPreservados++;
         statusFinal = existente.status;
         colocadoGradeFinal = Boolean(existente.colocado_grade);
@@ -914,7 +918,45 @@ export async function salvarTriagemEdta(
 
     const examesTexto = destinoFinal === "hemograma_glicada" ? "HEMOGRAMA + GLICADA" : (destinoFinal === "apenas_glicada" ? "GLICADA" : "HEMOGRAMA");
 
-    const upsertSql = `
+    if (existente && substituirExistente) {
+      const solFinal =
+        item.solicitante && item.solicitante !== "Dr(a). Clínico(a) Geral / UBS"
+          ? item.solicitante
+          : existente.solicitante || item.solicitante || "Dr(a). Clínico(a) Geral / UBS";
+      const dataLibFinal = item.data_liberacao_apoio !== undefined ? item.data_liberacao_apoio : existente.data_liberacao_apoio || null;
+
+      await db.prepare(`
+        UPDATE triagem_edta
+        SET agendamento = ?, data_nascimento = ?, data_nascimento_digitos = ?,
+            nome_paciente = ?, tipo_destino = ?, status = ?,
+            fracionado_glicada = ?, colocado_grade = ?, horario_bipado = ?,
+            exames = ?, solicitante = ?, urgencia = ?, tem_vhs = ?,
+            coletado_dois_tubos = ?, qtd_tubos_coletados = ?,
+            enviar_hemograma_hoje = ?, data_liberacao_apoio = ?,
+            updated_at = datetime('now', 'localtime')
+        WHERE id = ?
+      `).bind(
+        item.agendamento || existente.agendamento || "",
+        item.data_nascimento || existente.data_nascimento || "",
+        item.data_nascimento_digitos || existente.data_nascimento_digitos || "",
+        (item.nome_paciente || existente.nome_paciente || "").trim().toUpperCase(),
+        destinoFinal,
+        statusFinal,
+        fracionadoFinal ? 1 : 0,
+        colocadoGradeFinal ? 1 : 0,
+        horarioFinal || existente.horario_bipado || "",
+        examesTexto,
+        solFinal,
+        (item.urgencia || existente.urgencia) ? 1 : 0,
+        (item.tem_vhs || existente.tem_vhs) ? 1 : 0,
+        item.coletado_dois_tubos ? 1 : 0,
+        item.qtd_tubos_coletados || 1,
+        enviarHojeFinal,
+        dataLibFinal,
+        id
+      ).run();
+    } else {
+      const upsertSql = `
       INSERT INTO triagem_edta (
         id, data, prontuario, prontuario_normalizado, agendamento, data_nascimento, data_nascimento_digitos,
         nome_paciente, tipo_destino, status, fracionado_glicada, colocado_grade, horario_bipado,
@@ -956,33 +998,37 @@ export async function salvarTriagemEdta(
           ELSE excluded.fracionado_glicada
         END,
         horario_bipado = COALESCE(NULLIF(triagem_edta.horario_bipado, ''), excluded.horario_bipado),
-        enviar_hemograma_hoje = triagem_edta.enviar_hemograma_hoje,
+        enviar_hemograma_hoje = CASE
+          WHEN triagem_edta.status != 'pendente' OR triagem_edta.colocado_grade = 1 THEN triagem_edta.enviar_hemograma_hoje
+          ELSE excluded.enviar_hemograma_hoje
+        END,
         updated_at = datetime('now', 'localtime')
     `;
 
-    await db.prepare(upsertSql).bind(
-      id,
-      dataItem,
-      pFormatado,
-      pNorm,
-      item.agendamento || "",
-      item.data_nascimento || "",
-      item.data_nascimento_digitos || "",
-      (item.nome_paciente || "").trim().toUpperCase(),
-      destinoFinal,
-      statusFinal,
-      fracionadoFinal ? 1 : 0,
-      colocadoGradeFinal ? 1 : 0,
-      horarioFinal,
-      examesTexto,
-      item.solicitante || "Dr(a). Clínico(a) Geral / UBS",
-      item.urgencia ? 1 : 0,
-      item.tem_vhs ? 1 : 0,
-      item.coletado_dois_tubos ? 1 : 0,
-      item.qtd_tubos_coletados || 1,
-      enviarHojeFinal,
-      item.data_liberacao_apoio || null
-    ).run();
+      await db.prepare(upsertSql).bind(
+        id,
+        dataItem,
+        pFormatado,
+        pNorm,
+        item.agendamento || "",
+        item.data_nascimento || "",
+        item.data_nascimento_digitos || "",
+        (item.nome_paciente || "").trim().toUpperCase(),
+        destinoFinal,
+        statusFinal,
+        fracionadoFinal ? 1 : 0,
+        colocadoGradeFinal ? 1 : 0,
+        horarioFinal,
+        examesTexto,
+        item.solicitante || "Dr(a). Clínico(a) Geral / UBS",
+        item.urgencia ? 1 : 0,
+        item.tem_vhs ? 1 : 0,
+        item.coletado_dois_tubos ? 1 : 0,
+        item.qtd_tubos_coletados || 1,
+        enviarHojeFinal,
+        item.data_liberacao_apoio || null
+      ).run();
+    }
 
     itensProcessados.push({
       ...item,
@@ -1246,12 +1292,21 @@ export async function salvarOuAtualizarLaudo(laudo: LaudoUrina): Promise<{
       medico_solicitante = excluded.medico_solicitante,
       status = excluded.status,
       vdrl_resultado = excluded.vdrl_resultado,
+      vdrl_lote = excluded.vdrl_lote,
       dengue_ns1 = excluded.dengue_ns1,
       dengue_igm = excluded.dengue_igm,
       dengue_igg = excluded.dengue_igg,
       tipagem_abo = excluded.tipagem_abo,
       updated_at = datetime('now', 'localtime')
   `;
+
+  const vdrlLoteValor = laudo.vdrl_acumular_lote
+    ? "ACUMULADO"
+    : laudo.status === "finalizado" && (laudo.tem_vdrl || Boolean(laudo.resultado_vdrl))
+    ? "LIBERADO"
+    : "";
+
+  const statusRotina = laudo.vdrl_acumular_lote ? "rascunho" : (laudo.status || "finalizado");
 
   await db.prepare(upsertSql).bind(
     id,
@@ -1291,7 +1346,7 @@ export async function salvarOuAtualizarLaudo(laudo: LaudoUrina): Promise<{
     laudo.status || "finalizado",
     laudo.resultado_vdrl || "",
     "", // vdrl_titulacao
-    "", // vdrl_lote
+    vdrlLoteValor,
     laudo.dengue_ns1 || "",
     laudo.dengue_igm || "",
     laudo.dengue_igg || "",
@@ -1299,13 +1354,13 @@ export async function salvarOuAtualizarLaudo(laudo: LaudoUrina): Promise<{
     "" // fator_rh
   ).run();
 
-  // Marca status_laudo como 'finalizado' na rotina do dia
+  // Atualiza status_laudo na rotina do dia conforme status salvo
   try {
     await db.prepare(`
       UPDATE rotina_dia
-      SET status_laudo = 'finalizado', updated_at = datetime('now', 'localtime')
+      SET status_laudo = ?, updated_at = datetime('now', 'localtime')
       WHERE prontuario = ? AND data = ?
-    `).bind(pFormatado, dataAtendimento).run();
+    `).bind(statusRotina, pFormatado, dataAtendimento).run();
   } catch (_) {}
 
   return {
@@ -1387,6 +1442,10 @@ export async function listarLaudos(
     status: (r.status as StatusLaudo) || "finalizado",
     responsavel_tecnico: r.responsavel_tecnico || "Farmacêutico(a) Bioquímico(a)",
     resultado_vdrl: r.vdrl_resultado || undefined,
+    vdrl_acumular_lote:
+      r.vdrl_lote === "ACUMULADO" ||
+      r.vdrl_resultado === "Aguardando lote semanal" ||
+      Boolean(r.vdrl_acumular_lote),
     dengue_ns1: r.dengue_ns1 || undefined,
     dengue_igm: r.dengue_igm || undefined,
     dengue_igg: r.dengue_igg || undefined,

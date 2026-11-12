@@ -15,6 +15,7 @@ import {
   formatarProntuario,
   normalizarProntuario,
   normalizarDigitosData,
+  normalizarDataIso,
   obterHojeIsoLocal,
 } from "@/lib/extratorBancada";
 import { ItemTriagemEdta } from "@/types/urinalise";
@@ -105,16 +106,42 @@ export async function POST(request: NextRequest) {
         const nomePaciente = (body.nome || `PACIENTE #${pBusca}`).trim().toUpperCase();
         const dataNasc = body.dataNascimento || "";
         const medico = body.medicoSolicitante || "Dr(a). Clínico(a) Geral / UBS";
-        const examesRecebidos = Array.isArray(body.exames) ? body.exames : (body.exames ? [String(body.exames)] : ["HEMOGRAMA COMPLETO"]);
+        const examesRecebidos = Array.isArray(body.exames)
+          ? body.exames
+          : body.exames
+          ? [String(body.exames)]
+          : ["HEMOGRAMA COMPLETO"];
 
-        const temGlicada = examesRecebidos.some((e: string) => /glicad|hba1c/i.test(e));
-        const temHemograma = examesRecebidos.some((e: string) => /hemogr/i.test(e)) || (!temGlicada);
-        const temVhs = examesRecebidos.some((e: string) => /vhs|hemossedimenta/i.test(e));
+        const temGlicadaDetect = examesRecebidos.some((e: string) => /glicad|hba1c/i.test(e));
+        const temHemogramaDetect =
+          examesRecebidos.some((e: string) => /hemogr/i.test(e)) || (!temGlicadaDetect && !body.tipo_destino);
+        const temVhs = Boolean(body.tem_vhs) || examesRecebidos.some((e: string) => /vhs|hemossedimenta/i.test(e));
+
+        const temGlicada = body.tem_glicada !== undefined ? Boolean(body.tem_glicada) : temGlicadaDetect;
+        const temHemograma = body.tem_hemograma !== undefined ? Boolean(body.tem_hemograma) : temHemogramaDetect;
+
+        const destinoCalculado: "hemograma_glicada" | "apenas_glicada" | "apenas_hemograma" =
+          temHemograma && temGlicada ? "hemograma_glicada" : temGlicada ? "apenas_glicada" : "apenas_hemograma";
         const destino: "hemograma_glicada" | "apenas_glicada" | "apenas_hemograma" =
-          temHemograma && temGlicada ? "hemograma_glicada" : (temGlicada ? "apenas_glicada" : "apenas_hemograma");
+          body.tipo_destino === "hemograma_glicada" ||
+          body.tipo_destino === "apenas_glicada" ||
+          body.tipo_destino === "apenas_hemograma"
+            ? body.tipo_destino
+            : destinoCalculado;
+
+        const agoraHora = new Date().toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "America/Sao_Paulo",
+        });
+
+        const statusSolicitado = body.status || "pendente";
+        const forcarAtualizacaoStatus = Boolean(
+          body.forcarAtualizacaoStatus || (body.status && body.status !== "pendente")
+        );
 
         const novoItem: ItemTriagemEdta = {
-          data: dataHoje,
+          data: normalizarDataIso(body.data) || dataHoje,
           prontuario: pBusca,
           prontuario_normalizado: pNorm,
           agendamento: String(body.agendamento),
@@ -127,13 +154,21 @@ export async function POST(request: NextRequest) {
           tipo_destino: destino,
           tem_hemograma: temHemograma,
           tem_glicada: temGlicada,
-          status: "pendente",
-          colocado_grade: false,
-          fracionado_glicada: false,
+          status: statusSolicitado,
+          colocado_grade: body.colocado_grade !== undefined ? Boolean(body.colocado_grade) : statusSolicitado === "pronto_grade",
+          fracionado_glicada: Boolean(body.fracionado_glicada),
+          coletado_dois_tubos: Boolean(body.coletado_dois_tubos),
+          qtd_tubos_coletados: Number(body.qtd_tubos_coletados) || (body.coletado_dois_tubos ? 2 : 1),
+          enviar_hemograma_hoje:
+            body.enviar_hemograma_hoje !== undefined
+              ? Boolean(body.enviar_hemograma_hoje)
+              : statusSolicitado !== "retido_envio_posterior",
+          data_liberacao_apoio: body.data_liberacao_apoio || undefined,
+          horario_bipado: body.horario_bipado || (statusSolicitado !== "pendente" ? agoraHora : ""),
           exames_originais: examesRecebidos,
         };
 
-        const resultadoSave = await salvarTriagemEdta([novoItem], false);
+        const resultadoSave = await salvarTriagemEdta([novoItem], forcarAtualizacaoStatus);
         const itemSalvo = resultadoSave.itens?.[0] || novoItem;
 
         return NextResponse.json({
@@ -148,7 +183,7 @@ export async function POST(request: NextRequest) {
             medicoSolicitante: itemSalvo.solicitante || medico,
             exames: examesRecebidos,
             tipoDestino: itemSalvo.tipo_destino || destino,
-            status: itemSalvo.status || "pendente",
+            status: itemSalvo.status || statusSolicitado,
           },
           message: "Paciente salvo e registrado na Triagem EDTA do D1 com sucesso!",
         });

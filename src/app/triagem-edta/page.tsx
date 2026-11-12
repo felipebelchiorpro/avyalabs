@@ -62,6 +62,8 @@ import {
   Stethoscope,
   Plus,
   Trash2,
+  Send,
+  Building2,
 } from "lucide-react";
 
 export default function TriagemEdtaPage() {
@@ -899,6 +901,135 @@ export default function TriagemEdtaPage() {
     } catch (err) {
       console.error("Erro ao salvar:", err);
       alert("Erro ao conectar com a Cloudflare D1.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Registrar Destino Direto do Paciente Enriquecido (Apoio Hoje, Reter na Gradinha ou Bancada Local)
+  const handleRegistrarDestinoDireto = async (
+    modo: "apoio_hoje" | "fracionar_apoio" | "reter_amanha" | "lab_local"
+  ) => {
+    if (!pacienteInfo) return;
+    setIsSyncing(true);
+    try {
+      const hoje = obterHojeIsoLocal();
+      const agoraHora = new Date().toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "America/Sao_Paulo",
+      });
+      const examesStr = (pacienteInfo.exames || []).join(" ");
+      const temHem = /hemogr|hematolog|hmg|cbc|eritrograma/i.test(examesStr);
+      const temGli = /glicad|hba1c|hemoglobina glic/i.test(examesStr);
+      const temVhsEx = /vhs|hemossedimenta/i.test(examesStr);
+
+      let tipo_destino: "hemograma_glicada" | "apenas_glicada" | "apenas_hemograma" = "apenas_hemograma";
+      let status: "pronto_grade" | "retido_envio_posterior" = "pronto_grade";
+      let colocado_grade = true;
+      let fracionado_glicada = false;
+      let enviar_hemograma_hoje = true;
+      let data_liberacao_apoio: string | undefined = hoje;
+      let tem_hemograma = temHem;
+      let tem_glicada = temGli;
+
+      if (modo === "lab_local") {
+        tipo_destino = "apenas_glicada";
+        tem_hemograma = false;
+        tem_glicada = true;
+        status = "pronto_grade";
+        colocado_grade = true;
+        fracionado_glicada = false;
+        enviar_hemograma_hoje = false;
+        data_liberacao_apoio = undefined;
+      } else if (modo === "reter_amanha") {
+        tipo_destino = "hemograma_glicada";
+        tem_hemograma = true;
+        tem_glicada = true;
+        status = "retido_envio_posterior";
+        colocado_grade = false;
+        fracionado_glicada = false;
+        enviar_hemograma_hoje = false;
+        data_liberacao_apoio = undefined;
+      } else if (modo === "fracionar_apoio") {
+        tipo_destino = "hemograma_glicada";
+        tem_hemograma = true;
+        tem_glicada = true;
+        status = "pronto_grade";
+        colocado_grade = true;
+        fracionado_glicada = true;
+        enviar_hemograma_hoje = true;
+        data_liberacao_apoio = hoje;
+      } else {
+        // apoio_hoje
+        tipo_destino = temGli ? "hemograma_glicada" : "apenas_hemograma";
+        tem_hemograma = true;
+        status = "pronto_grade";
+        colocado_grade = true;
+        fracionado_glicada = false;
+        enviar_hemograma_hoje = true;
+        data_liberacao_apoio = hoje;
+      }
+
+      const res = await fetch("/api/triagem-edta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prontuario: pacienteInfo.prontuario,
+          agendamento: pacienteInfo.agendamento || agendamento,
+          nome: pacienteInfo.nome,
+          dataNascimento: pacienteInfo.dataNascimento,
+          medicoSolicitante: pacienteInfo.medicoSolicitante,
+          exames: pacienteInfo.exames,
+          tem_vhs: temVhsEx,
+          tem_hemograma,
+          tem_glicada,
+          tipo_destino,
+          status,
+          colocado_grade,
+          fracionado_glicada,
+          enviar_hemograma_hoje,
+          data_liberacao_apoio,
+          horario_bipado: agoraHora,
+          forcarAtualizacaoStatus: true,
+          salvar: true,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        if (modo === "lab_local") {
+          tocarSomApenasGlicada();
+        } else if (modo === "reter_amanha") {
+          tocarSomHemogramaGlicada();
+        } else {
+          tocarSomConfirmado();
+        }
+
+        const labelDestino =
+          modo === "lab_local"
+            ? "Bancada Local (Apenas Glicada — não vai ao Apoio)"
+            : modo === "reter_amanha"
+            ? "Gradinha de Retidos (Glicada Hoje / Hemograma p/ Apoio Amanhã)"
+            : modo === "fracionar_apoio"
+            ? "Grade do Apoio Hoje (c/ Fracionamento Glicada)"
+            : "Grade de Envio ao Apoio Hoje";
+
+        setMensagemSucesso({
+          titulo: `Salvo no Banco D1: ${pacienteInfo.nome}`,
+          subtitulo: `Destino registrado: ${labelDestino}. Pronto para gerar o relatório A4!`,
+        });
+        setTimeout(() => setMensagemSucesso(null), 4500);
+
+        await carregarDadosEdta(true);
+        setPacienteInfo(null);
+        setManualProntuario("");
+        setAgendamento("");
+      } else {
+        alert(data.error || "Erro ao registrar destino do tubo no D1.");
+      }
+    } catch (err) {
+      console.error("Erro ao registrar destino direto:", err);
+      alert("Erro de conexão ao registrar tubo na Cloudflare D1.");
     } finally {
       setIsSyncing(false);
     }
@@ -2514,7 +2645,38 @@ export default function TriagemEdtaPage() {
             </form>
 
             {/* Exibição dos Dados do Paciente Enriquecido */}
-            {pacienteInfo && (
+            {pacienteInfo && (() => {
+              const examesPacStr = (pacienteInfo.exames || []).join(" ");
+              const detectouHemograma = /hemogr|hematolog|hmg|cbc|eritrograma/i.test(examesPacStr);
+              const detectouGlicada = /glicad|hba1c|hemoglobina glic/i.test(examesPacStr);
+              const detectouVhs = /vhs|hemossedimenta/i.test(examesPacStr);
+
+              const classificacao =
+                detectouHemograma && detectouGlicada
+                  ? {
+                      badge: "HEMOGRAMA + GLICADA (DUPLA FINALIDADE)",
+                      desc: "Possui Hemograma (Apoio) + Hemoglobina Glicada (Lab Local). Escolha enviar para o Apoio hoje ou reter na gradinha para amanhã.",
+                      classe: "bg-amber-500/20 border-amber-400/50 text-amber-200",
+                    }
+                  : detectouHemograma
+                  ? {
+                      badge: "APENAS HEMOGRAMA — ENVIO DIRETO P/ APOIO",
+                      desc: "Sem Glicada detectada. Vai direto na grade de envio ao Laboratório de Apoio.",
+                      classe: "bg-cyan-500/20 border-cyan-400/50 text-cyan-200",
+                    }
+                  : detectouGlicada
+                  ? {
+                      badge: "APENAS GLICADA (HbA1c) — BANCADA LOCAL",
+                      desc: "Sem Hemograma solicitado. Fica exclusivamente no Lab Local e NÃO vai para o Apoio.",
+                      classe: "bg-emerald-500/20 border-emerald-400/50 text-emerald-200",
+                    }
+                  : {
+                      badge: "EXAMES EDTA NÃO DETECTADOS AUTOMATICAMENTE",
+                      desc: "Confira os exames listados abaixo e escolha manualmente se o tubo vai para o Apoio ou para a Bancada Local.",
+                      classe: "bg-slate-500/20 border-slate-400/40 text-slate-200",
+                    };
+
+              return (
               <div className="mt-4 p-4 rounded-xl bg-cyan-950/40 border border-cyan-500/40 space-y-3 animate-in fade-in zoom-in-98 duration-150">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-cyan-500/20 pb-3">
                   <div>
@@ -2523,7 +2685,7 @@ export default function TriagemEdtaPage() {
                     </span>
                     <h4 className="text-base sm:text-lg font-black text-white">{pacienteInfo.nome}</h4>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-2.5 py-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded-lg text-xs font-bold">
                       Prontuário: {pacienteInfo.prontuario}
                     </span>
@@ -2532,7 +2694,21 @@ export default function TriagemEdtaPage() {
                         Agendamento: {pacienteInfo.agendamento}
                       </span>
                     )}
+                    {detectouVhs && (
+                      <span className="px-2.5 py-1 bg-amber-500/25 text-amber-200 border border-amber-400/40 rounded-lg text-xs font-black">
+                        + VHS
+                      </span>
+                    )}
                   </div>
+                </div>
+
+                {/* Banner de Classificação EDTA Automática */}
+                <div className={`p-3 rounded-xl border ${classificacao.classe}`}>
+                  <div className="text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                    <FlaskConical className="w-4 h-4 shrink-0" />
+                    <span>{classificacao.badge}</span>
+                  </div>
+                  <p className="text-[11px] opacity-90 mt-0.5 leading-snug">{classificacao.desc}</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -2553,46 +2729,115 @@ export default function TriagemEdtaPage() {
                       Exames a Realizar na Rotina:
                     </span>
                     <div className="flex flex-wrap gap-1.5">
-                      {pacienteInfo.exames.map((exame: string, idx: number) => (
-                        <span key={idx} className="px-2.5 py-1 bg-cyan-500/10 border border-cyan-500/25 rounded-md text-[11.5px] font-semibold text-cyan-200">
-                          {exame}
-                        </span>
-                      ))}
+                      {pacienteInfo.exames.map((exame: string, idx: number) => {
+                        const isHemo = /hemogr|hematolog|hmg|cbc|eritrograma/i.test(exame);
+                        const isGli = /glicad|hba1c|hemoglobina glic/i.test(exame);
+                        return (
+                          <span
+                            key={idx}
+                            className={`px-2.5 py-1 border rounded-md text-[11.5px] font-bold ${
+                              isHemo
+                                ? "bg-purple-500/20 border-purple-400/50 text-purple-100"
+                                : isGli
+                                ? "bg-amber-500/20 border-amber-400/50 text-amber-100"
+                                : "bg-cyan-500/10 border-cyan-500/25 text-cyan-200"
+                            }`}
+                          >
+                            {exame}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
 
-                {/* Botões de Ação Imediata de Bancada */}
-                <div className="flex flex-col sm:flex-row items-center gap-2 pt-2 border-t border-cyan-500/20">
-                  <button
-                    type="button"
-                    disabled={isSyncing}
-                    onClick={() => {
-                      processarIdentificacaoPaciente(
-                        pacienteInfo.prontuario,
-                        pacienteInfo.dataNascimento,
-                        pacienteInfo.medicoSolicitante,
-                        pacienteInfo.nome
-                      );
-                    }}
-                    className="w-full sm:flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
-                  >
-                    <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                    <span>Abrir Conferência de Bancada & Confirmar</span>
-                  </button>
+                {/* Botões Separados de Ação Imediata: APOIO vs LAB LOCAL */}
+                <div className="pt-3 border-t border-cyan-500/20 space-y-2.5">
+                  <div className="text-[10.5px] font-black uppercase tracking-wider text-slate-300">
+                    Escolha o destino para salvar no Banco D1 &amp; Relatório:
+                  </div>
 
-                  <button
-                    type="button"
-                    disabled={isSyncing}
-                    onClick={handleSalvarPacienteEnriquecidoNoD1}
-                    className="w-full sm:w-auto py-2.5 px-4 bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer border border-white/20"
-                  >
-                    <UploadCloud className="w-4 h-4 text-cyan-300" />
-                    <span>Salvar no Cloudflare D1</span>
-                  </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* BLOCO APOIO */}
+                    {(detectouHemograma || (!detectouHemograma && !detectouGlicada)) && (
+                      <button
+                        type="button"
+                        disabled={isSyncing}
+                        onClick={() =>
+                          handleRegistrarDestinoDireto(
+                            detectouHemograma && detectouGlicada ? "fracionar_apoio" : "apoio_hoje"
+                          )
+                        }
+                        className="w-full min-h-[44px] py-2.5 px-3 bg-cyan-600 hover:bg-cyan-500 active:scale-95 text-white font-black text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md border border-cyan-400/30 disabled:opacity-50"
+                      >
+                        <Send className="w-4 h-4 text-cyan-100 shrink-0" />
+                        <span>
+                          {detectouHemograma && detectouGlicada
+                            ? "Apoio Hoje (Fracionar Glicada + Enviar)"
+                            : "Enviar p/ Apoio Hoje (Hemograma)"}
+                        </span>
+                      </button>
+                    )}
+
+                    {/* BLOCO RETER / LAB LOCAL */}
+                    {detectouHemograma && detectouGlicada && (
+                      <button
+                        type="button"
+                        disabled={isSyncing}
+                        onClick={() => handleRegistrarDestinoDireto("reter_amanha")}
+                        className="w-full min-h-[44px] py-2.5 px-3 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-black text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md border border-amber-400/30 disabled:opacity-50"
+                      >
+                        <Clock className="w-4 h-4 text-amber-100 shrink-0" />
+                        <span>Reter na Gradinha (Glicada Hoje / Apoio Amanhã)</span>
+                      </button>
+                    )}
+
+                    {(detectouGlicada && !detectouHemograma) || (!detectouHemograma && !detectouGlicada) ? (
+                      <button
+                        type="button"
+                        disabled={isSyncing}
+                        onClick={() => handleRegistrarDestinoDireto("lab_local")}
+                        className="w-full min-h-[44px] py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md border border-emerald-400/30 disabled:opacity-50"
+                      >
+                        <Building2 className="w-4 h-4 text-emerald-100 shrink-0" />
+                        <span>Lab Local — Apenas Glicada (Sem Apoio)</span>
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {/* Ações Secundárias (Conferência Manual ou Salvar como Pendente) */}
+                  <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      disabled={isSyncing}
+                      onClick={() => {
+                        processarIdentificacaoPaciente(
+                          pacienteInfo.prontuario,
+                          pacienteInfo.dataNascimento,
+                          pacienteInfo.medicoSolicitante,
+                          pacienteInfo.nome
+                        );
+                      }}
+                      className="w-full sm:flex-1 min-h-[40px] py-2 px-3 bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer border border-white/15"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                      <span>Abrir Conferência Manual de Bancada</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isSyncing}
+                      onClick={handleSalvarPacienteEnriquecidoNoD1}
+                      className="w-full sm:w-auto min-h-[40px] py-2 px-4 bg-white/5 hover:bg-white/15 active:scale-95 text-slate-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer border border-white/15"
+                    >
+                      <UploadCloud className="w-4 h-4 text-cyan-300" />
+                      <span>Salvar como Pendente no D1</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* FALLBACK MANUAL RÁPIDO NO TOPO: [Prontuário] e [Data de Nascimento] */}

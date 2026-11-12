@@ -26,6 +26,10 @@ import {
   Calendar,
   Layers,
   FlaskConical,
+  Printer,
+  ShieldCheck,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 
 export default function RetidosGlicadaPage() {
@@ -35,6 +39,7 @@ export default function RetidosGlicadaPage() {
   const [busca, setBusca] = useState<string>("");
   const [dataFiltro, setDataFiltro] = useState<string>("");
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [mostrarRelatorioPrint, setMostrarRelatorioPrint] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "warning" | "error" } | null>(null);
 
   const hojeIso = useMemo(() => obterHojeIsoLocal(), []);
@@ -76,32 +81,39 @@ export default function RetidosGlicadaPage() {
     carregarDados();
   }, []);
 
-  // Helper centralizado para verificar se o item é um tubo retido de glicada aguardando envio ao apoio
+  const getChaveItem = (i: ItemTriagemEdta) => i.id || `${normalizarDataIso(i.data)}-${formatarProntuario(i.prontuario)}`;
+
+  // REGRA FIRME ANTI-ERRO: Apenas Hemograma + Glicada retidos na gradinha (nunca Apenas Glicada, nunca Apenas Hemograma, nunca já liberados)
   const verificarSeEhRetido = (i: ItemTriagemEdta) => {
-    // 0. Pacientes que têm APENAS glicada (sem hemograma) não vão para o Apoio, logo não precisam ficar na aba de retidos
-    if (i.tipo_destino === "apenas_glicada" || (!i.tem_hemograma && i.tipo_destino !== "hemograma_glicada")) {
+    // 0. Bloqueio absoluto: Apenas Glicada ou tubos sem Hemograma NÃO vão para o Apoio e não entram em Retidos
+    if (i.tipo_destino === "apenas_glicada" || !i.tem_hemograma) {
       return false;
     }
 
-    // 1. Se o tubo já foi formalmente liberado para o apoio e colocado na grade com envio hoje, ele NÃO está mais retido
+    // 1. Bloqueio absoluto: Tubo já liberado formalmente para o Apoio
     const jaFoiLiberadoAoApoio =
       Boolean(i.data_liberacao_apoio) ||
       (i.status === "pronto_grade" && i.colocado_grade === true && i.enviar_hemograma_hoje === true && !i.retidoParaFracionar);
 
     if (jaFoiLiberadoAoApoio) return false;
 
-    // 2. É retido se possui Hemograma + Glicada (HbA1c) aguardando envio do hemograma ao apoio
-    const temHemogramaEGlicada =
-      (Boolean(i.tem_glicada) ||
-        i.tipo_destino === "hemograma_glicada" ||
-        i.tipo_destino.includes("glic") ||
-        (Array.isArray(i.exames_originais) &&
-          i.exames_originais.some((e: string) =>
-            e.toLowerCase().includes("glic") || e.toLowerCase().includes("hba1c")
-          ))) &&
-      (Boolean(i.tem_hemograma) || i.tipo_destino.includes("hemogr") || i.tipo_destino === "hemograma_glicada");
+    // 2. Exige presença real de Hemograma + Glicada
+    const temGlicadaReal =
+      Boolean(i.tem_glicada) ||
+      i.tipo_destino === "hemograma_glicada" ||
+      (Array.isArray(i.exames_originais) &&
+        i.exames_originais.some((e: string) => /glic|hba1c/i.test(e)));
 
-    // 3. Ou se foi expressamente retido na bancada
+    const temHemogramaReal =
+      Boolean(i.tem_hemograma) ||
+      i.tipo_destino === "hemograma_glicada" ||
+      i.tipo_destino.includes("hemogr");
+
+    if (!temGlicadaReal || !temHemogramaReal) {
+      return false;
+    }
+
+    // 3. Deve estar retido na gradinha ou aguardando liberação posterior
     const retidoExpresso =
       i.status === "retido_envio_posterior" ||
       i.status === "retido_bancada" ||
@@ -110,7 +122,53 @@ export default function RetidosGlicadaPage() {
       i.enviar_hemograma_hoje === false ||
       (Boolean(i.fracionado_glicada) && !i.colocado_grade);
 
-    return temHemogramaEGlicada || retidoExpresso;
+    return retidoExpresso || i.status === "pendente";
+  };
+
+  // Auditoria de segurança: detecta se algum paciente "Apenas Glicada" ficou preso com status de retido no banco
+  const inconsistentesApenasGlicada = useMemo(() => {
+    return itens.filter(
+      (i) =>
+        (i.tipo_destino === "apenas_glicada" || !i.tem_hemograma) &&
+        (i.status === "retido_envio_posterior" || i.status === "retido_bancada")
+    );
+  }, [itens]);
+
+  const regularizarApenasGlicada = async () => {
+    if (inconsistentesApenasGlicada.length === 0) return;
+    setIsProcessing(true);
+    let corrigidos = 0;
+    try {
+      for (const item of inconsistentesApenasGlicada) {
+        const res = await fetch("/api/triagem-edta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            acao: "atualizar_item",
+            id: item.id,
+            prontuario: item.prontuario,
+            data: item.data,
+            updates: {
+              id: item.id,
+              data: item.data,
+              status: "pronto_grade",
+              colocado_grade: true,
+              enviar_hemograma_hoje: false,
+            },
+          }),
+        });
+        if (res.ok) corrigidos++;
+      }
+      mostrarNotificacao(
+        `${corrigidos} tubo(s) Apenas Glicada regularizados para Bancada Local (fora da fila do Apoio).`,
+        "success"
+      );
+      await carregarDados();
+    } catch (e: any) {
+      mostrarNotificacao(`Erro ao regularizar: ${e.message}`, "error");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Filtrar todas as amostras retidas na gradinha local (multi-dia)
@@ -163,13 +221,13 @@ export default function RetidosGlicadaPage() {
     });
   }, [listaRetidos, dataFiltro, busca]);
 
-  const toggleSelecionar = (prontuario: string) => {
+  const toggleSelecionar = (chave: string) => {
     setSelecionados((prev) => {
       const novo = new Set(prev);
-      if (novo.has(prontuario)) {
-        novo.delete(prontuario);
+      if (novo.has(chave)) {
+        novo.delete(chave);
       } else {
-        novo.add(prontuario);
+        novo.add(chave);
       }
       return novo;
     });
@@ -179,19 +237,45 @@ export default function RetidosGlicadaPage() {
     if (selecionados.size === listaFiltrada.length) {
       setSelecionados(new Set());
     } else {
-      setSelecionados(new Set(listaFiltrada.map((i) => i.prontuario)));
+      setSelecionados(new Set(listaFiltrada.map(getChaveItem)));
     }
   };
 
-  // Liberar 1 tubo retido para a grade de hoje
+  // Lista isolada para o relatório exclusivo de retidos
+  const listaParaRelatorio = useMemo(() => {
+    if (selecionados.size > 0) {
+      const sel = listaFiltrada.filter((i) => selecionados.has(getChaveItem(i)));
+      if (sel.length > 0) return sel;
+    }
+    return listaFiltrada;
+  }, [listaFiltrada, selecionados]);
+
+  // Liberar 1 tubo retido para a grade de hoje (com trava anti-erro)
   const liberarItem = async (item: ItemTriagemEdta) => {
+    if (item.tipo_destino === "apenas_glicada" || !item.tem_hemograma) {
+      mostrarNotificacao("Bloqueado pela regra anti-erro: tubo Apenas Glicada não pode ir para o Apoio!", "error");
+      return;
+    }
+
+    if (!item.data_nascimento || !item.data_nascimento.trim()) {
+      const confSemDn = window.confirm(
+        `ATENÇÃO (Regra Anti-Erro):\nO paciente ${item.nome_paciente} (#${formatarProntuario(item.prontuario)}) está SEM Data de Nascimento preenchida.\n\nDeseja liberar para o Apoio mesmo assim? (Recomendado conferir antes no Conecta SUS)`
+      );
+      if (!confSemDn) return;
+    }
+
     setIsProcessing(true);
-    const agora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const agora = new Date().toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    });
+    const chave = getChaveItem(item);
 
     // Atualização otimista na tela
     setItens((prev) =>
       prev.map((i) =>
-        i.prontuario === item.prontuario
+        getChaveItem(i) === chave
           ? {
               ...i,
               status: "pronto_grade",
@@ -211,8 +295,12 @@ export default function RetidosGlicadaPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           acao: "atualizar_item",
+          id: item.id,
           prontuario: item.prontuario,
+          data: item.data,
           updates: {
+            id: item.id,
+            data: item.data,
             nome_paciente: item.nome_paciente,
             data_nascimento: item.data_nascimento,
             status: "pronto_grade",
@@ -226,10 +314,10 @@ export default function RetidosGlicadaPage() {
       });
       const data = await res.json();
       if (data.ok) {
-        mostrarNotificacao(`🚀 Tubo de ${item.nome_paciente} liberado para envio ao Apoio hoje!`, "success");
+        mostrarNotificacao(`Tubo de ${item.nome_paciente} liberado para envio ao Apoio hoje!`, "success");
         setSelecionados((prev) => {
           const novo = new Set(prev);
-          novo.delete(item.prontuario);
+          novo.delete(chave);
           return novo;
         });
       } else {
@@ -244,17 +332,35 @@ export default function RetidosGlicadaPage() {
     }
   };
 
-  // Liberar múltiplos tubos selecionados ou todos
+  // Liberar múltiplos tubos selecionados ou filtrados (com confirmação anti-erro)
   const liberarEmLote = async (itensParaLiberar: ItemTriagemEdta[]) => {
-    if (itensParaLiberar.length === 0) return;
+    const elegiveis = itensParaLiberar.filter(
+      (i) => i.tipo_destino !== "apenas_glicada" && Boolean(i.tem_hemograma)
+    );
+    if (elegiveis.length === 0) {
+      mostrarNotificacao("Nenhum tubo elegível (Hemograma + Glicada) selecionado para o Apoio.", "warning");
+      return;
+    }
+
+    const semDn = elegiveis.filter((i) => !i.data_nascimento || !i.data_nascimento.trim()).length;
+    const conf = window.confirm(
+      `Confirmar liberação de ${elegiveis.length} tubo(s) retido(s) para a Grade do Apoio de HOJE?` +
+        (semDn > 0 ? `\n\nAviso: ${semDn} paciente(s) ainda estão sem Data de Nascimento.` : "")
+    );
+    if (!conf) return;
+
     setIsProcessing(true);
-    const agora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    const prontsSet = new Set(itensParaLiberar.map((i) => i.prontuario));
+    const agora = new Date().toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    });
+    const chavesSet = new Set(elegiveis.map(getChaveItem));
 
     // Atualização otimista
     setItens((prev) =>
       prev.map((i) =>
-        prontsSet.has(i.prontuario)
+        chavesSet.has(getChaveItem(i))
           ? {
               ...i,
               status: "pronto_grade",
@@ -269,15 +375,19 @@ export default function RetidosGlicadaPage() {
     );
 
     let sucessos = 0;
-    for (const item of itensParaLiberar) {
+    for (const item of elegiveis) {
       try {
         await fetch("/api/triagem-edta", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             acao: "atualizar_item",
+            id: item.id,
             prontuario: item.prontuario,
+            data: item.data,
             updates: {
+              id: item.id,
+              data: item.data,
               nome_paciente: item.nome_paciente,
               data_nascimento: item.data_nascimento,
               status: "pronto_grade",
@@ -297,12 +407,13 @@ export default function RetidosGlicadaPage() {
 
     setSelecionados(new Set());
     setIsProcessing(false);
-    mostrarNotificacao(`🚀 ${sucessos} tubos foram liberados com sucesso para a Grade de Hoje!`, "success");
+    mostrarNotificacao(`${sucessos} tubos liberados com segurança para a Grade do Apoio de Hoje!`, "success");
     carregarDados();
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-16">
+    <>
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-16 print:hidden">
       {/* TOAST FLUTUANTE */}
       {toast && (
         <div className="fixed top-5 right-5 z-50 animate-bounce">
@@ -363,9 +474,24 @@ export default function RetidosGlicadaPage() {
               <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
             </button>
 
+            <button
+              type="button"
+              onClick={() => setMostrarRelatorioPrint(true)}
+              disabled={listaFiltrada.length === 0}
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-cyan-700 hover:bg-cyan-800 active:scale-95 text-white font-black text-xs flex items-center gap-2 transition cursor-pointer shadow-sm disabled:opacity-40"
+              title="Gera folha A4 exclusiva dos tubos retidos, sem misturar com outras listas"
+            >
+              <Printer className="w-4 h-4" />
+              <span>
+                {selecionados.size > 0
+                  ? `Gerar Relatório Somente Retidos (${selecionados.size})`
+                  : `Gerar Relatório Somente Retidos (${listaFiltrada.length})`}
+              </span>
+            </button>
+
             <Link
               href="/triagem-edta"
-              className="px-3.5 py-2 rounded-xl border border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-900 font-bold text-xs flex items-center gap-1.5 transition"
+              className="min-h-[44px] px-3.5 py-2 rounded-xl border border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-900 font-bold text-xs flex items-center gap-1.5 transition"
             >
               <Sparkles className="w-4 h-4 text-purple-700" />
               <span>Bancada EDTA</span>
@@ -376,6 +502,39 @@ export default function RetidosGlicadaPage() {
 
       {/* CONTEÚDO PRINCIPAL */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-4">
+        {/* REGRA FIRME ANTI-ERRO DA GRADINHA */}
+        <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <ShieldCheck className="w-5 h-5 text-amber-800 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-950 space-y-0.5">
+              <div className="font-black uppercase tracking-wide text-[11px] text-amber-900">
+                Regra Firme Anti-Erro — Gradinha de Tubos Retidos
+              </div>
+              <p className="leading-snug">
+                Esta lista exibe <strong>exclusivamente tubos com Hemograma + Glicada</strong> aguardando envio do
+                Hemograma ao Apoio. Tubos <strong>Apenas Glicada</strong> (Bancada Local) ou <strong>Apenas Hemograma</strong> são
+                bloqueados automaticamente para evitar mistura no relatório.
+              </p>
+            </div>
+          </div>
+
+          {inconsistentesApenasGlicada.length > 0 && (
+            <div className="shrink-0 bg-white border border-rose-300 rounded-xl p-2.5 flex items-center gap-2.5 shadow-2xs">
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              <div className="text-[11px] text-rose-900">
+                <strong>{inconsistentesApenasGlicada.length} Apenas Glicada</strong> retido(s) por engano no banco.
+              </div>
+              <button
+                type="button"
+                disabled={isProcessing}
+                onClick={regularizarApenasGlicada}
+                className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-lg cursor-pointer transition"
+              >
+                Regularizar p/ Local
+              </button>
+            </div>
+          )}
+        </div>
         {/* BARRA DE SELEÇÃO DE PERÍODO / DATA DE ORIGEM */}
         <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -495,15 +654,27 @@ export default function RetidosGlicadaPage() {
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {listaFiltrada.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setMostrarRelatorioPrint(true)}
+                className="min-h-[44px] px-3.5 py-2 bg-cyan-700 hover:bg-cyan-800 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                title="Gerar folha impressa somente com os tubos retidos"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Relatório Somente Retidos ({listaParaRelatorio.length})</span>
+              </button>
+            )}
+
             {selecionados.size > 0 && (
               <button
                 type="button"
                 disabled={isProcessing}
                 onClick={() =>
-                  liberarEmLote(listaRetidos.filter((i) => selecionados.has(i.prontuario)))
+                  liberarEmLote(listaFiltrada.filter((i) => selecionados.has(getChaveItem(i))))
                 }
-                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                className="min-h-[44px] px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
               >
                 <Send className="w-4 h-4" />
                 <span>Liberar {selecionados.size} Selecionados</span>
@@ -515,7 +686,7 @@ export default function RetidosGlicadaPage() {
                 type="button"
                 disabled={isProcessing}
                 onClick={() => liberarEmLote(listaRetidos)}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                className="min-h-[44px] px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
                 title="Libera todos os tubos retidos para irem na grade do apoio hoje"
               >
                 <CheckCircle2 className="w-4 h-4" />
@@ -584,13 +755,14 @@ export default function RetidosGlicadaPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
                   {listaFiltrada.map((item, index) => {
-                    const isSel = selecionados.has(item.prontuario);
+                    const chave = getChaveItem(item);
+                    const isSel = selecionados.has(chave);
                     const rawDn = item.data_nascimento || "";
-                    const dnFormatada = rawDn ? formatarDataNascimento(rawDn) : "—";
+                    const dnFormatada = rawDn ? formatarDataNascimento(rawDn) : "";
 
                     return (
                       <tr
-                        key={item.id || item.prontuario || index}
+                        key={chave + "-" + index}
                         className={`hover:bg-amber-50/50 transition ${
                           isSel ? "bg-amber-50/70" : index % 2 === 1 ? "bg-slate-50/40" : "bg-white"
                         }`}
@@ -598,7 +770,7 @@ export default function RetidosGlicadaPage() {
                         <td className="py-3 px-3 text-center">
                           <button
                             type="button"
-                            onClick={() => toggleSelecionar(item.prontuario)}
+                            onClick={() => toggleSelecionar(chave)}
                             className="cursor-pointer text-slate-500 hover:text-slate-900"
                           >
                             {isSel ? (
@@ -629,7 +801,13 @@ export default function RetidosGlicadaPage() {
                         </td>
 
                         <td className="py-3 px-3 text-center font-mono font-bold text-slate-800">
-                          {dnFormatada}
+                          {dnFormatada ? (
+                            dnFormatada
+                          ) : (
+                            <span className="inline-block px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold">
+                              DN Pendente
+                            </span>
+                          )}
                         </td>
 
                         <td className="py-3 px-3 text-center">
@@ -711,5 +889,155 @@ export default function RetidosGlicadaPage() {
         )}
       </main>
     </div>
+
+    {/* MODAL DE PRÉVIA (TELA) PARA IMPRESSÃO ISOLADA DOS RETIDOS */}
+    {mostrarRelatorioPrint && (
+      <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 print:hidden">
+        <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-300">
+          <div className="p-4 bg-slate-900 text-white flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <Printer className="w-5 h-5 text-cyan-400" />
+              <div>
+                <h3 className="font-bold text-sm">
+                  Relatório Exclusivo — Tubos Retidos na Gradinha ({listaParaRelatorio.length})
+                </h3>
+                <p className="text-[11px] text-slate-300">
+                  Lista isolada somente dos tubos retidos (Hemograma + Glicada). Não inclui tubos da grade normal.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="min-h-[40px] px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Imprimir Folha A4</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMostrarRelatorioPrint(false)}
+                className="p-2 hover:bg-white/10 rounded-xl text-slate-300 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-100">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-300 max-w-3xl mx-auto text-black">
+              <div className="text-center border-b-2 border-black pb-3 mb-4">
+                <div className="text-[11px] font-black uppercase tracking-wider">
+                  SISTEMA ÚNICO DE SAÚDE — SUS | LABORATÓRIO MUNICIPAL DE CACONDE
+                </div>
+                <h2 className="text-base font-black uppercase mt-1">
+                  RELAÇÃO EXCLUSIVA — TUBOS RETIDOS NA GRADINHA (GLICADA / APOIO POSTERIOR)
+                </h2>
+                <div className="text-xs text-slate-700 mt-1 flex items-center justify-center gap-4 flex-wrap">
+                  <span>Emissão: <strong>{formatarData(hojeIso)}</strong></span>
+                  <span>Filtro Origem: <strong>{dataFiltro ? formatarData(dataFiltro) : "Todos os Dias"}</strong></span>
+                  <span>Total Isolado: <strong>{listaParaRelatorio.length} tubo(s)</strong></span>
+                </div>
+              </div>
+
+              <table className="w-full border-collapse border border-black text-xs">
+                <thead>
+                  <tr className="bg-slate-200 border-b border-black text-[10px] uppercase font-bold text-center">
+                    <th className="border border-black p-1.5 w-10">Nº</th>
+                    <th className="border border-black p-1.5 w-24">Prontuário</th>
+                    <th className="border border-black p-1.5 text-left">Nome do Paciente</th>
+                    <th className="border border-black p-1.5 w-24">Data Nasc.</th>
+                    <th className="border border-black p-1.5 w-32">Exame</th>
+                    <th className="border border-black p-1.5 w-12">VHS</th>
+                    <th className="border border-black p-1.5 w-24">Origem</th>
+                    <th className="border border-black p-1.5 w-28">Conf. Tubo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {listaParaRelatorio.map((item, idx) => (
+                    <tr key={(item.id || item.prontuario) + "-prev-" + idx} className={idx % 2 === 1 ? "bg-slate-50" : "bg-white"}>
+                      <td className="border border-black p-1.5 text-center font-bold">{String(idx + 1).padStart(2, "0")}</td>
+                      <td className="border border-black p-1.5 text-center font-mono font-bold">#{formatarProntuario(item.prontuario)}</td>
+                      <td className="border border-black p-1.5 font-bold uppercase">
+                        {item.urgencia ? "[URG] " : ""}{item.nome_paciente}
+                      </td>
+                      <td className="border border-black p-1.5 text-center font-mono">
+                        {item.data_nascimento ? formatarDataNascimento(item.data_nascimento) : "Pendente"}
+                      </td>
+                      <td className="border border-black p-1.5 text-center text-[10.5px] font-bold">GLICADA + HEMOGRAMA</td>
+                      <td className="border border-black p-1.5 text-center font-bold">{item.tem_vhs ? "SIM" : "—"}</td>
+                      <td className="border border-black p-1.5 text-center font-mono text-[11px]">{formatarData(item.data)}</td>
+                      <td className="border border-black p-1.5 text-center text-[10px]">[  ] Gradinha</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="mt-8 pt-4 border-t border-slate-400 flex items-center justify-between text-xs text-slate-700">
+                <div>Conferente (Bancada Local): ___________________________</div>
+                <div>Data: ____/____/________</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* FOLHA DE IMPRESSÃO A4 EXCLUSIVA PARA @media print */}
+    <div className="hidden print:block p-4 bg-white text-black font-sans">
+      <div className="text-center border-b-2 border-black pb-2 mb-3">
+        <div className="text-[10px] font-black uppercase tracking-wider">
+          SISTEMA ÚNICO DE SAÚDE — SUS | LABORATÓRIO MUNICIPAL DE CACONDE
+        </div>
+        <h2 className="text-sm font-black uppercase mt-0.5">
+          RELATÓRIO EXCLUSIVO — TUBOS RETIDOS NA GRADINHA (SEM MISTURA COM OUTRAS LISTAS)
+        </h2>
+        <div className="text-[11px] mt-1 flex items-center justify-center gap-4">
+          <span>Emissão: <strong>{formatarData(hojeIso)}</strong></span>
+          <span>Filtro Origem: <strong>{dataFiltro ? formatarData(dataFiltro) : "Todos os Dias"}</strong></span>
+          <span>Total de Tubos Retidos: <strong>{listaParaRelatorio.length}</strong></span>
+        </div>
+      </div>
+
+      <table className="w-full border-collapse border border-black text-[11px]">
+        <thead>
+          <tr className="bg-slate-200 border-b border-black text-[10px] uppercase font-bold text-center">
+            <th className="border border-black p-1 w-9">Nº</th>
+            <th className="border border-black p-1 w-22">Prontuário</th>
+            <th className="border border-black p-1 text-left">Nome do Paciente</th>
+            <th className="border border-black p-1 w-22">Data Nasc.</th>
+            <th className="border border-black p-1 w-32">Exame</th>
+            <th className="border border-black p-1 w-10">VHS</th>
+            <th className="border border-black p-1 w-22">Data Origem</th>
+            <th className="border border-black p-1 w-24">Conf. Tubo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {listaParaRelatorio.map((item, idx) => (
+            <tr key={(item.id || item.prontuario) + "-print-" + idx}>
+              <td className="border border-black p-1 text-center font-bold">{String(idx + 1).padStart(2, "0")}</td>
+              <td className="border border-black p-1 text-center font-mono font-bold">#{formatarProntuario(item.prontuario)}</td>
+              <td className="border border-black p-1 font-bold uppercase">
+                {item.urgencia ? "[URG] " : ""}{item.nome_paciente}
+              </td>
+              <td className="border border-black p-1 text-center font-mono">
+                {item.data_nascimento ? formatarDataNascimento(item.data_nascimento) : "Pendente"}
+              </td>
+              <td className="border border-black p-1 text-center text-[10px] font-bold">GLICADA + HEMOGRAMA</td>
+              <td className="border border-black p-1 text-center font-bold">{item.tem_vhs ? "SIM" : "—"}</td>
+              <td className="border border-black p-1 text-center font-mono">{formatarData(item.data)}</td>
+              <td className="border border-black p-1 text-center text-[9.5px]">[  ] OK</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="mt-6 pt-3 border-t border-black flex items-center justify-between text-[11px]">
+        <div>Responsável pela Conferência: _____________________________</div>
+        <div>Hora: ____:____</div>
+      </div>
+    </div>
+    </>
   );
 }
