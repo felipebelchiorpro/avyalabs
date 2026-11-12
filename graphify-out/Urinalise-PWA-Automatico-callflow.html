@@ -60,7 +60,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
 <div class="container">
 
 <h1>Urinalise PWA Automatico — Complete Call Flow &amp; Architecture Documentation</h1>
-<p class="subtitle">Generated from graphify knowledge graph: 405 nodes, 929 edges, 20 communities. Commit: ff35c31</p>
+<p class="subtitle">Generated from graphify knowledge graph: 406 nodes, 932 edges, 19 communities. Commit: bc37ed7</p>
 
 <div class="nav">
     <a href="#overview">Architecture Overview</a>
@@ -68,9 +68,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
     <a href="#ingest-cache-update">Ingestion &amp; Updates</a>
     <a href="#serve-api">Serving API</a>
     <a href="#medicosstorets-audiofeedbackts-components">Medicosstorets Audiofeedbackts Components</a>
-    <a href="#components-operadoresstorets-navbartsx">Components Operadoresstorets Navbartsx</a>
     <a href="#content-conectasusjs-extensao">Content Conectasusjs Extensao</a>
-    <a href="#triagemedtarealtsx-components-pacienterotinaedta">Triagemedtarealtsx Components Pacienterotinaedta</a>
     <a href="#d1servicets-d1preparedstatement-all">D1Servicets D1Preparedstatement All</a>
     <a href="#backgroundjs-extensao-chrome">Backgroundjs Extensao Chrome</a>
     <a href="#d1servicets-d1database-batch">D1Servicets D1Database Batch</a>
@@ -86,20 +84,16 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
 
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    BUILD_GRAPH_321CBB04("Graph Build<br/><small>140 nodes</small>")
+    BUILD_GRAPH_321CBB04("Graph Build<br/><small>119 nodes</small>")
     class BUILD_GRAPH_321CBB04 module;
     INGEST_CACHE_UPDATE_FF457338("Ingestion &amp; Updates<br/><small>25 nodes</small>")
     class INGEST_CACHE_UPDATE_FF457338 module;
-    SERVE_API_35EC8E86("Serving API<br/><small>149 nodes</small>")
+    SERVE_API_35EC8E86("Serving API<br/><small>196 nodes</small>")
     class SERVE_API_35EC8E86 module;
-    MEDICOSSTORETS_AUDIOFEEDBACKTS_COMPONENTS_1B010128("Medicosstorets Audiofeedbackts Components<br/><small>29 nodes</small>")
+    MEDICOSSTORETS_AUDIOFEEDBACKTS_COMPONENTS_1B010128("Medicosstorets Audiofeedbackts Components<br/><small>27 nodes</small>")
     class MEDICOSSTORETS_AUDIOFEEDBACKTS_COMPONENTS_1B010128 module;
-    COMPONENTS_OPERADORESSTORETS_NAVBARTSX_D69C7CD0("Components Operadoresstorets Navbartsx<br/><small>17 nodes</small>")
-    class COMPONENTS_OPERADORESSTORETS_NAVBARTSX_D69C7CD0 module;
-    CONTENT_CONECTASUSJS_EXTENSAO_D8944EA2("Content Conectasusjs Extensao<br/><small>17 nodes</small>")
+    CONTENT_CONECTASUSJS_EXTENSAO_D8944EA2("Content Conectasusjs Extensao<br/><small>18 nodes</small>")
     class CONTENT_CONECTASUSJS_EXTENSAO_D8944EA2 module;
-    TRIAGEMEDTAREALTSX_COMPONENTS_PACIENTEROTINAEDTA_78ECE1ED("Triagemedtarealtsx Components Pacienterotinaedta<br/><small>7 nodes</small>")
-    class TRIAGEMEDTAREALTSX_COMPONENTS_PACIENTEROTINAEDTA_78ECE1ED module;
     D1SERVICETS_D1PREPAREDSTATEMENT_ALL_4734D121("D1Servicets D1Preparedstatement All<br/><small>6 nodes</small>")
     class D1SERVICETS_D1PREPAREDSTATEMENT_ALL_4734D121 module;
     BACKGROUNDJS_EXTENSAO_CHROME_8B36A39D("Backgroundjs Extensao Chrome<br/><small>5 nodes</small>")
@@ -112,16 +106,11 @@ flowchart LR
     class POSTCSSCONFIGMJS_CONFIG_6BE2807B module;
     CONTENT_BANCADALABJS_EXTENSAO_A10F46C0("Content Bancadalabjs Extensao<br/><small>1 nodes</small>")
     class CONTENT_BANCADALABJS_EXTENSAO_A10F46C0 module;
-    SERVE_API_35EC8E86 -->|imports x35| BUILD_GRAPH_321CBB04
-    BUILD_GRAPH_321CBB04 -->|imports x25| SERVE_API_35EC8E86
+    SERVE_API_35EC8E86 -->|imports x34| BUILD_GRAPH_321CBB04
     MEDICOSSTORETS_AUDIOFEEDBACKTS_COMPONENTS_1B010128 -->|imports x18| SERVE_API_35EC8E86
-    MEDICOSSTORETS_AUDIOFEEDBACKTS_COMPONENTS_1B010128 -->|imports x10| BUILD_GRAPH_321CBB04
-    MEDICOSSTORETS_AUDIOFEEDBACKTS_COMPONENTS_1B010128 -->|imports x9| COMPONENTS_OPERADORESSTORETS_NAVBARTSX_D69C7CD0
-    SERVE_API_35EC8E86 -->|calls x7| MEDICOSSTORETS_AUDIOFEEDBACKTS_COMPONENTS_1B010128
-    BUILD_GRAPH_321CBB04 -->|imports x5| MEDICOSSTORETS_AUDIOFEEDBACKTS_COMPONENTS_1B010128
-    COMPONENTS_OPERADORESSTORETS_NAVBARTSX_D69C7CD0 -->|imports x5| BUILD_GRAPH_321CBB04
-    TRIAGEMEDTAREALTSX_COMPONENTS_PACIENTEROTINAEDTA_78ECE1ED -->|imports x2| BUILD_GRAPH_321CBB04
-    COMPONENTS_OPERADORESSTORETS_NAVBARTSX_D69C7CD0 -->|imports x2| SERVE_API_35EC8E86
+    MEDICOSSTORETS_AUDIOFEEDBACKTS_COMPONENTS_1B010128 -->|imports x15| BUILD_GRAPH_321CBB04
+    SERVE_API_35EC8E86 -->|calls x8| MEDICOSSTORETS_AUDIOFEEDBACKTS_COMPONENTS_1B010128
+    BUILD_GRAPH_321CBB04 -->|imports x4| SERVE_API_35EC8E86
     SERVE_API_35EC8E86 -->|contains| D1SERVICETS_D1PREPAREDSTATEMENT_ALL_4734D121
     SERVE_API_35EC8E86 -->|contains| D1SERVICETS_D1DATABASE_BATCH_9FC97294
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
@@ -140,20 +129,20 @@ flowchart LR
     <h4>Architecture Layers</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>Layer</th><th>Nodes</th><th>Communities</th></tr>
-      <tr><td>Graph Build</td><td>140</td><td><code>0, 6, 5, 19</code></td></tr><tr><td>Ingestion &amp; Updates</td><td>25</td><td><code>8, 13, 20</code></td></tr><tr><td>Serving API</td><td>149</td><td><code>3, 22, 7</code></td></tr><tr><td>Medicosstorets Audiofeedbackts Components</td><td>29</td><td><code>1</code></td></tr><tr><td>Components Operadoresstorets Navbartsx</td><td>17</td><td><code>2</code></td></tr><tr><td>Content Conectasusjs Extensao</td><td>17</td><td><code>4</code></td></tr><tr><td>Triagemedtarealtsx Components Pacienterotinaedta</td><td>7</td><td><code>17</code></td></tr><tr><td>D1Servicets D1Preparedstatement All</td><td>6</td><td><code>16</code></td></tr><tr><td>Backgroundjs Extensao Chrome</td><td>5</td><td><code>10</code></td></tr><tr><td>D1Servicets D1Database Batch</td><td>5</td><td><code>9</code></td></tr><tr><td>Popupjs Extensao Chrome</td><td>2</td><td><code>11</code></td></tr><tr><td>Postcssconfigmjs Config</td><td>2</td><td><code>21</code></td></tr><tr><td>Content Bancadalabjs Extensao</td><td>1</td><td><code>12</code></td></tr>
+      <tr><td>Graph Build</td><td>119</td><td><code>6, 2, 5, 19</code></td></tr><tr><td>Ingestion &amp; Updates</td><td>25</td><td><code>8, 13, 20</code></td></tr><tr><td>Serving API</td><td>196</td><td><code>3, 0, 7, 22</code></td></tr><tr><td>Medicosstorets Audiofeedbackts Components</td><td>27</td><td><code>1</code></td></tr><tr><td>Content Conectasusjs Extensao</td><td>18</td><td><code>4</code></td></tr><tr><td>D1Servicets D1Preparedstatement All</td><td>6</td><td><code>16</code></td></tr><tr><td>Backgroundjs Extensao Chrome</td><td>5</td><td><code>10</code></td></tr><tr><td>D1Servicets D1Database Batch</td><td>5</td><td><code>9</code></td></tr><tr><td>Popupjs Extensao Chrome</td><td>2</td><td><code>11</code></td></tr><tr><td>Postcssconfigmjs Config</td><td>2</td><td><code>21</code></td></tr><tr><td>Content Bancadalabjs Extensao</td><td>1</td><td><code>12</code></td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Core Flow</h4>
-    <div class="arrow-chain">Ingestion &amp; Updates -&gt; Graph Build -&gt; Serving API -&gt; Medicosstorets Audiofeedbackts Components -&gt; Components Operadoresstorets Navbartsx -&gt; Content Conectasusjs Extensao -&gt; Triagemedtarealtsx Components Pacienterotinaedta</div>
+    <div class="arrow-chain">Ingestion &amp; Updates -&gt; Graph Build -&gt; Serving API -&gt; Medicosstorets Audiofeedbackts Components -&gt; Content Conectasusjs Extensao -&gt; D1Servicets D1Preparedstatement All -&gt; Backgroundjs Extensao Chrome</div>
   </div>
 </div>
 <div class="grid">
   <div class="card">
     <h4>Graph Report Highlights</h4>
     <ul>
-      <li>405 nodes · 929 edges · 20 communities (14 shown, 6 thin omitted)</li>
-      <li>Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 2 edges (avg confidence: 0.85)</li>
+      <li>406 nodes · 932 edges · 19 communities (13 shown, 6 thin omitted)</li>
+      <li>Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 1 edges (avg confidence: 0.85)</li>
       <li>Token cost: 0 input · 0 output</li>
       <li>1. `react` - 26 edges</li>
       <li>2. `formatarProntuario()` - 24 edges</li>
@@ -164,83 +153,83 @@ flowchart LR
 <hr>
 <!-- ====== 2. Graph Build ====== -->
 <h2 id="build-graph">2. Graph Build</h2>
-<p>Graph Build groups implementation around packagejson, components, types, tsconfigjson, mostly in package.json, tsconfig.json, src/types/urinalise.ts. This section covers 140 nodes and 243 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Graph Build groups implementation around packagejson, components, tsconfigjson, app, mostly in package.json, tsconfig.json, src/components/TriagemEdtaReal.tsx. This section covers 119 nodes and 183 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Graph Build (140 nodes, 243 edges)
-    subgraph build_graph_src_lib_exportadorXmlExtensao_ts_c1309e95["src/lib/exportadorXmlExtensao.ts"]
-        src_lib_exportadorxmlextensao_baixarxlsxurinalis_5d0697c3("baixarXlsxUrinalise()<br/><small>src/lib/exportadorXmlExtensao.ts</small>")
-        src_lib_exportadorxmlextensao_baixarxmlurinalise_fbc0b7d1("baixarXmlUrinalise()<br/><small>src/lib/exportadorXmlExtensao.ts</small>")
-        src_lib_exportadorxmlextensao_gerarstringxmlurin_e6853df1("gerarStringXmlUrinalise()<br/><small>src/lib/exportadorXmlExtensao.ts</small>")
-        src_lib_exportadorxmlextensao_preparardadosxmlur_8dd3a4dc("prepararDadosXmlUrinalise()<br/><small>src/lib/exportadorXmlExtensao.ts</small>")
+    %% Section: Graph Build (119 nodes, 183 edges)
+    subgraph build_graph_src_lib_operadoresStore_ts_ef5926e2["src/lib/operadoresStore.ts"]
+        src_lib_operadoresstore_obteroperadorescadastrad_b495c12f("obterOperadoresCadastrados()<br/><small>src/lib/operadoresStore.ts</small>")
+        src_lib_operadoresstore_obteroperadorativo_776ee5e4("obterOperadorAtivo()<br/><small>src/lib/operadoresStore.ts</small>")
+        src_lib_operadoresstore_sincronizaroperadorescom_2ee6b47a("sincronizarOperadoresComServidor()<br/><small>src/lib/operadoresStore.ts</small>")
+        src_lib_operadoresstore_definiroperadorativo_a6654b9e("definirOperadorAtivo()<br/><small>src/lib/operadoresStore.ts</small>")
+        src_lib_operadoresstore_adicionaroperador_98986975("adicionarOperador()<br/><small>src/lib/operadoresStore.ts</small>")
+        src_lib_operadoresstore_removeroperador_60ceed80("removerOperador()<br/><small>src/lib/operadoresStore.ts</small>")
     end
-    subgraph build_graph_src_components_RelatorioBancadaDiaPr_a91f7680["src/components/RelatorioBancadaDiaPrintView.tsx"]
-        src_components_relatoriobancadadiaprintview_rela_4a1e092c("RelatorioBancadaDiaPrintView()<br/><small>src/components/RelatorioBancadaDiaPrintView.tsx</small>")
-        src_components_relatoriobancadadiaprintview_paci_32d62b3b("pacienteTemUrina()<br/><small>src/components/RelatorioBancadaDiaPrintView.tsx</small>")
-        src_components_relatoriobancadadiaprintview_extr_4c534354("extrairInfoRecoleta()<br/><small>src/components/RelatorioBancadaDiaPrintView.tsx</small>")
+    subgraph build_graph_src_components_TriagemEdtaReal_tsx_36012481["src/components/TriagemEdtaReal.tsx"]
+        src_components_triagemedtareal_triagemedtareal_10b38206("TriagemEdtaReal()<br/><small>src/components/TriagemEdtaReal.tsx</small>")
+        src_components_triagemedtareal_limparprontuario_61b91bbf("limparProntuario()<br/><small>src/components/TriagemEdtaReal.tsx</small>")
+        src_components_triagemedtareal_limpardatanasc_3af46d45("limparDataNasc()<br/><small>src/components/TriagemEdtaReal.tsx</small>")
     end
-    subgraph build_graph_app_consulta_page_tsx_11d1398a["app/consulta/page.tsx"]
-        src_app_consulta_page_79783d20("page.tsx")
-        src_app_consulta_page_consultaauditoriapage_b5881996("ConsultaAuditoriaPage()<br/><small>app/consulta/page.tsx</small>")
+    subgraph build_graph_src_app_layout_tsx_f2f67712["src/app/layout.tsx"]
+        src_app_layout_1fbe141c("layout.tsx")
+        src_app_layout_rootlayout_9c6c8a49("RootLayout()<br/><small>src/app/layout.tsx</small>")
     end
-    subgraph build_graph_app_laudos_page_tsx_cb5fe3be["app/laudos/page.tsx"]
-        src_app_laudos_page_792af3ca("page.tsx")
-        src_app_laudos_page_painellaudospage_e1bff834("PainelLaudosPage()<br/><small>app/laudos/page.tsx</small>")
+    subgraph build_graph_src_components_ModalSelecionarOperad_aa83836f["src/components/ModalSelecionarOperador.tsx"]
+        src_components_modalselecionaroperador_15f65eb5("ModalSelecionarOperador.tsx")
+        src_components_modalselecionaroperador_modalsele_99ecdd70("ModalSelecionarOperador()<br/><small>src/components/ModalSelecionarOperador.tsx</small>")
     end
-    subgraph build_graph_app_urina_page_tsx_3b0d185d["app/urina/page.tsx"]
-        src_app_urina_page_c93a6700("page.tsx")
-        src_app_urina_page_bancadaoperacionalpage_187e5da2("BancadaOperacionalPage()<br/><small>app/urina/page.tsx</small>")
+    subgraph build_graph_src_components_Navbar_tsx_e7e46880["src/components/Navbar.tsx"]
+        src_components_navbar_844f5f16("Navbar.tsx")
+        src_components_navbar_navbar_319d91c7("Navbar()<br/><small>src/components/Navbar.tsx</small>")
     end
-    src_app_vdrl_page_5bd34818("page.tsx")
     package_582681c2("package.json")
-    src_components_barraacoestiragem_barraacoestirag_02709e11("BarraAcoesTiragem()<br/><small>src/components/BarraAcoesTiragem.tsx</small>")
-    src_components_quickchipselect_quickchipselect_0db490b9("QuickChipSelect()<br/><small>src/components/QuickChipSelect.tsx</small>")
-    src_components_statusbadge_statusbadge_bca45052("StatusBadge()<br/><small>src/components/StatusBadge.tsx</small>")
-    src_app_consulta_page_consultaauditoriapage_b5881996 -->|calls| src_components_statusbadge_statusbadge_bca45052
-    src_app_consulta_page_consultaauditoriapage_b5881996 -->|calls| src_components_quickchipselect_quickchipselect_0db490b9
-    src_app_laudos_page_painellaudospage_e1bff834 -->|calls| src_components_statusbadge_statusbadge_bca45052
-    src_app_laudos_page_painellaudospage_e1bff834 -->|calls| src_components_relatoriobancadadiaprintview_rela_4a1e092c
-    src_app_urina_page_bancadaoperacionalpage_187e5da2 -->|calls| src_lib_exportadorxmlextensao_baixarxlsxurinalis_5d0697c3
-    src_app_urina_page_bancadaoperacionalpage_187e5da2 -->|calls| src_lib_exportadorxmlextensao_baixarxmlurinalise_fbc0b7d1
-    src_app_urina_page_bancadaoperacionalpage_187e5da2 -->|calls| src_lib_exportadorxmlextensao_gerarstringxmlurin_e6853df1
-    src_app_urina_page_bancadaoperacionalpage_187e5da2 -->|calls| src_components_barraacoestiragem_barraacoestirag_02709e11
-    src_app_urina_page_bancadaoperacionalpage_187e5da2 -->|calls| src_components_quickchipselect_quickchipselect_0db490b9
-    src_app_urina_page_bancadaoperacionalpage_187e5da2 -->|calls| src_components_relatoriobancadadiaprintview_rela_4a1e092c
-    src_components_relatoriobancadadiaprintview_rela_4a1e092c -->|calls| src_components_relatoriobancadadiaprintview_paci_32d62b3b
-    src_components_relatoriobancadadiaprintview_rela_4a1e092c -->|calls| src_components_relatoriobancadadiaprintview_extr_4c534354
-    src_lib_exportadorxmlextensao_baixarxlsxurinalis_5d0697c3 -->|calls| src_lib_exportadorxmlextensao_preparardadosxmlur_8dd3a4dc
-    src_lib_exportadorxmlextensao_baixarxmlurinalise_fbc0b7d1 -->|calls| src_lib_exportadorxmlextensao_gerarstringxmlurin_e6853df1
-    src_lib_exportadorxmlextensao_baixarxmlurinalise_fbc0b7d1 -->|calls| src_lib_exportadorxmlextensao_preparardadosxmlur_8dd3a4dc
-    src_lib_exportadorxmlextensao_gerarstringxmlurin_e6853df1 -->|calls| src_lib_exportadorxmlextensao_preparardadosxmlur_8dd3a4dc
-    src_app_consulta_page_79783d20 -->|imports| src_components_statusbadge_statusbadge_bca45052
-    src_app_consulta_page_79783d20 -->|imports| src_components_quickchipselect_quickchipselect_0db490b9
-    src_app_laudos_page_792af3ca -->|imports| src_components_statusbadge_statusbadge_bca45052
-    src_app_laudos_page_792af3ca -->|imports| src_components_relatoriobancadadiaprintview_rela_4a1e092c
-    src_app_urina_page_c93a6700 -->|imports| src_lib_exportadorxmlextensao_baixarxlsxurinalis_5d0697c3
-    src_app_urina_page_c93a6700 -->|imports| src_lib_exportadorxmlextensao_baixarxmlurinalise_fbc0b7d1
-    src_app_urina_page_c93a6700 -->|imports| src_lib_exportadorxmlextensao_gerarstringxmlurin_e6853df1
-    src_app_urina_page_c93a6700 -->|imports| src_components_quickchipselect_quickchipselect_0db490b9
-    %% Omitted for readability: 122 nodes, 1 edges
-    class src_lib_exportadorxmlextensao_baixarxlsxurinalis_5d0697c3 function;
-    class src_lib_exportadorxmlextensao_baixarxmlurinalise_fbc0b7d1 function;
-    class src_lib_exportadorxmlextensao_gerarstringxmlurin_e6853df1 function;
-    class src_lib_exportadorxmlextensao_preparardadosxmlur_8dd3a4dc function;
-    class src_components_relatoriobancadadiaprintview_rela_4a1e092c ui;
-    class src_components_relatoriobancadadiaprintview_paci_32d62b3b ui;
-    class src_components_relatoriobancadadiaprintview_extr_4c534354 ui;
-    class src_app_consulta_page_79783d20 ui;
-    class src_app_consulta_page_consultaauditoriapage_b5881996 ui;
-    class src_app_laudos_page_792af3ca ui;
-    class src_app_laudos_page_painellaudospage_e1bff834 ui;
-    class src_app_urina_page_c93a6700 ui;
-    class src_app_urina_page_bancadaoperacionalpage_187e5da2 ui;
-    class src_app_vdrl_page_5bd34818 ui;
+    src_components_logo_logo_c9c95a3b("Logo()<br/><small>src/components/Logo.tsx</small>")
+    src_components_sidebarlateral_sidebarlateral_f30927e5("SidebarLateral()<br/><small>src/components/SidebarLateral.tsx</small>")
+    src_app_layout_rootlayout_9c6c8a49 -->|calls| src_components_sidebarlateral_sidebarlateral_f30927e5
+    src_components_modalselecionaroperador_modalsele_99ecdd70 -->|calls| src_lib_operadoresstore_obteroperadorescadastrad_b495c12f
+    src_components_modalselecionaroperador_modalsele_99ecdd70 -->|calls| src_lib_operadoresstore_obteroperadorativo_776ee5e4
+    src_components_modalselecionaroperador_modalsele_99ecdd70 -->|calls| src_lib_operadoresstore_sincronizaroperadorescom_2ee6b47a
+    src_components_modalselecionaroperador_modalsele_99ecdd70 -->|calls| src_lib_operadoresstore_definiroperadorativo_a6654b9e
+    src_components_modalselecionaroperador_modalsele_99ecdd70 -->|calls| src_lib_operadoresstore_adicionaroperador_98986975
+    src_components_modalselecionaroperador_modalsele_99ecdd70 -->|calls| src_lib_operadoresstore_removeroperador_60ceed80
+    src_components_navbar_navbar_319d91c7 -->|calls| src_components_modalselecionaroperador_modalsele_99ecdd70
+    src_components_navbar_navbar_319d91c7 -->|calls| src_components_logo_logo_c9c95a3b
+    src_components_navbar_navbar_319d91c7 -->|calls| src_lib_operadoresstore_obteroperadorativo_776ee5e4
+    src_components_navbar_navbar_319d91c7 -->|calls| src_lib_operadoresstore_sincronizaroperadorescom_2ee6b47a
+    src_components_triagemedtareal_triagemedtareal_10b38206 -->|calls| src_components_triagemedtareal_limparprontuario_61b91bbf
+    src_components_triagemedtareal_triagemedtareal_10b38206 -->|calls| src_components_triagemedtareal_limpardatanasc_3af46d45
+    src_lib_operadoresstore_adicionaroperador_98986975 -->|calls| src_lib_operadoresstore_obteroperadorescadastrad_b495c12f
+    src_lib_operadoresstore_adicionaroperador_98986975 -->|calls| src_lib_operadoresstore_obteroperadorativo_776ee5e4
+    src_lib_operadoresstore_definiroperadorativo_a6654b9e -->|calls| src_lib_operadoresstore_obteroperadorescadastrad_b495c12f
+    src_lib_operadoresstore_obteroperadorativo_776ee5e4 -->|calls| src_lib_operadoresstore_obteroperadorescadastrad_b495c12f
+    src_lib_operadoresstore_removeroperador_60ceed80 -->|calls| src_lib_operadoresstore_obteroperadorescadastrad_b495c12f
+    src_lib_operadoresstore_removeroperador_60ceed80 -->|calls| src_lib_operadoresstore_obteroperadorativo_776ee5e4
+    src_lib_operadoresstore_sincronizaroperadorescom_2ee6b47a -->|calls| src_lib_operadoresstore_obteroperadorescadastrad_b495c12f
+    src_lib_operadoresstore_sincronizaroperadorescom_2ee6b47a -->|calls| src_lib_operadoresstore_obteroperadorativo_776ee5e4
+    src_app_layout_1fbe141c -->|imports| src_components_sidebarlateral_sidebarlateral_f30927e5
+    src_components_modalselecionaroperador_15f65eb5 -->|imports| src_lib_operadoresstore_adicionaroperador_98986975
+    src_components_modalselecionaroperador_15f65eb5 -->|imports| src_lib_operadoresstore_definiroperadorativo_a6654b9e
+    %% Omitted for readability: 101 nodes, 9 edges
+    class src_lib_operadoresstore_obteroperadorescadastrad_b495c12f function;
+    class src_lib_operadoresstore_obteroperadorativo_776ee5e4 function;
+    class src_lib_operadoresstore_sincronizaroperadorescom_2ee6b47a function;
+    class src_lib_operadoresstore_definiroperadorativo_a6654b9e function;
+    class src_lib_operadoresstore_adicionaroperador_98986975 function;
+    class src_lib_operadoresstore_removeroperador_60ceed80 function;
+    class src_components_triagemedtareal_triagemedtareal_10b38206 ui;
+    class src_components_triagemedtareal_limparprontuario_61b91bbf ui;
+    class src_components_triagemedtareal_limpardatanasc_3af46d45 ui;
+    class src_app_layout_1fbe141c ui;
+    class src_app_layout_rootlayout_9c6c8a49 ui;
+    class src_components_modalselecionaroperador_15f65eb5 ui;
+    class src_components_modalselecionaroperador_modalsele_99ecdd70 ui;
+    class src_components_navbar_844f5f16 ui;
+    class src_components_navbar_navbar_319d91c7 ui;
     class package_582681c2 function;
-    class src_components_barraacoestiragem_barraacoestirag_02709e11 ui;
-    class src_components_quickchipselect_quickchipselect_0db490b9 ui;
-    class src_components_statusbadge_statusbadge_bca45052 ui;
+    class src_components_logo_logo_c9c95a3b ui;
+    class src_components_sidebarlateral_sidebarlateral_f30927e5 ui;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
     classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
@@ -264,243 +253,243 @@ flowchart LR
 </tr>
 <tr>
   <td>1</td>
-  <td><code>AppLayoutWrapperProps</code><br><small style="color:var(--muted)">src/components/AppLayoutWrapper.tsx</small></td>
+  <td><code>EdtaBarcodeScanner()</code><br><small style="color:var(--muted)">src/components/EdtaBarcodeScanner.tsx</small></td>
   <td><span class="tag tag-hook">UI</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>AppLayoutWrapperProps node in src/components/AppLayoutWrapper.tsx.</td>
+  <td><code>html5-qrcode</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td>Starts scanning or handles scan status.</td>
 </tr>
 <tr>
   <td>2</td>
-  <td><code>LaudoPrintViewProps</code><br><small style="color:var(--muted)">src/components/LaudoPrintView.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
+  <td><code>eslint.config.mjs</code><br><small style="color:var(--muted)">eslint.config.mjs</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>LaudoPrintViewProps node in src/components/LaudoPrintView.tsx.</td>
+  <td><code>eslint</code><br><small style="color:var(--muted)">package.json</small><br><code>eslint-config-next</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td>Reads, resolves, or persists project configuration.</td>
 </tr>
 <tr>
   <td>3</td>
-  <td><code>LinhaBancadaIndividual</code><br><small style="color:var(--muted)">src/components/MapaBancadaPrintView.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
+  <td><code>eslintConfig</code><br><small style="color:var(--muted)">eslint.config.mjs</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>LinhaBancadaIndividual node in src/components/MapaBancadaPrintView.tsx.</td>
+  <td>Reads, resolves, or persists project configuration.</td>
 </tr>
 <tr>
   <td>4</td>
-  <td><code>MapaBancadaPrintViewProps</code><br><small style="color:var(--muted)">src/components/MapaBancadaPrintView.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
+  <td><code>package.json</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>MapaBancadaPrintViewProps node in src/components/MapaBancadaPrintView.tsx.</td>
+  <td><code>@emnapi/core</code><br><small style="color:var(--muted)">package.json</small><br><code>@emnapi/runtime</code><br><small style="color:var(--muted)">package.json</small><br><code>@tailwindcss/postcss</code><br><small style="color:var(--muted)">package.json</small><br>+18 more</td>
+  <td>package.json node in package.json.</td>
 </tr>
 <tr>
   <td>5</td>
-  <td><code>QuickChipSelectProps</code><br><small style="color:var(--muted)">src/components/QuickChipSelect.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
+  <td><code>dependencies</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>QuickChipSelectProps node in src/components/QuickChipSelect.tsx.</td>
+  <td>dependencies node in package.json.</td>
 </tr>
 <tr>
   <td>6</td>
-  <td><code>RelatorioBancadaDiaPrintViewProps</code><br><small style="color:var(--muted)">src/components/RelatorioBancadaDiaPrintView.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
+  <td><code>@emnapi/core@^1.11.3</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-endpoint">API</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>RelatorioBancadaDiaPrintViewProps node in src/components/RelatorioBancadaDiaPrintView.tsx.</td>
+  <td>@emnapi/core@^1.11.3 node in package.json.</td>
 </tr>
 <tr>
   <td>7</td>
-  <td><code>StatusBadgeProps</code><br><small style="color:var(--muted)">src/components/StatusBadge.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
+  <td><code>@emnapi/runtime@^1.11.3</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-endpoint">API</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>StatusBadgeProps node in src/components/StatusBadge.tsx.</td>
+  <td>@emnapi/runtime@^1.11.3 node in package.json.</td>
 </tr>
 <tr>
   <td>8</td>
-  <td><code>ItemXmlUrinalise</code><br><small style="color:var(--muted)">src/lib/exportadorXmlExtensao.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>googleapis@^188.0.0</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-endpoint">API</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>ItemXmlUrinalise node in src/lib/exportadorXmlExtensao.ts.</td>
+  <td>googleapis@^188.0.0 node in package.json.</td>
 </tr>
 <tr>
   <td>9</td>
-  <td><code>ItemRotina</code><br><small style="color:var(--muted)">src/types/urinalise.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td><code>MapaBancadaPrintView.tsx</code><br><small style="color:var(--muted)">src/components/MapaBancadaPrintView.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/vdrl/page.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/urina/page.tsx</small></td>
+  <td><code>html5-qrcode@^2.3.8</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>ItemRotina node in src/types/urinalise.ts.</td>
+  <td>Exports documentation data to a target format.</td>
 </tr>
 <tr>
   <td>10</td>
-  <td><code>LabConfig</code><br><small style="color:var(--muted)">src/types/urinalise.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td><code>LaudoPrintView.tsx</code><br><small style="color:var(--muted)">src/components/LaudoPrintView.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/triagem-edta/page.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/configuracoes/page.tsx</small><br>+4 more</td>
+  <td><code>lucide-react@^1.61.0</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Reads, resolves, or persists project configuration.</td>
+  <td>lucide-react@^1.61.0 node in package.json.</td>
 </tr>
 <tr>
   <td>11</td>
-  <td><code>LaudoUrina</code><br><small style="color:var(--muted)">src/types/urinalise.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td><code>d1Service.ts</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br><code>exportadorXmlExtensao.ts</code><br><small style="color:var(--muted)">src/lib/exportadorXmlExtensao.ts</small><br><code>googleSheets.ts</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br>+10 more</td>
+  <td><code>next@16.4.3</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>LaudoUrina node in src/types/urinalise.ts.</td>
+  <td>next@16.4.3 node in package.json.</td>
 </tr>
 <tr>
   <td>12</td>
-  <td><code>RotinaItem</code><br><small style="color:var(--muted)">src/types/urinalise.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td><code>d1Service.ts</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br><code>exportadorXmlExtensao.ts</code><br><small style="color:var(--muted)">src/lib/exportadorXmlExtensao.ts</small><br><code>extratorBancada.ts</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small><br>+4 more</td>
+  <td><code>react@19.3.0</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>RotinaItem node in src/types/urinalise.ts.</td>
+  <td>react@19.3.0 node in package.json.</td>
 </tr>
 <tr>
   <td>13</td>
-  <td><code>StatusLaudo</code><br><small style="color:var(--muted)">src/types/urinalise.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td><code>d1Service.ts</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/urina/page.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/consulta/page.tsx</small><br>+2 more</td>
+  <td><code>react-dom@19.3.0</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>StatusLaudo node in src/types/urinalise.ts.</td>
+  <td>react-dom@19.3.0 node in package.json.</td>
 </tr>
 <tr>
   <td>14</td>
-  <td><code>StatusTriagemEdta</code><br><small style="color:var(--muted)">src/types/urinalise.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td><code>d1Service.ts</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br><code>extratorBancada.ts</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small></td>
+  <td><code>@tailwindcss/postcss@^4.3.3</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>StatusTriagemEdta node in src/types/urinalise.ts.</td>
+  <td>@tailwindcss/postcss@^4.3.3 node in package.json.</td>
 </tr>
 <tr>
   <td>15</td>
-  <td><code>TipoEdtaDestino</code><br><small style="color:var(--muted)">src/types/urinalise.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td><code>d1Service.ts</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br><code>extratorBancada.ts</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small></td>
+  <td><code>tesseract.js@^7.0.0</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-async">Async</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>TipoEdtaDestino node in src/types/urinalise.ts.</td>
+  <td>tesseract.js@^7.0.0 node in package.json.</td>
 </tr>
 <tr>
   <td>16</td>
-  <td><code>ConfiguracoesPage()</code><br><small style="color:var(--muted)">app/configuracoes/page.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
+  <td><code>devDependencies</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>devDependencies node in package.json.</td>
+</tr>
+<tr>
+  <td>17</td>
+  <td><code>eslint@^9</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>eslint@^9 node in package.json.</td>
+</tr>
+<tr>
+  <td>18</td>
+  <td><code>eslint-config-next@16.4.3</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
   <td>Reads, resolves, or persists project configuration.</td>
 </tr>
 <tr>
-  <td>17</td>
-  <td><code>ConsultaAuditoriaPage()</code><br><small style="color:var(--muted)">app/consulta/page.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>QuickChipSelect()</code><br><small style="color:var(--muted)">src/components/QuickChipSelect.tsx</small><br><code>StatusBadge()</code><br><small style="color:var(--muted)">src/components/StatusBadge.tsx</small></td>
-  <td>Organizes documentation pages, navigation, or content lookup.</td>
-</tr>
-<tr>
-  <td>18</td>
-  <td><code>PainelLaudosPage()</code><br><small style="color:var(--muted)">app/laudos/page.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>RelatorioBancadaDiaPrintView()</code><br><small style="color:var(--muted)">src/components/RelatorioBancadaDiaPrintView.tsx</small><br><code>StatusBadge()</code><br><small style="color:var(--muted)">src/components/StatusBadge.tsx</small></td>
-  <td>Organizes documentation pages, navigation, or content lookup.</td>
-</tr>
-<tr>
   <td>19</td>
-  <td><code>BancadaOperacionalPage()</code><br><small style="color:var(--muted)">app/urina/page.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
+  <td><code>tailwindcss@^4</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>baixarXlsxUrinalise()</code><br><small style="color:var(--muted)">src/lib/exportadorXmlExtensao.ts</small><br><code>baixarXmlUrinalise()</code><br><small style="color:var(--muted)">src/lib/exportadorXmlExtensao.ts</small><br><code>BarraAcoesTiragem()</code><br><small style="color:var(--muted)">src/components/BarraAcoesTiragem.tsx</small><br>+6 more</td>
-  <td>Organizes documentation pages, navigation, or content lookup.</td>
+  <td>No direct outbound edge</td>
+  <td>tailwindcss@^4 node in package.json.</td>
 </tr>
 <tr>
   <td>20</td>
-  <td><code>LoteVdrlPage()</code><br><small style="color:var(--muted)">app/vdrl/page.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
+  <td><code>@tailwindcss/turbopack@^4</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>formatarProntuario()</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small></td>
-  <td>Organizes documentation pages, navigation, or content lookup.</td>
+  <td>No direct outbound edge</td>
+  <td>@tailwindcss/turbopack@^4 node in package.json.</td>
 </tr>
 <tr>
   <td>21</td>
-  <td><code>AppLayoutWrapper()</code><br><small style="color:var(--muted)">src/components/AppLayoutWrapper.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
+  <td><code>@types/node@^20</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>AppLayoutWrapper() node in src/components/AppLayoutWrapper.tsx.</td>
+  <td>@types/node@^20 node in package.json.</td>
 </tr>
 <tr>
   <td>22</td>
-  <td><code>BarraAcoesTiragem()</code><br><small style="color:var(--muted)">src/components/BarraAcoesTiragem.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td><code>BancadaOperacionalPage()</code><br><small style="color:var(--muted)">app/urina/page.tsx</small></td>
+  <td><code>@types/pdf-parse@^1.1.5</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Supports retrieval-augmented Q&amp;A or streaming chat.</td>
+  <td>@types/pdf-parse@^1.1.5 node in package.json.</td>
 </tr>
 <tr>
   <td>23</td>
-  <td><code>LaudoPrintView()</code><br><small style="color:var(--muted)">src/components/LaudoPrintView.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
+  <td><code>@types/react@^19</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>LaudoPrintView() node in src/components/LaudoPrintView.tsx.</td>
+  <td>@types/react@^19 node in package.json.</td>
 </tr>
 <tr>
   <td>24</td>
-  <td><code>QuickChipSelect()</code><br><small style="color:var(--muted)">src/components/QuickChipSelect.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td><code>BancadaOperacionalPage()</code><br><small style="color:var(--muted)">app/urina/page.tsx</small><br><code>ConsultaAuditoriaPage()</code><br><small style="color:var(--muted)">app/consulta/page.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/consulta/page.tsx</small><br>+1 more</td>
+  <td><code>@types/react-dom@^19</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>QuickChipSelect() node in src/components/QuickChipSelect.tsx.</td>
+  <td>@types/react-dom@^19 node in package.json.</td>
 </tr>
 <tr>
   <td>25</td>
-  <td><code>extrairInfoRecoleta()</code><br><small style="color:var(--muted)">src/components/RelatorioBancadaDiaPrintView.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td><code>RelatorioBancadaDiaPrintView()</code><br><small style="color:var(--muted)">src/components/RelatorioBancadaDiaPrintView.tsx</small></td>
+  <td><code>typescript@^5</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>extrairInfoRecoleta() node in src/components/RelatorioBancadaDiaPrintView.tsx.</td>
+  <td>typescript@^5 node in package.json.</td>
 </tr>
 <tr>
   <td>26</td>
-  <td><code>pacienteTemUrina()</code><br><small style="color:var(--muted)">src/components/RelatorioBancadaDiaPrintView.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td><code>RelatorioBancadaDiaPrintView()</code><br><small style="color:var(--muted)">src/components/RelatorioBancadaDiaPrintView.tsx</small></td>
+  <td><code>name</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>pacienteTemUrina() node in src/components/RelatorioBancadaDiaPrintView.tsx.</td>
+  <td>name node in package.json.</td>
 </tr>
 <tr>
   <td>27</td>
-  <td><code>RelatorioBancadaDiaPrintView()</code><br><small style="color:var(--muted)">src/components/RelatorioBancadaDiaPrintView.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td><code>BancadaOperacionalPage()</code><br><small style="color:var(--muted)">app/urina/page.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/laudos/page.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/urina/page.tsx</small><br>+1 more</td>
-  <td><code>extrairInfoRecoleta()</code><br><small style="color:var(--muted)">src/components/RelatorioBancadaDiaPrintView.tsx</small><br><code>normalizarDataIso()</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small><br><code>pacienteTemUrina()</code><br><small style="color:var(--muted)">src/components/RelatorioBancadaDiaPrintView.tsx</small></td>
-  <td>RelatorioBancadaDiaPrintView() node in src/components/RelatorioBancadaDiaPrintView.tsx.</td>
+  <td><code>private</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>private node in package.json.</td>
 </tr>
 <tr>
   <td>28</td>
-  <td><code>StatusBadge()</code><br><small style="color:var(--muted)">src/components/StatusBadge.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td><code>ConsultaAuditoriaPage()</code><br><small style="color:var(--muted)">app/consulta/page.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/consulta/page.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/laudos/page.tsx</small><br>+1 more</td>
+  <td><code>scripts</code><br><small style="color:var(--muted)">package.json</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>StatusBadge() node in src/components/StatusBadge.tsx.</td>
+  <td>scripts node in package.json.</td>
 </tr>
 <tr>
   <td>29</td>
-  <td><code>baixarXlsxUrinalise()</code><br><small style="color:var(--muted)">src/lib/exportadorXmlExtensao.ts</small></td>
+  <td><code>build</code><br><small style="color:var(--muted)">package.json</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>BancadaOperacionalPage()</code><br><small style="color:var(--muted)">app/urina/page.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/urina/page.tsx</small></td>
-  <td><code>prepararDadosXmlUrinalise()</code><br><small style="color:var(--muted)">src/lib/exportadorXmlExtensao.ts</small></td>
-  <td>baixarXlsxUrinalise() node in src/lib/exportadorXmlExtensao.ts.</td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>build node in package.json.</td>
 </tr>
 <tr>
   <td>30</td>
-  <td><code>baixarXmlUrinalise()</code><br><small style="color:var(--muted)">src/lib/exportadorXmlExtensao.ts</small></td>
+  <td><code>dev</code><br><small style="color:var(--muted)">package.json</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>BancadaOperacionalPage()</code><br><small style="color:var(--muted)">app/urina/page.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/urina/page.tsx</small></td>
-  <td><code>gerarStringXmlUrinalise()</code><br><small style="color:var(--muted)">src/lib/exportadorXmlExtensao.ts</small><br><code>prepararDadosXmlUrinalise()</code><br><small style="color:var(--muted)">src/lib/exportadorXmlExtensao.ts</small></td>
-  <td>baixarXmlUrinalise() node in src/lib/exportadorXmlExtensao.ts.</td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>dev node in package.json.</td>
 </tr>
 </table>
 
@@ -509,19 +498,19 @@ flowchart LR
     <h4>Key Files</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>package.json</code></td><td>50 nodes</td></tr>
+      <tr><td><code>package.json</code></td><td>49 nodes</td></tr>
 <tr><td><code>tsconfig.json</code></td><td>19 nodes</td></tr>
-<tr><td><code>src/types/urinalise.ts</code></td><td>12 nodes</td></tr>
-<tr><td><code>src/lib/exportadorXmlExtensao.ts</code></td><td>11 nodes</td></tr>
-<tr><td><code>src/components/RelatorioBancadaDiaPrintView.tsx</code></td><td>5 nodes</td></tr>
-<tr><td><code>app/urina/page.tsx</code></td><td>4 nodes</td></tr>
-<tr><td><code>src/lib/mockData.ts</code></td><td>4 nodes</td></tr>
+<tr><td><code>src/components/TriagemEdtaReal.tsx</code></td><td>7 nodes</td></tr>
+<tr><td><code>src/lib/operadoresStore.ts</code></td><td>7 nodes</td></tr>
+<tr><td><code>src/app/layout.tsx</code></td><td>6 nodes</td></tr>
+<tr><td><code>src/components/Navbar.tsx</code></td><td>4 nodes</td></tr>
 <tr><td><code>vercel.json</code></td><td>4 nodes</td></tr>
+<tr><td><code>src/app/page.tsx</code></td><td>3 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: contains x100, imports x52, imports x43, calls x21. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: contains x83, imports x30, imports x29, calls x21. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -834,75 +823,78 @@ flowchart LR
 
 <!-- ====== 4. Serving API ====== -->
 <h2 id="serve-api">4. Serving API</h2>
-<p>Serving API groups implementation around app, routets, api, d1servicets, mostly in src/lib/d1Service.ts, src/lib/googleSheets.ts, src/lib/extratorBancada.ts. This section covers 149 nodes and 352 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Serving API groups implementation around app, routets, api, d1servicets, mostly in src/lib/d1Service.ts, src/lib/googleSheets.ts, src/lib/extratorBancada.ts. This section covers 196 nodes and 509 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Serving API (149 nodes, 352 edges)
-    subgraph serve_api_src_lib_d1Service_ts_0e4c1215["src/lib/d1Service.ts"]
-        src_lib_d1service_listarlaudos_fa5fd744("listarLaudos()<br/><small>src/lib/d1Service.ts</small>")
-        src_lib_d1service_isd1configured_1c0fe9e4("isD1Configured()<br/><small>src/lib/d1Service.ts</small>")
-        src_lib_d1service_salvarouatualizarlaudo_ba9b3eae("salvarOuAtualizarLaudo()<br/><small>src/lib/d1Service.ts</small>")
-        src_lib_d1service_listarrotinadia_5d4ea76e("listarRotinaDia()<br/><small>src/lib/d1Service.ts</small>")
-        src_lib_d1service_buscarpacienteporprontuario_c717976f("buscarPacientePorProntuario()<br/><small>src/lib/d1Service.ts</small>")
-        src_lib_d1service_salvarrotinadia_d8a6d2a7("salvarRotinaDia()<br/><small>src/lib/d1Service.ts</small>")
+    %% Section: Serving API (196 nodes, 509 edges)
+    subgraph serve_api_src_lib_exportadorXmlExtensao_ts_1c6d3179["src/lib/exportadorXmlExtensao.ts"]
+        src_lib_exportadorxmlextensao_baixarxlsxurinalis_5d0697c3("baixarXlsxUrinalise()<br/><small>src/lib/exportadorXmlExtensao.ts</small>")
+        src_lib_exportadorxmlextensao_baixarxmlurinalise_fbc0b7d1("baixarXmlUrinalise()<br/><small>src/lib/exportadorXmlExtensao.ts</small>")
+        src_lib_exportadorxmlextensao_gerarstringxmlurin_e6853df1("gerarStringXmlUrinalise()<br/><small>src/lib/exportadorXmlExtensao.ts</small>")
     end
-    subgraph serve_api_api_laudos_route_ts_6d16e4dd["api/laudos/route.ts"]
-        src_app_api_laudos_route_75c19432("route.ts")
-        src_app_api_laudos_route_get_6c101d23("GET()<br/><small>api/laudos/route.ts</small>")
-        src_app_api_laudos_route_post_e259d7db("POST()<br/><small>api/laudos/route.ts</small>")
+    subgraph serve_api_app_consulta_page_tsx_1fa9e859["app/consulta/page.tsx"]
+        src_app_consulta_page_79783d20("page.tsx")
+        src_app_consulta_page_consultaauditoriapage_b5881996("ConsultaAuditoriaPage()<br/><small>app/consulta/page.tsx</small>")
     end
-    subgraph serve_api_api_rotina_route_ts_3f7b0768["api/rotina/route.ts"]
-        src_app_api_rotina_route_get_bf303cd1("GET()<br/><small>api/rotina/route.ts</small>")
-        src_app_api_rotina_route_post_eb0eeb11("POST()<br/><small>api/rotina/route.ts</small>")
+    subgraph serve_api_app_laudos_page_tsx_4aa43d8a["app/laudos/page.tsx"]
+        src_app_laudos_page_792af3ca("page.tsx")
+        src_app_laudos_page_painellaudospage_e1bff834("PainelLaudosPage()<br/><small>app/laudos/page.tsx</small>")
     end
-    subgraph serve_api_api_triagem_edta_route_ts_404e7602["api/triagem-edta/route.ts"]
-        src_app_api_triagem_edta_route_732e1893("route.ts")
-        src_app_api_triagem_edta_route_post_db21f7db("POST()<br/><small>api/triagem-edta/route.ts</small>")
+    subgraph serve_api_app_urina_page_tsx_29496288["app/urina/page.tsx"]
+        src_app_urina_page_c93a6700("page.tsx")
+        src_app_urina_page_bancadaoperacionalpage_187e5da2("BancadaOperacionalPage()<br/><small>app/urina/page.tsx</small>")
     end
-    src_app_api_extrair_arquivo_route_aa5be0c5("route.ts")
-    src_app_api_laudos_dia_route_get_fe25b3a5("GET()<br/><small>api/laudos-dia/route.ts</small>")
-    src_app_api_paciente_route_get_6f6c52c9("GET()<br/><small>api/paciente/route.ts</small>")
-    src_app_retidos_glicada_page_fa9b6c06("page.tsx")
+    src_app_api_salvar_laudo_route_post_369889af("POST()<br/><small>api/salvar-laudo/route.ts</small>")
+    src_app_api_triagem_edta_route_732e1893("route.ts")
+    src_app_importar_page_61ff33e1("page.tsx")
+    src_components_barraacoestiragem_barraacoestirag_02709e11("BarraAcoesTiragem()<br/><small>src/components/BarraAcoesTiragem.tsx</small>")
+    src_components_quickchipselect_quickchipselect_0db490b9("QuickChipSelect()<br/><small>src/components/QuickChipSelect.tsx</small>")
+    src_components_relatoriobancadadiaprintview_rela_4a1e092c("RelatorioBancadaDiaPrintView()<br/><small>src/components/RelatorioBancadaDiaPrintView.tsx</small>")
+    src_components_statusbadge_statusbadge_bca45052("StatusBadge()<br/><small>src/components/StatusBadge.tsx</small>")
+    src_lib_d1service_salvarouatualizarlaudo_ba9b3eae("salvarOuAtualizarLaudo()<br/><small>src/lib/d1Service.ts</small>")
     src_lib_googlesheets_4aa42f1d("googleSheets.ts")
-    src_app_api_laudos_dia_route_get_fe25b3a5 -->|calls| src_lib_d1service_listarlaudos_fa5fd744
-    src_app_api_laudos_dia_route_get_fe25b3a5 -->|calls| src_lib_d1service_isd1configured_1c0fe9e4
-    src_app_api_laudos_route_get_6c101d23 -->|calls| src_lib_d1service_listarlaudos_fa5fd744
-    src_app_api_laudos_route_get_6c101d23 -->|calls| src_lib_d1service_isd1configured_1c0fe9e4
-    src_app_api_laudos_route_post_e259d7db -->|calls| src_lib_d1service_salvarouatualizarlaudo_ba9b3eae
-    src_app_api_paciente_route_get_6f6c52c9 -->|calls| src_lib_d1service_listarrotinadia_5d4ea76e
-    src_app_api_paciente_route_get_6f6c52c9 -->|calls| src_lib_d1service_listarlaudos_fa5fd744
-    src_app_api_rotina_route_get_bf303cd1 -->|calls| src_lib_d1service_buscarpacienteporprontuario_c717976f
-    src_app_api_rotina_route_get_bf303cd1 -->|calls| src_lib_d1service_listarrotinadia_5d4ea76e
-    src_app_api_rotina_route_post_eb0eeb11 -->|calls| src_lib_d1service_salvarrotinadia_d8a6d2a7
-    src_app_api_laudos_route_75c19432 -->|imports| src_lib_d1service_isd1configured_1c0fe9e4
-    src_app_api_laudos_route_75c19432 -->|imports| src_lib_d1service_listarlaudos_fa5fd744
-    src_app_api_laudos_route_75c19432 -->|imports| src_lib_d1service_salvarouatualizarlaudo_ba9b3eae
-    src_lib_googlesheets_4aa42f1d -->|imports| src_lib_d1service_buscarpacienteporprontuario_c717976f
-    src_lib_googlesheets_4aa42f1d -->|imports| src_lib_d1service_isd1configured_1c0fe9e4
-    src_lib_googlesheets_4aa42f1d -->|imports| src_lib_d1service_listarlaudos_fa5fd744
-    src_lib_googlesheets_4aa42f1d -->|imports| src_lib_d1service_listarrotinadia_5d4ea76e
+    src_app_api_salvar_laudo_route_post_369889af -->|calls| src_lib_d1service_salvarouatualizarlaudo_ba9b3eae
+    src_app_consulta_page_consultaauditoriapage_b5881996 -->|calls| src_components_statusbadge_statusbadge_bca45052
+    src_app_consulta_page_consultaauditoriapage_b5881996 -->|calls| src_components_quickchipselect_quickchipselect_0db490b9
+    src_app_laudos_page_painellaudospage_e1bff834 -->|calls| src_components_statusbadge_statusbadge_bca45052
+    src_app_laudos_page_painellaudospage_e1bff834 -->|calls| src_components_relatoriobancadadiaprintview_rela_4a1e092c
+    src_app_urina_page_bancadaoperacionalpage_187e5da2 -->|calls| src_lib_exportadorxmlextensao_baixarxlsxurinalis_5d0697c3
+    src_app_urina_page_bancadaoperacionalpage_187e5da2 -->|calls| src_lib_exportadorxmlextensao_baixarxmlurinalise_fbc0b7d1
+    src_app_urina_page_bancadaoperacionalpage_187e5da2 -->|calls| src_lib_exportadorxmlextensao_gerarstringxmlurin_e6853df1
+    src_app_urina_page_bancadaoperacionalpage_187e5da2 -->|calls| src_components_barraacoestiragem_barraacoestirag_02709e11
+    src_app_urina_page_bancadaoperacionalpage_187e5da2 -->|calls| src_components_quickchipselect_quickchipselect_0db490b9
+    src_app_urina_page_bancadaoperacionalpage_187e5da2 -->|calls| src_components_relatoriobancadadiaprintview_rela_4a1e092c
+    src_lib_exportadorxmlextensao_baixarxmlurinalise_fbc0b7d1 -->|calls| src_lib_exportadorxmlextensao_gerarstringxmlurin_e6853df1
+    src_app_consulta_page_79783d20 -->|imports| src_components_statusbadge_statusbadge_bca45052
+    src_app_consulta_page_79783d20 -->|imports| src_components_quickchipselect_quickchipselect_0db490b9
+    src_app_laudos_page_792af3ca -->|imports| src_components_statusbadge_statusbadge_bca45052
+    src_app_laudos_page_792af3ca -->|imports| src_components_relatoriobancadadiaprintview_rela_4a1e092c
+    src_app_urina_page_c93a6700 -->|imports| src_lib_exportadorxmlextensao_baixarxlsxurinalis_5d0697c3
+    src_app_urina_page_c93a6700 -->|imports| src_lib_exportadorxmlextensao_baixarxmlurinalise_fbc0b7d1
+    src_app_urina_page_c93a6700 -->|imports| src_lib_exportadorxmlextensao_gerarstringxmlurin_e6853df1
+    src_app_urina_page_c93a6700 -->|imports| src_components_quickchipselect_quickchipselect_0db490b9
+    src_app_urina_page_c93a6700 -->|imports| src_components_relatoriobancadadiaprintview_rela_4a1e092c
     src_lib_googlesheets_4aa42f1d -->|imports| src_lib_d1service_salvarouatualizarlaudo_ba9b3eae
-    src_lib_googlesheets_4aa42f1d -->|imports| src_lib_d1service_salvarrotinadia_d8a6d2a7
-    %% Omitted for readability: 131 nodes, 0 edges
-    class src_lib_d1service_listarlaudos_fa5fd744 function;
-    class src_lib_d1service_isd1configured_1c0fe9e4 function;
-    class src_lib_d1service_salvarouatualizarlaudo_ba9b3eae function;
-    class src_lib_d1service_listarrotinadia_5d4ea76e function;
-    class src_lib_d1service_buscarpacienteporprontuario_c717976f function;
-    class src_lib_d1service_salvarrotinadia_d8a6d2a7 function;
-    class src_app_api_laudos_route_75c19432 api;
-    class src_app_api_laudos_route_get_6c101d23 function;
-    class src_app_api_laudos_route_post_e259d7db function;
-    class src_app_api_rotina_route_get_bf303cd1 function;
-    class src_app_api_rotina_route_post_eb0eeb11 function;
+    %% Omitted for readability: 178 nodes, 0 edges
+    class src_lib_exportadorxmlextensao_baixarxlsxurinalis_5d0697c3 function;
+    class src_lib_exportadorxmlextensao_baixarxmlurinalise_fbc0b7d1 function;
+    class src_lib_exportadorxmlextensao_gerarstringxmlurin_e6853df1 function;
+    class src_app_consulta_page_79783d20 ui;
+    class src_app_consulta_page_consultaauditoriapage_b5881996 ui;
+    class src_app_laudos_page_792af3ca ui;
+    class src_app_laudos_page_painellaudospage_e1bff834 ui;
+    class src_app_urina_page_c93a6700 ui;
+    class src_app_urina_page_bancadaoperacionalpage_187e5da2 ui;
+    class src_app_api_salvar_laudo_route_post_369889af function;
     class src_app_api_triagem_edta_route_732e1893 api;
-    class src_app_api_triagem_edta_route_post_db21f7db function;
-    class src_app_api_extrair_arquivo_route_aa5be0c5 api;
-    class src_app_api_laudos_dia_route_get_fe25b3a5 function;
-    class src_app_api_paciente_route_get_6f6c52c9 function;
-    class src_app_retidos_glicada_page_fa9b6c06 ui;
+    class src_app_importar_page_61ff33e1 ui;
+    class src_components_barraacoestiragem_barraacoestirag_02709e11 ui;
+    class src_components_quickchipselect_quickchipselect_0db490b9 ui;
+    class src_components_relatoriobancadadiaprintview_rela_4a1e092c ui;
+    class src_components_statusbadge_statusbadge_bca45052 ui;
+    class src_lib_d1service_salvarouatualizarlaudo_ba9b3eae function;
     class src_lib_googlesheets_4aa42f1d module;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
@@ -927,14 +919,6 @@ flowchart LR
 </tr>
 <tr>
   <td>1</td>
-  <td><code>RelatorioTriagemEdtaPrintViewProps</code><br><small style="color:var(--muted)">src/components/RelatorioTriagemEdtaPrintView.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>RelatorioTriagemEdtaPrintViewProps node in src/components/RelatorioTriagemEdtaPrintView.tsx.</td>
-</tr>
-<tr>
-  <td>2</td>
   <td><code>D1Result</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
@@ -942,7 +926,7 @@ flowchart LR
   <td>D1Result node in src/lib/d1Service.ts.</td>
 </tr>
 <tr>
-  <td>3</td>
+  <td>2</td>
   <td><code>FallbackDbStructure</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
@@ -950,7 +934,7 @@ flowchart LR
   <td>FallbackDbStructure node in src/lib/d1Service.ts.</td>
 </tr>
 <tr>
-  <td>4</td>
+  <td>3</td>
   <td><code>FiltroLaudos</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td><code>googleSheets.ts</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small></td>
@@ -958,7 +942,7 @@ flowchart LR
   <td>FiltroLaudos node in src/lib/d1Service.ts.</td>
 </tr>
 <tr>
-  <td>5</td>
+  <td>4</td>
   <td><code>ResultadoSalvarRotina</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td><code>googleSheets.ts</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small></td>
@@ -966,15 +950,7 @@ flowchart LR
   <td>ResultadoSalvarRotina node in src/lib/d1Service.ts.</td>
 </tr>
 <tr>
-  <td>6</td>
-  <td><code>ResultadoSalvarTriagemEdta</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td><code>googleSheets.ts</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small></td>
-  <td>No direct outbound edge</td>
-  <td>ResultadoSalvarTriagemEdta node in src/lib/d1Service.ts.</td>
-</tr>
-<tr>
-  <td>7</td>
+  <td>5</td>
   <td><code>SinalImpressaoState</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
@@ -982,55 +958,7 @@ flowchart LR
   <td>SinalImpressaoState node in src/lib/d1Service.ts.</td>
 </tr>
 <tr>
-  <td>8</td>
-  <td><code>ItemRotina</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>ItemRotina node in src/lib/extratorBancada.ts.</td>
-</tr>
-<tr>
-  <td>9</td>
-  <td><code>LinhaColetaBruta</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>LinhaColetaBruta node in src/lib/extratorBancada.ts.</td>
-</tr>
-<tr>
-  <td>10</td>
-  <td><code>LinhaRelatorioBancada</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>LinhaRelatorioBancada node in src/lib/extratorBancada.ts.</td>
-</tr>
-<tr>
-  <td>11</td>
-  <td><code>ResultadoExtracaoBancada</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>ResultadoExtracaoBancada node in src/lib/extratorBancada.ts.</td>
-</tr>
-<tr>
-  <td>12</td>
-  <td><code>ResultadoProcessamentoBancada</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>ResultadoProcessamentoBancada node in src/lib/extratorBancada.ts.</td>
-</tr>
-<tr>
-  <td>13</td>
-  <td><code>ItemTriagemEdta</code><br><small style="color:var(--muted)">src/types/urinalise.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td><code>d1Service.ts</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br><code>extratorBancada.ts</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small><br><code>googleSheets.ts</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br>+4 more</td>
-  <td>No direct outbound edge</td>
-  <td>ItemTriagemEdta node in src/types/urinalise.ts.</td>
-</tr>
-<tr>
-  <td>14</td>
+  <td>6</td>
   <td><code>GET()</code><br><small style="color:var(--muted)">api/medicos/route.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1038,7 +966,7 @@ flowchart LR
   <td>GET() node in api/medicos/route.ts.</td>
 </tr>
 <tr>
-  <td>15</td>
+  <td>7</td>
   <td><code>POST()</code><br><small style="color:var(--muted)">api/medicos/route.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1046,7 +974,7 @@ flowchart LR
   <td>POST() node in api/medicos/route.ts.</td>
 </tr>
 <tr>
-  <td>16</td>
+  <td>8</td>
   <td><code>GET()</code><br><small style="color:var(--muted)">api/operadores/route.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1054,7 +982,7 @@ flowchart LR
   <td>GET() node in api/operadores/route.ts.</td>
 </tr>
 <tr>
-  <td>17</td>
+  <td>9</td>
   <td><code>POST()</code><br><small style="color:var(--muted)">api/operadores/route.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1062,7 +990,31 @@ flowchart LR
   <td>POST() node in api/operadores/route.ts.</td>
 </tr>
 <tr>
-  <td>18</td>
+  <td>10</td>
+  <td><code>GET()</code><br><small style="color:var(--muted)">api/paciente/route.ts</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>listarLaudos()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br><code>listarRotinaDia()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
+  <td>GET() node in api/paciente/route.ts.</td>
+</tr>
+<tr>
+  <td>11</td>
+  <td><code>GET()</code><br><small style="color:var(--muted)">api/rotina/route.ts</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>buscarPacientePorProntuario()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br><code>listarRotinaDia()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
+  <td>GET() node in api/rotina/route.ts.</td>
+</tr>
+<tr>
+  <td>12</td>
+  <td><code>POST()</code><br><small style="color:var(--muted)">api/rotina/route.ts</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>salvarRotinaDia()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
+  <td>POST() node in api/rotina/route.ts.</td>
+</tr>
+<tr>
+  <td>13</td>
   <td><code>GET()</code><br><small style="color:var(--muted)">api/triagem-edta/route.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1070,7 +1022,7 @@ flowchart LR
   <td>GET() node in api/triagem-edta/route.ts.</td>
 </tr>
 <tr>
-  <td>19</td>
+  <td>14</td>
   <td><code>POST()</code><br><small style="color:var(--muted)">api/triagem-edta/route.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1078,7 +1030,7 @@ flowchart LR
   <td>POST() node in api/triagem-edta/route.ts.</td>
 </tr>
 <tr>
-  <td>20</td>
+  <td>15</td>
   <td><code>RetidosGlicadaPage()</code><br><small style="color:var(--muted)">app/retidos-glicada/page.tsx</small></td>
   <td><span class="tag tag-hook">UI</span></td>
   <td>External entry / no inbound edge</td>
@@ -1086,7 +1038,7 @@ flowchart LR
   <td>Organizes documentation pages, navigation, or content lookup.</td>
 </tr>
 <tr>
-  <td>21</td>
+  <td>16</td>
   <td><code>atualizarStatusItemEdta()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>atualizarStatusItemEdta()</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br><code>googleSheets.ts</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br><code>POST()</code><br><small style="color:var(--muted)">api/triagem-edta/route.ts</small><br>+1 more</td>
@@ -1094,7 +1046,15 @@ flowchart LR
   <td>atualizarStatusItemEdta() node in src/lib/d1Service.ts.</td>
 </tr>
 <tr>
-  <td>22</td>
+  <td>17</td>
+  <td><code>buscarPacientePorProntuario()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>buscarPacientePorProntuario()</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br><code>GET()</code><br><small style="color:var(--muted)">api/rotina/route.ts</small><br><code>googleSheets.ts</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br>+1 more</td>
+  <td><code>formatarProntuario()</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small><br><code>getD1Database()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br><code>normalizarProntuario()</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small></td>
+  <td>buscarPacientePorProntuario() node in src/lib/d1Service.ts.</td>
+</tr>
+<tr>
+  <td>18</td>
   <td><code>consumirSinalImpressaoEdta()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>consumirSinalImpressaoEdta()</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br><code>GET()</code><br><small style="color:var(--muted)">api/triagem-edta/route.ts</small><br><code>googleSheets.ts</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br>+2 more</td>
@@ -1102,7 +1062,7 @@ flowchart LR
   <td>consumirSinalImpressaoEdta() node in src/lib/d1Service.ts.</td>
 </tr>
 <tr>
-  <td>23</td>
+  <td>19</td>
   <td><code>criarD1HttpDriver()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>getD1Database()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
@@ -1110,7 +1070,7 @@ flowchart LR
   <td>criarD1HttpDriver() node in src/lib/d1Service.ts.</td>
 </tr>
 <tr>
-  <td>24</td>
+  <td>20</td>
   <td><code>criarD1LocalDriver()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>getD1Database()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
@@ -1118,7 +1078,7 @@ flowchart LR
   <td>criarD1LocalDriver() node in src/lib/d1Service.ts.</td>
 </tr>
 <tr>
-  <td>25</td>
+  <td>21</td>
   <td><code>emitirSinalImpressaoEdta()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>emitirSinalImpressaoEdta()</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br><code>googleSheets.ts</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br><code>POST()</code><br><small style="color:var(--muted)">api/triagem-edta/route.ts</small><br>+1 more</td>
@@ -1126,7 +1086,7 @@ flowchart LR
   <td>emitirSinalImpressaoEdta() node in src/lib/d1Service.ts.</td>
 </tr>
 <tr>
-  <td>26</td>
+  <td>22</td>
   <td><code>excluirItemEdta()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>excluirItemEdta()</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br><code>googleSheets.ts</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br><code>POST()</code><br><small style="color:var(--muted)">api/triagem-edta/route.ts</small><br>+1 more</td>
@@ -1134,7 +1094,7 @@ flowchart LR
   <td>excluirItemEdta() node in src/lib/d1Service.ts.</td>
 </tr>
 <tr>
-  <td>27</td>
+  <td>23</td>
   <td><code>getD1Database()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>atualizarStatusItemEdta()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br><code>buscarPacientePorProntuario()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br><code>consumirSinalImpressaoEdta()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br>+17 more</td>
@@ -1142,7 +1102,7 @@ flowchart LR
   <td>getD1Database() node in src/lib/d1Service.ts.</td>
 </tr>
 <tr>
-  <td>28</td>
+  <td>24</td>
   <td><code>inicializarDbLocal()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1150,7 +1110,15 @@ flowchart LR
   <td>inicializarDbLocal() node in src/lib/d1Service.ts.</td>
 </tr>
 <tr>
-  <td>29</td>
+  <td>25</td>
+  <td><code>listarLaudos()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>GET()</code><br><small style="color:var(--muted)">api/laudos-dia/route.ts</small><br><code>GET()</code><br><small style="color:var(--muted)">api/laudos/route.ts</small><br><code>GET()</code><br><small style="color:var(--muted)">api/paciente/route.ts</small><br>+5 more</td>
+  <td><code>formatarProntuario()</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small><br><code>getD1Database()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br><code>normalizarDataIso()</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small><br>+1 more</td>
+  <td>listarLaudos() node in src/lib/d1Service.ts.</td>
+</tr>
+<tr>
+  <td>26</td>
   <td><code>listarMedicosD1()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>GET()</code><br><small style="color:var(--muted)">api/medicos/route.ts</small><br><code>googleSheets.ts</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br><code>listarMedicosGoogleSheets()</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br>+3 more</td>
@@ -1158,12 +1126,36 @@ flowchart LR
   <td>listarMedicosD1() node in src/lib/d1Service.ts.</td>
 </tr>
 <tr>
-  <td>30</td>
+  <td>27</td>
   <td><code>listarMedicosGoogleSheets()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
   <td><code>listarMedicosD1()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
   <td>listarMedicosGoogleSheets() node in src/lib/d1Service.ts.</td>
+</tr>
+<tr>
+  <td>28</td>
+  <td><code>listarOperadoresD1()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>GET()</code><br><small style="color:var(--muted)">api/operadores/route.ts</small><br><code>googleSheets.ts</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br><code>listarOperadoresGoogleSheets()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br>+3 more</td>
+  <td><code>getD1Database()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
+  <td>listarOperadoresD1() node in src/lib/d1Service.ts.</td>
+</tr>
+<tr>
+  <td>29</td>
+  <td><code>listarOperadoresGoogleSheets()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>listarOperadoresD1()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
+  <td>listarOperadoresGoogleSheets() node in src/lib/d1Service.ts.</td>
+</tr>
+<tr>
+  <td>30</td>
+  <td><code>listarRotinaDia()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>GET()</code><br><small style="color:var(--muted)">api/rotina/route.ts</small><br><code>GET()</code><br><small style="color:var(--muted)">api/paciente/route.ts</small><br><code>googleSheets.ts</code><br><small style="color:var(--muted)">src/lib/googleSheets.ts</small><br>+3 more</td>
+  <td><code>getD1Database()</code><br><small style="color:var(--muted)">src/lib/d1Service.ts</small><br><code>obterHojeIsoLocal()</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small></td>
+  <td>listarRotinaDia() node in src/lib/d1Service.ts.</td>
 </tr>
 </table>
 
@@ -1175,28 +1167,28 @@ flowchart LR
       <tr><td><code>src/lib/d1Service.ts</code></td><td>35 nodes</td></tr>
 <tr><td><code>src/lib/googleSheets.ts</code></td><td>23 nodes</td></tr>
 <tr><td><code>src/lib/extratorBancada.ts</code></td><td>18 nodes</td></tr>
-<tr><td><code>src/app/layout.tsx</code></td><td>6 nodes</td></tr>
+<tr><td><code>src/types/urinalise.ts</code></td><td>14 nodes</td></tr>
+<tr><td><code>src/lib/exportadorXmlExtensao.ts</code></td><td>11 nodes</td></tr>
 <tr><td><code>api/extrair-arquivo/route.ts</code></td><td>5 nodes</td></tr>
 <tr><td><code>api/laudos/route.ts</code></td><td>5 nodes</td></tr>
 <tr><td><code>api/medicos/route.ts</code></td><td>5 nodes</td></tr>
-<tr><td><code>api/operadores/route.ts</code></td><td>5 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: calls x123, contains x120, imports x66, imports x36. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: contains x159, calls x148, imports x128, imports x58. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
 
 <!-- ====== 5. Medicosstorets Audiofeedbackts Components ====== -->
 <h2 id="medicosstorets-audiofeedbackts-components">5. Medicosstorets Audiofeedbackts Components</h2>
-<p>Medicosstorets Audiofeedbackts Components groups implementation around medicosstorets, audiofeedbackts, components, edtaocrscannertsx, mostly in src/lib/medicosStore.ts, src/lib/audioFeedback.ts, src/components/EdtaOcrScanner.tsx. This section covers 29 nodes and 80 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Medicosstorets Audiofeedbackts Components groups implementation around medicosstorets, audiofeedbackts, components, edtaocrscannertsx, mostly in src/lib/medicosStore.ts, src/lib/audioFeedback.ts, src/components/EdtaOcrScanner.tsx. This section covers 27 nodes and 75 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Medicosstorets Audiofeedbackts Components (29 nodes, 80 edges)
+    %% Section: Medicosstorets Audiofeedbackts Components (27 nodes, 75 edges)
     subgraph medicosstorets_audiofeedbackts_components_src_li_fa7411d4["src/lib/medicosStore.ts"]
         src_lib_medicosstore_removermedico_1e63afc9("removerMedico()<br/><small>src/lib/medicosStore.ts</small>")
         src_lib_medicosstore_sincronizarmedicoscomservid_197890b7("sincronizarMedicosComServidor()<br/><small>src/lib/medicosStore.ts</small>")
@@ -1206,6 +1198,7 @@ flowchart LR
         src_lib_medicosstore_adicionarmedico_192f6c1a("adicionarMedico()<br/><small>src/lib/medicosStore.ts</small>")
     end
     subgraph medicosstorets_audiofeedbackts_components_src_li_bb7eadab["src/lib/audioFeedback.ts"]
+        src_lib_audiofeedback_tocarsomnaoencontrado_48480c64("tocarSomNaoEncontrado()<br/><small>src/lib/audioFeedback.ts</small>")
         src_lib_audiofeedback_tocarsomconfirmado_b948a19c("tocarSomConfirmado()<br/><small>src/lib/audioFeedback.ts</small>")
         src_lib_audiofeedback_tocarsomsutil_b85c8040("tocarSomSutil()<br/><small>src/lib/audioFeedback.ts</small>")
         src_lib_audiofeedback_tocarsomhemogramaglicada_14206496("tocarSomHemogramaGlicada()<br/><small>src/lib/audioFeedback.ts</small>")
@@ -1219,14 +1212,11 @@ flowchart LR
         src_components_edtaocrscanner_dedb9714("EdtaOcrScanner.tsx")
         src_components_edtaocrscanner_edtaocrscanner_c56e039c("EdtaOcrScanner()<br/><small>src/components/EdtaOcrScanner.tsx</small>")
     end
-    subgraph medicosstorets_audiofeedbackts_components_src_co_95f58baf["src/components/RelatorioTriagemEdtaPrintView.tsx"]
-        src_components_relatoriotriagemedtaprintview_9e29448c("RelatorioTriagemEdtaPrintView.tsx")
-        src_components_relatoriotriagemedtaprintview_rel_ce6e855a("RelatorioTriagemEdtaPrintView()<br/><small>src/components/RelatorioTriagemEdtaPrintView.tsx</small>")
-    end
     subgraph medicosstorets_audiofeedbackts_components_src_li_98484c70["src/lib/extratorBancada.ts"]
         src_lib_extratorbancada_normalizardigitosdata_88c9d0fe("normalizarDigitosData()<br/><small>src/lib/extratorBancada.ts</small>")
         src_lib_extratorbancada_formatardatanascimento_a9fa78c8("formatarDataNascimento()<br/><small>src/lib/extratorBancada.ts</small>")
     end
+    src_components_relatoriotriagemedtaprintview_rel_ce6e855a("RelatorioTriagemEdtaPrintView()<br/><small>src/components/RelatorioTriagemEdtaPrintView.tsx</small>")
     src_app_triagem_edta_page_triagemedtapage_d6919683 -->|calls| src_lib_medicosstore_removermedico_1e63afc9
     src_app_triagem_edta_page_triagemedtapage_d6919683 -->|calls| src_lib_medicosstore_definirmedicopadrao_9a69a3f4
     src_app_triagem_edta_page_triagemedtapage_d6919683 -->|calls| src_lib_medicosstore_obtermedicoscadastrados_a548ed2c
@@ -1251,13 +1241,14 @@ flowchart LR
     src_lib_medicosstore_sincronizarmedicoscomservid_197890b7 -->|calls| src_lib_medicosstore_obtermedicoscadastrados_a548ed2c
     src_lib_medicosstore_sincronizarmedicoscomservid_197890b7 -->|calls| src_lib_medicosstore_obtermedicopadrao_a1c92fb9
     src_app_triagem_edta_page_f48ca023 -->|imports| src_lib_extratorbancada_formatardatanascimento_a9fa78c8
-    %% Omitted for readability: 11 nodes, 18 edges
+    %% Omitted for readability: 9 nodes, 16 edges
     class src_lib_medicosstore_removermedico_1e63afc9 function;
     class src_lib_medicosstore_sincronizarmedicoscomservid_197890b7 function;
     class src_lib_medicosstore_definirmedicopadrao_9a69a3f4 function;
     class src_lib_medicosstore_obtermedicoscadastrados_a548ed2c function;
     class src_lib_medicosstore_obtermedicopadrao_a1c92fb9 function;
     class src_lib_medicosstore_adicionarmedico_192f6c1a function;
+    class src_lib_audiofeedback_tocarsomnaoencontrado_48480c64 function;
     class src_lib_audiofeedback_tocarsomconfirmado_b948a19c function;
     class src_lib_audiofeedback_tocarsomsutil_b85c8040 function;
     class src_lib_audiofeedback_tocarsomhemogramaglicada_14206496 function;
@@ -1266,10 +1257,9 @@ flowchart LR
     class src_app_triagem_edta_page_triagemedtapage_d6919683 ui;
     class src_components_edtaocrscanner_dedb9714 ui;
     class src_components_edtaocrscanner_edtaocrscanner_c56e039c ui;
-    class src_components_relatoriotriagemedtaprintview_9e29448c ui;
-    class src_components_relatoriotriagemedtaprintview_rel_ce6e855a ui;
     class src_lib_extratorbancada_normalizardigitosdata_88c9d0fe function;
     class src_lib_extratorbancada_formatardatanascimento_a9fa78c8 function;
+    class src_components_relatoriotriagemedtaprintview_rel_ce6e855a ui;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
     classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
@@ -1485,14 +1475,6 @@ flowchart LR
 </tr>
 <tr>
   <td>25</td>
-  <td><code>RelatorioTriagemEdtaPrintView.tsx</code><br><small style="color:var(--muted)">src/components/RelatorioTriagemEdtaPrintView.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td><code>page.tsx</code><br><small style="color:var(--muted)">app/triagem-edta/page.tsx</small></td>
-  <td><code>DEFAULT_LAB_CONFIG</code><br><small style="color:var(--muted)">src/types/urinalise.ts</small><br><code>extratorBancada.ts</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small><br><code>formatarDataNascimento()</code><br><small style="color:var(--muted)">src/lib/extratorBancada.ts</small><br>+4 more</td>
-  <td>Module file in src/components/RelatorioTriagemEdtaPrintView.tsx.</td>
-</tr>
-<tr>
-  <td>26</td>
   <td><code>audioFeedback.ts</code><br><small style="color:var(--muted)">src/lib/audioFeedback.ts</small></td>
   <td><span class="tag tag-class">Module</span></td>
   <td><code>page.tsx</code><br><small style="color:var(--muted)">app/triagem-edta/page.tsx</small></td>
@@ -1500,7 +1482,7 @@ flowchart LR
   <td>Module file in src/lib/audioFeedback.ts.</td>
 </tr>
 <tr>
-  <td>27</td>
+  <td>26</td>
   <td><code>medicosStore.ts</code><br><small style="color:var(--muted)">src/lib/medicosStore.ts</small></td>
   <td><span class="tag tag-hook">UI</span></td>
   <td><code>page.tsx</code><br><small style="color:var(--muted)">app/triagem-edta/page.tsx</small></td>
@@ -1508,20 +1490,12 @@ flowchart LR
   <td>Module file in src/lib/medicosStore.ts.</td>
 </tr>
 <tr>
-  <td>28</td>
+  <td>27</td>
   <td><code>MEDICOS_PADRAO_INICIAIS</code><br><small style="color:var(--muted)">src/lib/medicosStore.ts</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
   <td>MEDICOS_PADRAO_INICIAIS node in src/lib/medicosStore.ts.</td>
-</tr>
-<tr>
-  <td>29</td>
-  <td><code>DEFAULT_LAB_CONFIG</code><br><small style="color:var(--muted)">src/types/urinalise.ts</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td><code>LaudoPrintView.tsx</code><br><small style="color:var(--muted)">src/components/LaudoPrintView.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/triagem-edta/page.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/configuracoes/page.tsx</small><br>+4 more</td>
-  <td>No direct outbound edge</td>
-  <td>Reads, resolves, or persists project configuration.</td>
 </tr>
 </table>
 
@@ -1534,288 +1508,36 @@ flowchart LR
 <tr><td><code>src/lib/audioFeedback.ts</code></td><td>8 nodes</td></tr>
 <tr><td><code>src/components/EdtaOcrScanner.tsx</code></td><td>4 nodes</td></tr>
 <tr><td><code>app/triagem-edta/page.tsx</code></td><td>2 nodes</td></tr>
-<tr><td><code>src/components/RelatorioTriagemEdtaPrintView.tsx</code></td><td>2 nodes</td></tr>
 <tr><td><code>src/lib/extratorBancada.ts</code></td><td>2 nodes</td></tr>
-<tr><td><code>src/types/urinalise.ts</code></td><td>1 nodes</td></tr>
+<tr><td><code>src/components/RelatorioTriagemEdtaPrintView.tsx</code></td><td>1 nodes</td></tr>
 <tr><td><code>tesseract.js</code></td><td>1 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: calls x34, imports x21, contains x20, imports x4. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: calls x34, contains x19, imports x18, imports x3. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
 
-<!-- ====== 6. Components Operadoresstorets Navbartsx ====== -->
-<h2 id="components-operadoresstorets-navbartsx">6. Components Operadoresstorets Navbartsx</h2>
-<p>Components Operadoresstorets Navbartsx groups implementation around components, operadoresstorets, navbartsx, logotsx, mostly in src/lib/operadoresStore.ts, src/components/Navbar.tsx, src/components/Logo.tsx. This section covers 17 nodes and 45 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<!-- ====== 6. Content Conectasusjs Extensao ====== -->
+<h2 id="content-conectasusjs-extensao">6. Content Conectasusjs Extensao</h2>
+<p>Content Conectasusjs Extensao groups implementation around content, conectasusjs, extensao, chrome, mostly in extensao-chrome/content_conectasus.js. This section covers 18 nodes and 44 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Components Operadoresstorets Navbartsx (17 nodes, 45 edges)
-    subgraph components_operadoresstorets_navbartsx_src_lib_o_be618649["src/lib/operadoresStore.ts"]
-        src_lib_operadoresstore_adicionaroperador_98986975("adicionarOperador()<br/><small>src/lib/operadoresStore.ts</small>")
-        src_lib_operadoresstore_removeroperador_60ceed80("removerOperador()<br/><small>src/lib/operadoresStore.ts</small>")
-        src_lib_operadoresstore_obteroperadorescadastrad_b495c12f("obterOperadoresCadastrados()<br/><small>src/lib/operadoresStore.ts</small>")
-        src_lib_operadoresstore_obteroperadorativo_776ee5e4("obterOperadorAtivo()<br/><small>src/lib/operadoresStore.ts</small>")
-        src_lib_operadoresstore_sincronizaroperadorescom_2ee6b47a("sincronizarOperadoresComServidor()<br/><small>src/lib/operadoresStore.ts</small>")
-        src_lib_operadoresstore_definiroperadorativo_a6654b9e("definirOperadorAtivo()<br/><small>src/lib/operadoresStore.ts</small>")
-        src_lib_operadoresstore_8b40d3da("operadoresStore.ts")
-    end
-    subgraph components_operadoresstorets_navbartsx_src_compo_94abd3f4["src/components/Navbar.tsx"]
-        src_components_navbar_844f5f16("Navbar.tsx")
-        src_components_navbar_navbar_319d91c7("Navbar()<br/><small>src/components/Navbar.tsx</small>")
-        src_components_navbar_grupomenu_9f293890("GrupoMenu<br/><small>src/components/Navbar.tsx</small>")
-        src_components_navbar_itemmenu_45906429("ItemMenu<br/><small>src/components/Navbar.tsx</small>")
-    end
-    subgraph components_operadoresstorets_navbartsx_src_compo_422f5a1f["src/components/Logo.tsx"]
-        src_components_logo_logo_c9c95a3b("Logo()<br/><small>src/components/Logo.tsx</small>")
-        src_components_logo_b4b33242("Logo.tsx")
-        src_components_logo_logoprops_d695120e("LogoProps<br/><small>src/components/Logo.tsx</small>")
-    end
-    subgraph components_operadoresstorets_navbartsx_src_compo_8e462216["src/components/ModalSelecionarOperador.tsx"]
-        src_components_modalselecionaroperador_15f65eb5("ModalSelecionarOperador.tsx")
-        src_components_modalselecionaroperador_modalsele_99ecdd70("ModalSelecionarOperador()<br/><small>src/components/ModalSelecionarOperador.tsx</small>")
-        src_components_modalselecionaroperador_modalsele_455aeca8("ModalSelecionarOperadorProps<br/><small>src/components/ModalSelecionarOperador.tsx</small>")
-    end
-    src_components_modalselecionaroperador_modalsele_99ecdd70 -->|calls| src_lib_operadoresstore_obteroperadorescadastrad_b495c12f
-    src_components_modalselecionaroperador_modalsele_99ecdd70 -->|calls| src_lib_operadoresstore_obteroperadorativo_776ee5e4
-    src_components_modalselecionaroperador_modalsele_99ecdd70 -->|calls| src_lib_operadoresstore_sincronizaroperadorescom_2ee6b47a
-    src_components_modalselecionaroperador_modalsele_99ecdd70 -->|calls| src_lib_operadoresstore_definiroperadorativo_a6654b9e
-    src_components_modalselecionaroperador_modalsele_99ecdd70 -->|calls| src_lib_operadoresstore_adicionaroperador_98986975
-    src_components_modalselecionaroperador_modalsele_99ecdd70 -->|calls| src_lib_operadoresstore_removeroperador_60ceed80
-    src_components_navbar_navbar_319d91c7 -->|calls| src_components_modalselecionaroperador_modalsele_99ecdd70
-    src_components_navbar_navbar_319d91c7 -->|calls| src_components_logo_logo_c9c95a3b
-    src_components_navbar_navbar_319d91c7 -->|calls| src_lib_operadoresstore_obteroperadorativo_776ee5e4
-    src_components_navbar_navbar_319d91c7 -->|calls| src_lib_operadoresstore_sincronizaroperadorescom_2ee6b47a
-    src_lib_operadoresstore_adicionaroperador_98986975 -->|calls| src_lib_operadoresstore_obteroperadorescadastrad_b495c12f
-    src_lib_operadoresstore_adicionaroperador_98986975 -->|calls| src_lib_operadoresstore_obteroperadorativo_776ee5e4
-    src_lib_operadoresstore_definiroperadorativo_a6654b9e -->|calls| src_lib_operadoresstore_obteroperadorescadastrad_b495c12f
-    src_lib_operadoresstore_obteroperadorativo_776ee5e4 -->|calls| src_lib_operadoresstore_obteroperadorescadastrad_b495c12f
-    src_lib_operadoresstore_removeroperador_60ceed80 -->|calls| src_lib_operadoresstore_obteroperadorescadastrad_b495c12f
-    src_lib_operadoresstore_removeroperador_60ceed80 -->|calls| src_lib_operadoresstore_obteroperadorativo_776ee5e4
-    src_lib_operadoresstore_sincronizaroperadorescom_2ee6b47a -->|calls| src_lib_operadoresstore_obteroperadorescadastrad_b495c12f
-    src_lib_operadoresstore_sincronizaroperadorescom_2ee6b47a -->|calls| src_lib_operadoresstore_obteroperadorativo_776ee5e4
-    src_components_modalselecionaroperador_15f65eb5 -->|imports| src_lib_operadoresstore_adicionaroperador_98986975
-    src_components_modalselecionaroperador_15f65eb5 -->|imports| src_lib_operadoresstore_definiroperadorativo_a6654b9e
-    src_components_modalselecionaroperador_15f65eb5 -->|imports| src_lib_operadoresstore_obteroperadorativo_776ee5e4
-    src_components_modalselecionaroperador_15f65eb5 -->|imports| src_lib_operadoresstore_obteroperadorescadastrad_b495c12f
-    src_components_modalselecionaroperador_15f65eb5 -->|imports| src_lib_operadoresstore_removeroperador_60ceed80
-    src_components_modalselecionaroperador_15f65eb5 -->|imports| src_lib_operadoresstore_sincronizaroperadorescom_2ee6b47a
-    %% Omitted for readability: 0 nodes, 8 edges
-    class src_lib_operadoresstore_adicionaroperador_98986975 function;
-    class src_lib_operadoresstore_removeroperador_60ceed80 function;
-    class src_lib_operadoresstore_obteroperadorescadastrad_b495c12f function;
-    class src_lib_operadoresstore_obteroperadorativo_776ee5e4 function;
-    class src_lib_operadoresstore_sincronizaroperadorescom_2ee6b47a function;
-    class src_lib_operadoresstore_definiroperadorativo_a6654b9e function;
-    class src_lib_operadoresstore_8b40d3da ui;
-    class src_components_navbar_844f5f16 ui;
-    class src_components_navbar_navbar_319d91c7 ui;
-    class src_components_navbar_grupomenu_9f293890 ui;
-    class src_components_navbar_itemmenu_45906429 ui;
-    class src_components_logo_logo_c9c95a3b ui;
-    class src_components_logo_b4b33242 ui;
-    class src_components_logo_logoprops_d695120e ui;
-    class src_components_modalselecionaroperador_15f65eb5 ui;
-    class src_components_modalselecionaroperador_modalsele_99ecdd70 ui;
-    class src_components_modalselecionaroperador_modalsele_455aeca8 ui;
-    classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
-    classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
-    classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
-    classDef klass fill:#064e3b,stroke:#34d399,color:#d1fae5,stroke-width:1px;
-    classDef ui fill:#831843,stroke:#f472b6,color:#fce7f3,stroke-width:1px;
-    classDef module fill:#172554,stroke:#60a5fa,color:#dbeafe,stroke-width:1px;
-    classDef test fill:#3f3f46,stroke:#a1a1aa,color:#f4f4f5,stroke-width:1px;
-    classDef concept fill:#292524,stroke:#a8a29e,color:#fafaf9,stroke-dasharray:4 3;
-    classDef function fill:#0f172a,stroke:#38bdf8,color:#e0f2fe,stroke-width:1px;
-</div>
-
-<h3>Call Details</h3>
-<table class="call-table">
-<tr>
-  <th style="width:5%">#</th>
-  <th style="width:28%">Node</th>
-  <th style="width:10%">Type</th>
-  <th style="width:17%">Caller</th>
-  <th style="width:20%">Callees</th>
-  <th style="width:20%">Description</th>
-</tr>
-<tr>
-  <td>1</td>
-  <td><code>LogoProps</code><br><small style="color:var(--muted)">src/components/Logo.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>LogoProps node in src/components/Logo.tsx.</td>
-</tr>
-<tr>
-  <td>2</td>
-  <td><code>ModalSelecionarOperadorProps</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>ModalSelecionarOperadorProps node in src/components/ModalSelecionarOperador.tsx.</td>
-</tr>
-<tr>
-  <td>3</td>
-  <td><code>GrupoMenu</code><br><small style="color:var(--muted)">src/components/Navbar.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>GrupoMenu node in src/components/Navbar.tsx.</td>
-</tr>
-<tr>
-  <td>4</td>
-  <td><code>ItemMenu</code><br><small style="color:var(--muted)">src/components/Navbar.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>ItemMenu node in src/components/Navbar.tsx.</td>
-</tr>
-<tr>
-  <td>5</td>
-  <td><code>Logo()</code><br><small style="color:var(--muted)">src/components/Logo.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td><code>Navbar()</code><br><small style="color:var(--muted)">src/components/Navbar.tsx</small><br><code>Navbar.tsx</code><br><small style="color:var(--muted)">src/components/Navbar.tsx</small></td>
-  <td>No direct outbound edge</td>
-  <td>Logo() node in src/components/Logo.tsx.</td>
-</tr>
-<tr>
-  <td>6</td>
-  <td><code>ModalSelecionarOperador()</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td><code>Navbar()</code><br><small style="color:var(--muted)">src/components/Navbar.tsx</small><br><code>Navbar.tsx</code><br><small style="color:var(--muted)">src/components/Navbar.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/triagem-edta/page.tsx</small><br>+1 more</td>
-  <td><code>adicionarOperador()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small><br><code>definirOperadorAtivo()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small><br><code>obterOperadorAtivo()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small><br>+3 more</td>
-  <td>ModalSelecionarOperador() node in src/components/ModalSelecionarOperador.tsx.</td>
-</tr>
-<tr>
-  <td>7</td>
-  <td><code>Navbar()</code><br><small style="color:var(--muted)">src/components/Navbar.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>Logo()</code><br><small style="color:var(--muted)">src/components/Logo.tsx</small><br><code>ModalSelecionarOperador()</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small><br><code>obterOperadorAtivo()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small><br>+1 more</td>
-  <td>Navbar() node in src/components/Navbar.tsx.</td>
-</tr>
-<tr>
-  <td>8</td>
-  <td><code>adicionarOperador()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>ModalSelecionarOperador()</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small><br><code>ModalSelecionarOperador.tsx</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small></td>
-  <td><code>obterOperadorAtivo()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small><br><code>obterOperadoresCadastrados()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small></td>
-  <td>adicionarOperador() node in src/lib/operadoresStore.ts.</td>
-</tr>
-<tr>
-  <td>9</td>
-  <td><code>definirOperadorAtivo()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>ModalSelecionarOperador()</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small><br><code>ModalSelecionarOperador.tsx</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/triagem-edta/page.tsx</small></td>
-  <td><code>obterOperadoresCadastrados()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small></td>
-  <td>definirOperadorAtivo() node in src/lib/operadoresStore.ts.</td>
-</tr>
-<tr>
-  <td>10</td>
-  <td><code>obterOperadorAtivo()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>adicionarOperador()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small><br><code>ModalSelecionarOperador()</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small><br><code>ModalSelecionarOperador.tsx</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small><br>+6 more</td>
-  <td><code>obterOperadoresCadastrados()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small></td>
-  <td>obterOperadorAtivo() node in src/lib/operadoresStore.ts.</td>
-</tr>
-<tr>
-  <td>11</td>
-  <td><code>obterOperadoresCadastrados()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>adicionarOperador()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small><br><code>definirOperadorAtivo()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small><br><code>ModalSelecionarOperador()</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small><br>+4 more</td>
-  <td>No direct outbound edge</td>
-  <td>obterOperadoresCadastrados() node in src/lib/operadoresStore.ts.</td>
-</tr>
-<tr>
-  <td>12</td>
-  <td><code>removerOperador()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>ModalSelecionarOperador()</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small><br><code>ModalSelecionarOperador.tsx</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small></td>
-  <td><code>obterOperadorAtivo()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small><br><code>obterOperadoresCadastrados()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small></td>
-  <td>removerOperador() node in src/lib/operadoresStore.ts.</td>
-</tr>
-<tr>
-  <td>13</td>
-  <td><code>sincronizarOperadoresComServidor()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>ModalSelecionarOperador()</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small><br><code>ModalSelecionarOperador.tsx</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small><br><code>Navbar()</code><br><small style="color:var(--muted)">src/components/Navbar.tsx</small><br>+3 more</td>
-  <td><code>obterOperadorAtivo()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small><br><code>obterOperadoresCadastrados()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small></td>
-  <td>sincronizarOperadoresComServidor() node in src/lib/operadoresStore.ts.</td>
-</tr>
-<tr>
-  <td>14</td>
-  <td><code>Logo.tsx</code><br><small style="color:var(--muted)">src/components/Logo.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td><code>Navbar.tsx</code><br><small style="color:var(--muted)">src/components/Navbar.tsx</small></td>
-  <td><code>next</code><br><small style="color:var(--muted)">package.json</small><br><code>react</code><br><small style="color:var(--muted)">package.json</small></td>
-  <td>Module file in src/components/Logo.tsx.</td>
-</tr>
-<tr>
-  <td>15</td>
-  <td><code>ModalSelecionarOperador.tsx</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td><code>Navbar.tsx</code><br><small style="color:var(--muted)">src/components/Navbar.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/triagem-edta/page.tsx</small></td>
-  <td><code>adicionarOperador()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small><br><code>definirOperadorAtivo()</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small><br><code>lucide-react</code><br><small style="color:var(--muted)">package.json</small><br>+6 more</td>
-  <td>Module file in src/components/ModalSelecionarOperador.tsx.</td>
-</tr>
-<tr>
-  <td>16</td>
-  <td><code>Navbar.tsx</code><br><small style="color:var(--muted)">src/components/Navbar.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>Logo()</code><br><small style="color:var(--muted)">src/components/Logo.tsx</small><br><code>Logo.tsx</code><br><small style="color:var(--muted)">src/components/Logo.tsx</small><br><code>lucide-react</code><br><small style="color:var(--muted)">package.json</small><br>+7 more</td>
-  <td>Module file in src/components/Navbar.tsx.</td>
-</tr>
-<tr>
-  <td>17</td>
-  <td><code>operadoresStore.ts</code><br><small style="color:var(--muted)">src/lib/operadoresStore.ts</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td><code>ModalSelecionarOperador.tsx</code><br><small style="color:var(--muted)">src/components/ModalSelecionarOperador.tsx</small><br><code>Navbar.tsx</code><br><small style="color:var(--muted)">src/components/Navbar.tsx</small><br><code>page.tsx</code><br><small style="color:var(--muted)">app/triagem-edta/page.tsx</small></td>
-  <td>No direct outbound edge</td>
-  <td>Module file in src/lib/operadoresStore.ts.</td>
-</tr>
-</table>
-
-<div class="grid">
-  <div class="card">
-    <h4>Key Files</h4>
-    <table style="width:100%;font-size:0.85rem;">
-      <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>src/lib/operadoresStore.ts</code></td><td>7 nodes</td></tr>
-<tr><td><code>src/components/Navbar.tsx</code></td><td>4 nodes</td></tr>
-<tr><td><code>src/components/Logo.tsx</code></td><td>3 nodes</td></tr>
-<tr><td><code>src/components/ModalSelecionarOperador.tsx</code></td><td>3 nodes</td></tr>
-    </table>
-  </div>
-  <div class="card">
-    <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: calls x18, contains x13, imports x10, imports x4. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
-  </div>
-</div>
-<hr>
-
-<!-- ====== 7. Content Conectasusjs Extensao ====== -->
-<h2 id="content-conectasusjs-extensao">7. Content Conectasusjs Extensao</h2>
-<p>Content Conectasusjs Extensao groups implementation around content, conectasusjs, extensao, chrome, mostly in extensao-chrome/content_conectasus.js. This section covers 17 nodes and 41 internal edges; the diagram shows only representative relationships to stay readable.</p>
-
-<div class="mermaid">
-%%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
-flowchart LR
-    %% Section: Content Conectasusjs Extensao (17 nodes, 41 edges)
+    %% Section: Content Conectasusjs Extensao (18 nodes, 44 edges)
     extensao_chrome_content_conectasus_processarjoba_538979e5("processarJobAtivo()<br/><small>extensao-chrome/content_conectasus.js</small>")
+    extensao_chrome_content_conectasus_processarjoba_8cb9d8aa("detectarTelaListagem()<br/><small>extensao-chrome/content_conectasus.js</small>")
     extensao_chrome_content_conectasus_encontrarbota_03ee1c9f("encontrarBotaoBuscar()<br/><small>extensao-chrome/content_conectasus.js</small>")
     extensao_chrome_content_conectasus_encontrarclic_540c84fa("encontrarClicavelPorTexto()<br/><small>extensao-chrome/content_conectasus.js</small>")
     extensao_chrome_content_conectasus_encontrarinpu_8516219f("encontrarInputPorRotulo()<br/><small>extensao-chrome/content_conectasus.js</small>")
     extensao_chrome_content_conectasus_esperarpor_5af61396("esperarPor()<br/><small>extensao-chrome/content_conectasus.js</small>")
-    extensao_chrome_content_conectasus_extrairperfil_9c7c3efc("extrairPerfilCabeçalho()<br/><small>extensao-chrome/content_conectasus.js</small>")
     extensao_chrome_content_conectasus_isvisible_ea5b64ab("isVisible()<br/><small>extensao-chrome/content_conectasus.js</small>")
     extensao_chrome_content_conectasus_norm_cd33f0f4("norm()<br/><small>extensao-chrome/content_conectasus.js</small>")
     extensao_chrome_content_conectasus_sleep_ecb137f3("sleep()<br/><small>extensao-chrome/content_conectasus.js</small>")
+    extensao_chrome_content_conectasus_extrairperfil_9c7c3efc("extrairPerfilCabeçalho()<br/><small>extensao-chrome/content_conectasus.js</small>")
     extensao_chrome_content_conectasus_normpront_66cb7b34("normPront()<br/><small>extensao-chrome/content_conectasus.js</small>")
     extensao_chrome_content_conectasus_reportarerro_17e102cb("reportarErro()<br/><small>extensao-chrome/content_conectasus.js</small>")
     extensao_chrome_content_conectasus_reportarprogr_24263c12("reportarProgresso()<br/><small>extensao-chrome/content_conectasus.js</small>")
@@ -1835,28 +1557,30 @@ flowchart LR
     extensao_chrome_content_conectasus_normpront_66cb7b34 -->|calls| extensao_chrome_content_conectasus_norm_cd33f0f4
     extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_reportarerro_17e102cb
     extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_reportarprogr_24263c12
-    extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_norm_cd33f0f4
     extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_encontrarclic_540c84fa
     extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_clicarforte_c5c18307
     extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_sleep_ecb137f3
     extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_esperarpor_5af61396
     extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_salvarjob_50174906
+    extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_norm_cd33f0f4
+    extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_isvisible_ea5b64ab
     extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_selecionaropc_d1c433f7
     extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_encontrarinpu_8516219f
-    extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_preencherinpu_63e22b5f
     extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_encontrarbota_03ee1c9f
+    extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_preencherinpu_63e22b5f
     extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_normpront_66cb7b34
     extensao_chrome_content_conectasus_processarjoba_538979e5 -->|calls| extensao_chrome_content_conectasus_extrairperfil_9c7c3efc
-    extensao_chrome_content_conectasus_selecionaropc_d1c433f7 -->|calls| extensao_chrome_content_conectasus_norm_cd33f0f4
+    %% Omitted for readability: 0 nodes, 3 edges
     class extensao_chrome_content_conectasus_processarjoba_538979e5 function;
+    class extensao_chrome_content_conectasus_processarjoba_8cb9d8aa function;
     class extensao_chrome_content_conectasus_encontrarbota_03ee1c9f function;
     class extensao_chrome_content_conectasus_encontrarclic_540c84fa entry;
     class extensao_chrome_content_conectasus_encontrarinpu_8516219f function;
     class extensao_chrome_content_conectasus_esperarpor_5af61396 function;
-    class extensao_chrome_content_conectasus_extrairperfil_9c7c3efc function;
     class extensao_chrome_content_conectasus_isvisible_ea5b64ab function;
     class extensao_chrome_content_conectasus_norm_cd33f0f4 function;
     class extensao_chrome_content_conectasus_sleep_ecb137f3 function;
+    class extensao_chrome_content_conectasus_extrairperfil_9c7c3efc function;
     class extensao_chrome_content_conectasus_normpront_66cb7b34 function;
     class extensao_chrome_content_conectasus_reportarerro_17e102cb function;
     class extensao_chrome_content_conectasus_reportarprogr_24263c12 function;
@@ -1938,7 +1662,7 @@ flowchart LR
   <td>7</td>
   <td><code>isVisible()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>encontrarBotaoBuscar()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small><br><code>encontrarClicavelPorTexto()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small><br><code>encontrarInputPorRotulo()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small><br>+2 more</td>
+  <td><code>detectarTelaListagem()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small><br><code>encontrarBotaoBuscar()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small><br><code>encontrarClicavelPorTexto()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small><br>+3 more</td>
   <td>No direct outbound edge</td>
   <td>isVisible() node in extensao-chrome/content_conectasus.js.</td>
 </tr>
@@ -1946,7 +1670,7 @@ flowchart LR
   <td>8</td>
   <td><code>norm()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>encontrarBotaoBuscar()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small><br><code>encontrarClicavelPorTexto()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small><br><code>encontrarInputPorRotulo()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small><br>+3 more</td>
+  <td><code>detectarTelaListagem()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small><br><code>encontrarBotaoBuscar()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small><br><code>encontrarClicavelPorTexto()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small><br>+4 more</td>
   <td>No direct outbound edge</td>
   <td>norm() node in extensao-chrome/content_conectasus.js.</td>
 </tr>
@@ -1976,6 +1700,14 @@ flowchart LR
 </tr>
 <tr>
   <td>12</td>
+  <td><code>detectarTelaListagem()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>isVisible()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small><br><code>norm()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
+  <td>detectarTelaListagem() node in extensao-chrome/content_conectasus.js.</td>
+</tr>
+<tr>
+  <td>13</td>
   <td><code>reportarErro()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>processarJobAtivo()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
@@ -1983,7 +1715,7 @@ flowchart LR
   <td>reportarErro() node in extensao-chrome/content_conectasus.js.</td>
 </tr>
 <tr>
-  <td>13</td>
+  <td>14</td>
   <td><code>reportarProgresso()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>processarJobAtivo()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
@@ -1991,7 +1723,7 @@ flowchart LR
   <td>reportarProgresso() node in extensao-chrome/content_conectasus.js.</td>
 </tr>
 <tr>
-  <td>14</td>
+  <td>15</td>
   <td><code>salvarJob()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>processarJobAtivo()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
@@ -1999,7 +1731,7 @@ flowchart LR
   <td>salvarJob() node in extensao-chrome/content_conectasus.js.</td>
 </tr>
 <tr>
-  <td>15</td>
+  <td>16</td>
   <td><code>selecionarOpcaoSelect()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>processarJobAtivo()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
@@ -2007,7 +1739,7 @@ flowchart LR
   <td>selecionarOpcaoSelect() node in extensao-chrome/content_conectasus.js.</td>
 </tr>
 <tr>
-  <td>16</td>
+  <td>17</td>
   <td><code>sleep()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>esperarPor()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small><br><code>processarJobAtivo()</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
@@ -2015,7 +1747,7 @@ flowchart LR
   <td>sleep() node in extensao-chrome/content_conectasus.js.</td>
 </tr>
 <tr>
-  <td>17</td>
+  <td>18</td>
   <td><code>content_conectasus.js</code><br><small style="color:var(--muted)">extensao-chrome/content_conectasus.js</small></td>
   <td><span class="tag tag-class">Module</span></td>
   <td>External entry / no inbound edge</td>
@@ -2029,136 +1761,18 @@ flowchart LR
     <h4>Key Files</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>extensao-chrome/content_conectasus.js</code></td><td>17 nodes</td></tr>
+      <tr><td><code>extensao-chrome/content_conectasus.js</code></td><td>18 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: calls x24, contains x16, indirect call x1. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: calls x27, contains x17. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
 
-<!-- ====== 8. Triagemedtarealtsx Components Pacienterotinaedta ====== -->
-<h2 id="triagemedtarealtsx-components-pacienterotinaedta">8. Triagemedtarealtsx Components Pacienterotinaedta</h2>
-<p>Triagemedtarealtsx Components Pacienterotinaedta groups implementation around triagemedtarealtsx, components, pacienterotinaedta, statustriagem, mostly in src/components/TriagemEdtaReal.tsx. This section covers 7 nodes and 8 internal edges; the diagram shows only representative relationships to stay readable.</p>
-
-<div class="mermaid">
-%%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
-flowchart LR
-    %% Section: Triagemedtarealtsx Components Pacienterotinaedta (7 nodes, 8 edges)
-    src_components_triagemedtareal_triagemedtareal_10b38206("TriagemEdtaReal()<br/><small>src/components/TriagemEdtaReal.tsx</small>")
-    src_components_triagemedtareal_limparprontuario_61b91bbf("limparProntuario()<br/><small>src/components/TriagemEdtaReal.tsx</small>")
-    src_components_triagemedtareal_limpardatanasc_3af46d45("limparDataNasc()<br/><small>src/components/TriagemEdtaReal.tsx</small>")
-    src_components_triagemedtareal_pacienterotinaedt_67e883d4("PacienteRotinaEdta<br/><small>src/components/TriagemEdtaReal.tsx</small>")
-    src_components_triagemedtareal_statustriagem_ad4dd8cd("StatusTriagem<br/><small>src/components/TriagemEdtaReal.tsx</small>")
-    src_components_triagemedtareal_577fdc16("TriagemEdtaReal.tsx")
-    src_components_triagemedtareal_triagemedtarealpr_a2db1c64("TriagemEdtaRealProps<br/><small>src/components/TriagemEdtaReal.tsx</small>")
-    src_components_triagemedtareal_triagemedtareal_10b38206 -->|calls| src_components_triagemedtareal_limparprontuario_61b91bbf
-    src_components_triagemedtareal_triagemedtareal_10b38206 -->|calls| src_components_triagemedtareal_limpardatanasc_3af46d45
-    class src_components_triagemedtareal_triagemedtareal_10b38206 ui;
-    class src_components_triagemedtareal_limparprontuario_61b91bbf ui;
-    class src_components_triagemedtareal_limpardatanasc_3af46d45 ui;
-    class src_components_triagemedtareal_pacienterotinaedt_67e883d4 ui;
-    class src_components_triagemedtareal_statustriagem_ad4dd8cd ui;
-    class src_components_triagemedtareal_577fdc16 ui;
-    class src_components_triagemedtareal_triagemedtarealpr_a2db1c64 ui;
-    classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
-    classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
-    classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
-    classDef klass fill:#064e3b,stroke:#34d399,color:#d1fae5,stroke-width:1px;
-    classDef ui fill:#831843,stroke:#f472b6,color:#fce7f3,stroke-width:1px;
-    classDef module fill:#172554,stroke:#60a5fa,color:#dbeafe,stroke-width:1px;
-    classDef test fill:#3f3f46,stroke:#a1a1aa,color:#f4f4f5,stroke-width:1px;
-    classDef concept fill:#292524,stroke:#a8a29e,color:#fafaf9,stroke-dasharray:4 3;
-    classDef function fill:#0f172a,stroke:#38bdf8,color:#e0f2fe,stroke-width:1px;
-</div>
-
-<h3>Call Details</h3>
-<table class="call-table">
-<tr>
-  <th style="width:5%">#</th>
-  <th style="width:28%">Node</th>
-  <th style="width:10%">Type</th>
-  <th style="width:17%">Caller</th>
-  <th style="width:20%">Callees</th>
-  <th style="width:20%">Description</th>
-</tr>
-<tr>
-  <td>1</td>
-  <td><code>PacienteRotinaEdta</code><br><small style="color:var(--muted)">src/components/TriagemEdtaReal.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>PacienteRotinaEdta node in src/components/TriagemEdtaReal.tsx.</td>
-</tr>
-<tr>
-  <td>2</td>
-  <td><code>StatusTriagem</code><br><small style="color:var(--muted)">src/components/TriagemEdtaReal.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>StatusTriagem node in src/components/TriagemEdtaReal.tsx.</td>
-</tr>
-<tr>
-  <td>3</td>
-  <td><code>TriagemEdtaRealProps</code><br><small style="color:var(--muted)">src/components/TriagemEdtaReal.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>TriagemEdtaRealProps node in src/components/TriagemEdtaReal.tsx.</td>
-</tr>
-<tr>
-  <td>4</td>
-  <td><code>limparDataNasc()</code><br><small style="color:var(--muted)">src/components/TriagemEdtaReal.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td><code>TriagemEdtaReal()</code><br><small style="color:var(--muted)">src/components/TriagemEdtaReal.tsx</small></td>
-  <td>No direct outbound edge</td>
-  <td>limparDataNasc() node in src/components/TriagemEdtaReal.tsx.</td>
-</tr>
-<tr>
-  <td>5</td>
-  <td><code>limparProntuario()</code><br><small style="color:var(--muted)">src/components/TriagemEdtaReal.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td><code>TriagemEdtaReal()</code><br><small style="color:var(--muted)">src/components/TriagemEdtaReal.tsx</small></td>
-  <td>No direct outbound edge</td>
-  <td>limparProntuario() node in src/components/TriagemEdtaReal.tsx.</td>
-</tr>
-<tr>
-  <td>6</td>
-  <td><code>TriagemEdtaReal()</code><br><small style="color:var(--muted)">src/components/TriagemEdtaReal.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>limparDataNasc()</code><br><small style="color:var(--muted)">src/components/TriagemEdtaReal.tsx</small><br><code>limparProntuario()</code><br><small style="color:var(--muted)">src/components/TriagemEdtaReal.tsx</small></td>
-  <td>TriagemEdtaReal() node in src/components/TriagemEdtaReal.tsx.</td>
-</tr>
-<tr>
-  <td>7</td>
-  <td><code>TriagemEdtaReal.tsx</code><br><small style="color:var(--muted)">src/components/TriagemEdtaReal.tsx</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>lucide-react</code><br><small style="color:var(--muted)">package.json</small><br><code>react</code><br><small style="color:var(--muted)">package.json</small></td>
-  <td>Module file in src/components/TriagemEdtaReal.tsx.</td>
-</tr>
-</table>
-
-<div class="grid">
-  <div class="card">
-    <h4>Key Files</h4>
-    <table style="width:100%;font-size:0.85rem;">
-      <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>src/components/TriagemEdtaReal.tsx</code></td><td>7 nodes</td></tr>
-    </table>
-  </div>
-  <div class="card">
-    <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: contains x6, calls x2. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
-  </div>
-</div>
-<hr>
-
-<!-- ====== 9. D1Servicets D1Preparedstatement All ====== -->
-<h2 id="d1servicets-d1preparedstatement-all">9. D1Servicets D1Preparedstatement All</h2>
+<!-- ====== 7. D1Servicets D1Preparedstatement All ====== -->
+<h2 id="d1servicets-d1preparedstatement-all">7. D1Servicets D1Preparedstatement All</h2>
 <p>D1Servicets D1Preparedstatement All groups implementation around d1servicets, d1preparedstatement, all, bind, mostly in src/lib/d1Service.ts. This section covers 6 nodes and 5 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
@@ -2268,8 +1882,8 @@ flowchart LR
 </div>
 <hr>
 
-<!-- ====== 10. Backgroundjs Extensao Chrome ====== -->
-<h2 id="backgroundjs-extensao-chrome">10. Backgroundjs Extensao Chrome</h2>
+<!-- ====== 8. Backgroundjs Extensao Chrome ====== -->
+<h2 id="backgroundjs-extensao-chrome">8. Backgroundjs Extensao Chrome</h2>
 <p>Backgroundjs Extensao Chrome groups implementation around backgroundjs, extensao, chrome, atualizarlog, mostly in extensao-chrome/background.js. This section covers 5 nodes and 7 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
@@ -2367,8 +1981,8 @@ flowchart LR
 </div>
 <hr>
 
-<!-- ====== 11. D1Servicets D1Database Batch ====== -->
-<h2 id="d1servicets-d1database-batch">11. D1Servicets D1Database Batch</h2>
+<!-- ====== 9. D1Servicets D1Database Batch ====== -->
+<h2 id="d1servicets-d1database-batch">9. D1Servicets D1Database Batch</h2>
 <p>D1Servicets D1Database Batch groups implementation around d1servicets, d1database, batch, dump, mostly in src/lib/d1Service.ts. This section covers 5 nodes and 4 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
@@ -2467,8 +2081,8 @@ flowchart LR
 </div>
 <hr>
 
-<!-- ====== 12. Popupjs Extensao Chrome ====== -->
-<h2 id="popupjs-extensao-chrome">12. Popupjs Extensao Chrome</h2>
+<!-- ====== 10. Popupjs Extensao Chrome ====== -->
+<h2 id="popupjs-extensao-chrome">10. Popupjs Extensao Chrome</h2>
 <p>Popupjs Extensao Chrome groups implementation around popupjs, extensao, chrome, atualizarstatus, mostly in extensao-chrome/popup.js. This section covers 2 nodes and 1 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
@@ -2534,8 +2148,8 @@ flowchart LR
 </div>
 <hr>
 
-<!-- ====== 13. Postcssconfigmjs Config ====== -->
-<h2 id="postcssconfigmjs-config">13. Postcssconfigmjs Config</h2>
+<!-- ====== 11. Postcssconfigmjs Config ====== -->
+<h2 id="postcssconfigmjs-config">11. Postcssconfigmjs Config</h2>
 <p>Postcssconfigmjs Config groups implementation around postcssconfigmjs, config, mostly in postcss.config.mjs. This section covers 2 nodes and 1 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
@@ -2601,8 +2215,8 @@ flowchart LR
 </div>
 <hr>
 
-<!-- ====== 14. Content Bancadalabjs Extensao ====== -->
-<h2 id="content-bancadalabjs-extensao">14. Content Bancadalabjs Extensao</h2>
+<!-- ====== 12. Content Bancadalabjs Extensao ====== -->
+<h2 id="content-bancadalabjs-extensao">12. Content Bancadalabjs Extensao</h2>
 <p>Content Bancadalabjs Extensao groups implementation around content, bancadalabjs, extensao, chrome, mostly in extensao-chrome/content_bancadalab.js. This section covers 1 nodes and 0 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
@@ -2663,18 +2277,18 @@ flowchart LR
   <div class="card">
     <h4>Graph</h4>
     <table style="width:100%;font-size:0.85rem;">
-      <tr><td>Nodes</td><td>405</td></tr>
-      <tr><td>Edges</td><td>929</td></tr>
+      <tr><td>Nodes</td><td>406</td></tr>
+      <tr><td>Edges</td><td>932</td></tr>
       <tr><td>Hyperedges</td><td>0</td></tr>
-      <tr><td>Communities</td><td>20</td></tr>
-      <tr><td>Documented Sections</td><td>13</td></tr>
+      <tr><td>Communities</td><td>19</td></tr>
+      <tr><td>Documented Sections</td><td>11</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Edge Confidence</h4>
     <table style="width:100%;font-size:0.85rem;">
-      <tr><td>EXTRACTED</td><td>927</td></tr>
-      <tr><td>INFERRED</td><td>2</td></tr>
+      <tr><td>EXTRACTED</td><td>931</td></tr>
+      <tr><td>INFERRED</td><td>1</td></tr>
       <tr><td>AMBIGUOUS</td><td>0</td></tr>
     </table>
   </div>
@@ -2682,7 +2296,7 @@ flowchart LR
 
 <div style="text-align:center; padding:40px 0; color: var(--muted); font-size:0.9rem;">
   <p>Urinalise PWA Automatico — Architecture Documentation</p>
-  <p>Generated: 2026-11-11 23:52 UTC · graphify callflow-html</p>
+  <p>Generated: 2026-11-12 00:00 UTC · graphify callflow-html</p>
 </div>
 
 </div><!-- .container -->

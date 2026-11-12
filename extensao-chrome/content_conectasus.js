@@ -266,18 +266,28 @@
         return;
       }
 
+      // Helper para identificar se já está na tela de listagem de pacientes / agendamento
+      function detectarTelaListagem() {
+        const temTituloLista = norm(document.body?.innerText || "").includes("lista de paciente");
+        const temSelectPront = Array.from(document.querySelectorAll("select")).some((sel) =>
+          Array.from(sel.options || []).some((o) => norm(o.textContent).includes("prontuario"))
+        );
+        const temTextoFiltroPront = Array.from(
+          document.querySelectorAll("select, button, span, div, [role='combobox'], .select2-selection, .p-dropdown-label, .ng-value")
+        ).some((el) => {
+          const t = norm(el.textContent);
+          return (t === "prontuario municipal" || t === "prontuario") && isVisible(el);
+        });
+        return temTituloLista || temSelectPront || temTextoFiltroPront;
+      }
+
       // -----------------------------------------------------------------
       // PASSO 1: Menu lateral "Exame laboratorial" -> "Agendamento de exame"
       // -----------------------------------------------------------------
       if (job.step === 1) {
         await reportarProgresso(1, 'Abrindo menu "Exame laboratorial" -> "Agendamento de exame"...');
 
-        // Verifica se JÁ estamos na tela de listagem de Agendamento de exame
-        const jaNaTelaListagem = Array.from(document.querySelectorAll("select")).some((sel) =>
-          Array.from(sel.options || []).some((o) => norm(o.textContent).includes("prontuario municipal"))
-        );
-
-        if (!jaNaTelaListagem) {
+        if (!detectarTelaListagem()) {
           const itemAgendamentoVisivel = encontrarClicavelPorTexto("agendamento de exame", document);
           if (!itemAgendamentoVisivel) {
             const menuExameLab = encontrarClicavelPorTexto("exame laboratorial", document);
@@ -287,7 +297,7 @@
               return;
             }
             clicarForte(menuExameLab);
-            await sleep(450);
+            await sleep(500);
           }
 
           const linkAgendamento = await esperarPor(
@@ -303,7 +313,7 @@
           job.step = 2;
           await salvarJob(job);
           clicarForte(linkAgendamento);
-          await sleep(800);
+          await sleep(1000);
         } else {
           job.step = 2;
           await salvarJob(job);
@@ -323,29 +333,93 @@
       if (job.step === 2) {
         await reportarProgresso(2, `Filtrando por Prontuário municipal: ${job.prontuario}...`);
 
-        const selectFiltro = await esperarPor(() => {
-          const selects = Array.from(document.querySelectorAll("select")).filter(isVisible);
-          return selects.find((sel) =>
-            Array.from(sel.options || []).some((opt) => norm(opt.textContent).includes("prontuario municipal"))
+        const filtroAchado = await esperarPor(() => {
+          // 1. Procura qualquer <select> (mesmo oculto por Select2 / Bootstrap-Select / PrimeNG)
+          const selects = Array.from(document.querySelectorAll("select"));
+          const selPront = selects.find((sel) =>
+            Array.from(sel.options || []).some((opt) => norm(opt.textContent).includes("prontuario"))
           );
-        }, 8000);
+          if (selPront) {
+            const visualIrmao =
+              selPront.nextElementSibling && isVisible(selPront.nextElementSibling)
+                ? selPront.nextElementSibling
+                : selPront.parentElement;
+            return { tipo: "select", el: selPront, anchor: isVisible(selPront) ? selPront : visualIrmao };
+          }
 
-        if (!selectFiltro) {
+          // 2. Procura dropdown customizado que já esteja exibindo "Prontuário municipal"
+          const jaSelecionado = Array.from(
+            document.querySelectorAll("[role='combobox'], .p-dropdown, .ng-select, .select2-selection, .bootstrap-select button, button, span, div")
+          )
+            .filter((el) => {
+              if (!isVisible(el)) return false;
+              const t = norm(el.textContent);
+              return t === "prontuario municipal" || t === "prontuario";
+            })
+            .sort((a, b) => (a.textContent || "").length - (b.textContent || "").length)[0];
+
+          if (jaSelecionado) {
+            return { tipo: "custom_ready", el: jaSelecionado, anchor: jaSelecionado };
+          }
+
+          // 3. Procura dropdown customizado com outro filtro padrão ("Nome", "CPF", "CNS")
+          const outroDropdown = Array.from(
+            document.querySelectorAll("[role='combobox'], .p-dropdown, .ng-select, .select2-selection, .bootstrap-select button")
+          ).find((el) => {
+            if (!isVisible(el)) return false;
+            const t = norm(el.textContent);
+            return t.includes("nome") || t.includes("cpf") || t.includes("cns") || t.includes("prontuario");
+          });
+          if (outroDropdown) {
+            return { tipo: "custom_open", el: outroDropdown, anchor: outroDropdown };
+          }
+
+          return null;
+        }, 10000);
+
+        if (!filtroAchado) {
           await reportarErro(2, 'Caixa de filtro "Prontuário municipal" não encontrada na tela.');
           executando = false;
           return;
         }
 
-        selecionarOpcaoSelect(selectFiltro, "prontuario municipal");
-        await sleep(400);
+        if (filtroAchado.tipo === "select") {
+          selecionarOpcaoSelect(filtroAchado.el, "prontuario");
+          await sleep(400);
+        } else if (filtroAchado.tipo === "custom_open") {
+          clicarForte(filtroAchado.el);
+          await sleep(350);
+          const optPront = await esperarPor(
+            () => encontrarClicavelPorTexto("prontuario municipal", document) || encontrarClicavelPorTexto("prontuario", document),
+            4000
+          );
+          if (optPront) {
+            clicarForte(optPront);
+            await sleep(400);
+          }
+        }
 
-        // Encontra o campo de texto próximo ao select de filtro ou por placeholder
-        let inputBusca = encontrarInputPorRotulo(["prontuario", "pesquisar", "buscar", "valor", "termo"]);
+        // Encontra o campo de texto vizinho ao filtro ou ao botão Buscar
+        let inputBusca = null;
+        const containerBusca =
+          (filtroAchado.anchor && filtroAchado.anchor.closest(".input-group, .form-row, .row, form, .card-body, .panel-body")) ||
+          document;
+
+        inputBusca = Array.from(
+          containerBusca.querySelectorAll(
+            "input:not([type='hidden']):not([type='checkbox']):not([type='radio']):not([type='submit']):not([type='button'])"
+          )
+        ).find((inp) => isVisible(inp) && !inp.closest(".select2-search, .p-dropdown-filter-container"));
+
         if (!inputBusca) {
-          const blocoFiltro = selectFiltro.closest("form, .row, .card-body, .panel-body, div");
-          if (blocoFiltro) {
+          inputBusca = encontrarInputPorRotulo(["prontuario", "pesquisar", "buscar", "valor", "termo"]);
+        }
+        if (!inputBusca) {
+          const btnRef = encontrarBotaoBuscar(document);
+          const blocoBtn = btnRef?.closest(".input-group, .form-row, .row, form, div");
+          if (blocoBtn) {
             inputBusca = Array.from(
-              blocoFiltro.querySelectorAll("input[type='text'], input[type='search'], input:not([type])")
+              blocoBtn.querySelectorAll("input:not([type='hidden']):not([type='submit']):not([type='button'])")
             ).find(isVisible);
           }
         }
@@ -359,7 +433,7 @@
         preencherInput(inputBusca, job.prontuario);
         await sleep(300);
 
-        const btnBuscar = encontrarBotaoBuscar(selectFiltro.closest("form, .card, .panel") || document);
+        const btnBuscar = encontrarBotaoBuscar(containerBusca) || encontrarBotaoBuscar(document);
         if (!btnBuscar) {
           await reportarErro(2, 'Botão "Buscar" não encontrado.');
           executando = false;
@@ -534,13 +608,13 @@
         if (perfilAtual.nome) job.pacienteParcial.nome = perfilAtual.nome;
         if (perfilAtual.dataNascimento) job.pacienteParcial.dataNascimento = perfilAtual.dataNascimento;
 
-        // Se existir um <select> de filtro parecido com a tela anterior contendo "agendamento", seleciona-o
-        const selectAgend = Array.from(document.querySelectorAll("select")).filter(isVisible).find((sel) =>
+        // Se existir um <select> de filtro (visível ou oculto) contendo "agendamento", seleciona-o
+        const selectAgend = Array.from(document.querySelectorAll("select")).find((sel) =>
           Array.from(sel.options || []).some((opt) => norm(opt.textContent).includes("agendamento"))
         );
         if (selectAgend) {
           selecionarOpcaoSelect(selectAgend, "agendamento");
-          await sleep(300);
+          await sleep(350);
         }
 
         const inputAgendamento = await esperarPor(
@@ -552,7 +626,8 @@
               "codigo agendamento",
             ]);
             if (!inp && selectAgend) {
-              const bloco = selectAgend.closest("form, .row, .card-body, div");
+              const ref = isVisible(selectAgend) ? selectAgend : (selectAgend.nextElementSibling || selectAgend.parentElement);
+              const bloco = ref?.closest(".input-group, .form-row, .row, form, .card-body, div");
               if (bloco) {
                 inp = Array.from(bloco.querySelectorAll("input[type='text'], input[type='search'], input:not([type])")).find(isVisible);
               }
