@@ -302,21 +302,32 @@
       for (const modal of modais) {
         const texto = (modal.innerText || "").toUpperCase();
 
-        // 1. Modal de Confirmação ("Deseja continuar?")
+        // 1. Modais de Confirmação ("Deseja continuar?", "Excluir exame?", etc.)
         if (
           texto.includes("DESEJA CONTINUAR?") ||
+          texto.includes("DESEJA REALMENTE") ||
+          texto.includes("CONFIRMA A EXCLUSÃO") ||
+          texto.includes("CONFIRMA A EXCLUSAO") ||
+          texto.includes("TEM CERTEZA") ||
+          texto.includes("EXCLUIR EXAME") ||
           texto.includes("PRAZO DE VALIDADE") ||
           texto.includes("DADOS DO SUPERVISOR")
         ) {
-          const btnSim = Array.from(modal.querySelectorAll("button, a, input[type='button']")).find(
-            (b) => (b.textContent || b.value || "").trim().toUpperCase() === "SIM"
-          );
+          const btnSim = Array.from(modal.querySelectorAll("button, a, input[type='button']")).find((b) => {
+            const val = (b.textContent || b.value || "").trim().toUpperCase();
+            return val === "SIM" || val === "CONFIRMAR" || val === "OK" || val === "EXCLUIR";
+          });
           if (btnSim && !btnSim.disabled && btnSim !== elementoClicadoRecentemente) {
             ultimoCliqueModalMs = Date.now();
             elementoClicadoRecentemente = btnSim;
-            console.log("%c[BancadaLab] Pop-up 'Deseja continuar?' detectado! Clicando em 'Sim' (clique único)...", "color:#059669;font-weight:bold;");
+            console.log(
+              `%c[BancadaLab] Pop-up de confirmação detectado! Clicando em '${(btnSim.textContent || btnSim.value || "").trim()}' (clique único)...`,
+              "color:#059669;font-weight:bold;"
+            );
             simularClique(btnSim);
-            setTimeout(() => { elementoClicadoRecentemente = null; }, 2500);
+            setTimeout(() => {
+              elementoClicadoRecentemente = null;
+            }, 2500);
             return;
           }
         }
@@ -329,9 +340,14 @@
           if (btnAutorizar && !btnAutorizar.disabled && btnAutorizar !== elementoClicadoRecentemente) {
             ultimoCliqueModalMs = Date.now();
             elementoClicadoRecentemente = btnAutorizar;
-            console.log("%c[BancadaLab] Pop-up 'Autorização do supervisor' detectado! Clicando em 'Autorizar' (clique único)...", "color:#059669;font-weight:bold;");
+            console.log(
+              "%c[BancadaLab] Pop-up 'Autorização do supervisor' detectado! Clicando em 'Autorizar' (clique único)...",
+              "color:#059669;font-weight:bold;"
+            );
             simularClique(btnAutorizar);
-            setTimeout(() => { elementoClicadoRecentemente = null; }, 2500);
+            setTimeout(() => {
+              elementoClicadoRecentemente = null;
+            }, 2500);
             return;
           }
         }
@@ -345,44 +361,179 @@
   iniciarObservadorSupervisor();
 
   // =========================================================================
+  // 5.2 EXTRAÇÃO UNIFICADA E RESILIENTE DA TABELA DO CONECTA SUS
+  // Mapeamento real validado:
+  // colunas[0] -> Data (16/11/2026)
+  // colunas[1] -> Horário (07:00)
+  // colunas[2] -> Agendamento (37032)
+  // colunas[3] -> Médico solicitante (MAIKELL ESPINOSA PEREZ)
+  // colunas[4] -> Exame(s) (HEMOGRAMA, ..., URINA I, SANGUE OCULTO NAS FEZES)
+  // colunas[5] -> Unidade solicitante (LABORATORIO MUNICIPAL DE CACONDE)
+  // colunas[6] -> Local de atendimento (LABORATORIO MUNICIPAL DE CACONDE)
+  // colunas[7] -> Ações [0: Lupa, 1: Impressora Ciano, 2: Tag Amarela, 3: Lápis Azul, 4: Histórico Verde, 5: Lixeira Vermelha]
+  // =========================================================================
+  function extrairDadosDaLinhaAgendamento(linhaTr, agendamentoPadrao = "") {
+    if (!linhaTr) return null;
+    const colunas = Array.from(linhaTr.querySelectorAll("td"));
+    if (colunas.length === 0) return null;
+
+    let data = "";
+    let horario = "";
+    let agendamento = agendamentoPadrao;
+    let medico = "";
+    let exames = "";
+    let celulaAcoes = null;
+
+    if (colunas.length >= 7) {
+      data = colunas[0]?.innerText?.trim() || "";
+      horario = colunas[1]?.innerText?.trim() || "";
+      agendamento = colunas[2]?.innerText?.trim() || agendamentoPadrao;
+      medico = colunas[3]?.innerText?.trim() || "";
+      exames = colunas[4]?.innerText?.trim() || "";
+      celulaAcoes = colunas[colunas.length - 1];
+    } else {
+      data = colunas[0]?.innerText?.trim() || "";
+      agendamento = colunas[1]?.innerText?.trim() || agendamentoPadrao;
+      medico = colunas[2]?.innerText?.trim() || "";
+      exames = colunas[3]?.innerText?.trim() || "";
+      celulaAcoes = colunas[colunas.length - 1];
+    }
+
+    let diaNumero = "";
+    if (data.includes("/")) {
+      const matchDia = data.match(/(\d{1,2})\/\d{1,2}\/\d{4}/);
+      if (matchDia) diaNumero = parseInt(matchDia[1], 10);
+    }
+
+    const botoesAcao = celulaAcoes ? Array.from(celulaAcoes.querySelectorAll("a, button, [role='button']")) : [];
+
+    // Botão Lápis Azul (Editar)
+    let btnLapis = botoesAcao.find((b) => {
+      const c = (b.className || "").toLowerCase();
+      const h = (b.innerHTML || "").toLowerCase();
+      const t = (b.getAttribute("title") || "").toLowerCase();
+      return (
+        c.includes("btn-primary") ||
+        h.includes("pencil") ||
+        h.includes("edit") ||
+        t.includes("editar") ||
+        t.includes("alterar")
+      );
+    });
+    if (!btnLapis && botoesAcao.length >= 4) {
+      btnLapis = botoesAcao[3]; // 4º botão é o Lápis Azul
+    }
+
+    // Botão Impressora Ciano (Imprimir SADT)
+    let btnImprimir = botoesAcao.find((b) => {
+      const c = (b.className || "").toLowerCase();
+      const h = (b.innerHTML || "").toLowerCase();
+      const t = (b.getAttribute("title") || "").toLowerCase();
+      return (
+        c.includes("btn-info") ||
+        h.includes("print") ||
+        h.includes("imprimir") ||
+        t.includes("imprimir") ||
+        t.includes("sadt")
+      );
+    });
+    if (!btnImprimir && botoesAcao.length >= 2) {
+      btnImprimir = botoesAcao[1]; // 2º botão é a Impressora Ciano
+    }
+
+    return {
+      data,
+      horario,
+      agendamento,
+      medico,
+      exames,
+      diaNumero,
+      btnLapis,
+      btnImprimir,
+      botoesAcao,
+    };
+  }
+
+  // =========================================================================
   // 5.5 SELEÇÃO AUTOMÁTICA DE MÉDICO NO AUTOCOMPLETE COM CAIXINHA FLUTUANTE
+  // Digita o nome real do médico e clica fisicamente na sugestão do Conecta SUS
   // =========================================================================
   async function selecionarMedicoNoAutocomplete(medicoNome, notify) {
     if (!medicoNome) return;
     notify(`Vinculando médico solicitante: <strong>${medicoNome}</strong>...`);
 
-    const inputProfissional = document.querySelector(
-      "input#medico_solicitante, input[name*='medico'], input[name*='profissional'], input[placeholder*='conselho' i], input[placeholder*='profissional' i], input[placeholder*='médico' i], input.ui-autocomplete-input"
-    );
+    // 1. Localizar o campo de texto do médico solicitante
+    const inputs = Array.from(document.querySelectorAll("input[type='text'], input:not([type])"));
+    let inputProfissional = inputs.find((inp) => {
+      const id = (inp.id || "").toLowerCase();
+      const name = (inp.name || "").toLowerCase();
+      const ph = (inp.placeholder || "").toLowerCase();
+      const cls = (inp.className || "").toLowerCase();
+      return (
+        id.includes("medico") ||
+        id.includes("prof") ||
+        name.includes("medico") ||
+        name.includes("prof") ||
+        ph.includes("medico") ||
+        ph.includes("médico") ||
+        ph.includes("profissional") ||
+        ph.includes("conselho") ||
+        ph.includes("crm") ||
+        cls.includes("ui-autocomplete")
+      );
+    });
+
+    if (!inputProfissional) {
+      const labels = Array.from(document.querySelectorAll("label"));
+      const labelProf = labels.find((l) => {
+        const t = (l.textContent || "").toLowerCase();
+        return t.includes("médico") || t.includes("medico") || t.includes("profissional");
+      });
+      if (labelProf) {
+        const forId = labelProf.getAttribute("for");
+        if (forId) inputProfissional = document.getElementById(forId);
+        if (!inputProfissional) inputProfissional = labelProf.parentElement?.querySelector("input");
+      }
+    }
 
     if (!inputProfissional) {
       console.warn("[BancadaLab] Campo de médico solicitante não encontrado.");
       return;
     }
 
+    // 2. Focar e limpar campo
     inputProfissional.focus();
+    inputProfissional.click();
     inputProfissional.value = "";
     inputProfissional.dispatchEvent(new Event("input", { bubbles: true }));
+    await esperar(200);
 
-    // Digita os 2 primeiros termos para ativar a busca e abrir a caixinha do Conecta SUS
-    const partesNome = medicoNome.trim().split(" ");
+    // 3. Digitar os 2 primeiros nomes (ex: "MAIKELL ESPINOSA") para abrir a caixinha
+    const partesNome = medicoNome.trim().split(/\s+/);
     const termoBusca = partesNome.length > 1 ? `${partesNome[0]} ${partesNome[1]}` : partesNome[0];
 
-    inputProfissional.value = termoBusca;
-    inputProfissional.dispatchEvent(new Event("input", { bubbles: true }));
+    for (const char of termoBusca) {
+      inputProfissional.value += char;
+      inputProfissional.dispatchEvent(new Event("input", { bubbles: true }));
+      inputProfissional.dispatchEvent(new KeyboardEvent("keydown", { key: char, bubbles: true }));
+      inputProfissional.dispatchEvent(new KeyboardEvent("keypress", { key: char, bubbles: true }));
+      inputProfissional.dispatchEvent(new KeyboardEvent("keyup", { key: char, bubbles: true }));
+      await esperar(45);
+    }
     inputProfissional.dispatchEvent(new Event("change", { bubbles: true }));
-    inputProfissional.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "a" }));
-    inputProfissional.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "a" }));
 
-    // Aguarda a caixinha de sugestões abrir
+    // 4. Aguardar a caixinha flutuante de sugestões abrir
     let itemSelecionado = null;
-    const maxWait = Date.now() + 2500;
+    const maxWait = Date.now() + 3500;
     while (Date.now() < maxWait) {
       const sugestoes = Array.from(
         document.querySelectorAll(
-          ".ui-autocomplete li, .ui-menu-item, ul.dropdown-menu li, .autocomplete-suggestions div, [class*='suggestion'], [role='option'], .dropdown-menu a"
+          ".ui-autocomplete li, .ui-autocomplete .ui-menu-item, .ui-menu-item-wrapper, ul.dropdown-menu li, .autocomplete-suggestions div, [role='option'], .dropdown-menu a, .tt-suggestion"
         )
-      ).filter((el) => el.offsetParent !== null && el.innerText.trim().length > 0);
+      ).filter((el) => {
+        const rect = el.getBoundingClientRect();
+        return (el.offsetParent !== null || rect.height > 0) && el.innerText.trim().length > 0;
+      });
 
       if (sugestoes.length > 0) {
         itemSelecionado =
@@ -394,10 +545,14 @@
       await esperar(200);
     }
 
+    // 5. Clicar no item correspondente na caixinha
     if (itemSelecionado) {
-      notify(`Selecionado na caixinha: <strong>${itemSelecionado.innerText.trim()}</strong>`);
+      notify(`Médico selecionado na caixinha: <strong>${itemSelecionado.innerText.trim()}</strong>`);
+      itemSelecionado.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+      itemSelecionado.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      itemSelecionado.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true }));
       simularClique(itemSelecionado);
-      await esperar(600);
+      await esperar(800);
     } else {
       inputProfissional.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowDown" }));
       await esperar(200);
@@ -407,13 +562,19 @@
   }
 
   // =========================================================================
-  // 6. CRIAÇÃO DE NOVO AGENDAMENTO PARA LABORATÓRIO ESPECÍFICO (MS OU SÃO LUCAS)
+  // 6. CRIAÇÃO DE NOVO AGENDAMENTO PARA LABORATÓRIO ESPECÍFICO (MS, SÃO LUCAS OU MUNICIPAL)
   // =========================================================================
   async function criarNovoAgendamentoNoConectaSus(
     { medico, dataColeta, diaNumero, destinoLab, examesParaIncluir },
     notify
   ) {
-    const nomeLabFormatado = destinoLab === "MS" ? "MS LABORATÓRIOS" : "LABORATÓRIO SÃO LUCAS";
+    const nomeLabFormatado =
+      destinoLab === "MS"
+        ? "MS LABORATÓRIOS"
+        : destinoLab === "MUNICIPAL"
+        ? "LABORATÓRIO MUNICIPAL DE CACONDE"
+        : "LABORATÓRIO SÃO LUCAS";
+
     notify(`Iniciando criação de novo agendamento para <strong>${nomeLabFormatado}</strong>...`);
 
     // 1. Clicar na aba "AGENDAR EXAMES"
@@ -423,7 +584,7 @@
     if (abaAgendar) {
       notify("Abrindo formulário 'AGENDAR EXAMES'...");
       simularClique(abaAgendar);
-      await esperar(1500);
+      await esperar(1800);
     }
 
     // 2. Preencher e Selecionar Profissional Solicitante na caixinha do autocomplete
@@ -435,7 +596,7 @@
     notify(`Selecionando laboratório de destino: <strong>${nomeLabFormatado}</strong>...`);
     const selects = Array.from(document.querySelectorAll("select"));
 
-    // Dropdown Coleta
+    // Dropdown Coleta (Geralmente Unidade Municipal)
     const selectColeta = selects.find((s) => (s.name || s.id || "").toLowerCase().includes("coleta"));
     if (selectColeta) {
       const optMun = Array.from(selectColeta.options).find((o) => (o.text || "").toUpperCase().includes("MUNICIPAL"));
@@ -446,19 +607,20 @@
       }
     }
 
-    // Dropdown Laboratório
+    // Dropdown Laboratório / Local de Atendimento
     const selectLab = selects.find((s) => {
       const opts = Array.from(s.options).map((o) => (o.text || "").toUpperCase());
       return opts.some((t) => t.includes("SÃO LUCAS") || t.includes("SAO LUCAS") || t.includes("MS") || t.includes("MUNICIPAL"));
     });
 
     if (selectLab) {
-      const targetTerm = destinoLab === "MS" ? "MS" : "LUCAS";
+      const targetTerm = destinoLab === "MS" ? "MS" : destinoLab === "MUNICIPAL" ? "MUNICIPAL" : "LUCAS";
       const optionAlvo = Array.from(selectLab.options).find((o) => (o.text || "").toUpperCase().includes(targetTerm));
       if (optionAlvo) {
         selectLab.value = optionAlvo.value;
         selectLab.dispatchEvent(new Event("change", { bubbles: true }));
-        await esperar(1200); // Aguarda carregamento AJAX das vagas no calendário
+        selectLab.dispatchEvent(new Event("input", { bubbles: true }));
+        await esperar(1500); // Aguarda carregamento AJAX das cotas e jornadas no calendário
       }
     }
 
@@ -623,38 +785,36 @@
       throw new Error(`Agendamento #${agendamento} não encontrado na lista do paciente.`);
     }
 
-    // Capturar médico e data da guia original antes de editar
-    const colunasAlvo = Array.from(linhaAlvo.querySelectorAll("td"));
-    const textoDataHora = colunasAlvo[0]?.innerText?.trim() || "";
-    const nomeMedico = colunasAlvo[2]?.innerText?.trim() || "";
-    let diaNumero = "";
-    if (textoDataHora.includes("/")) {
-      const matchDia = textoDataHora.match(/(\d{1,2})\/\d{1,2}\/\d{4}/);
-      if (matchDia) diaNumero = parseInt(matchDia[1], 10);
-    }
+    // Capturar médico, data e ações da guia original usando o extrator unificado
+    const dadosGuiaOriginal = extrairDadosDaLinhaAgendamento(linhaAlvo, agendamento);
+    const textoDataHora = dadosGuiaOriginal.data || "";
+    const nomeMedico = dadosGuiaOriginal.medico || "";
+    const diaNumero = dadosGuiaOriginal.diaNumero || "";
+    let btnLapis = dadosGuiaOriginal.btnLapis;
 
     // 4. Localizar e Clicar no LÁPIS AZUL (Botão de Edição)
-    notify(`Abrindo edição do agendamento #${agendamento} (Lápis Azul)...`, 55);
-    const botoesLinha = Array.from(linhaAlvo.querySelectorAll("a, button, [role='button']"));
-    let btnLapis = botoesLinha.find((b) => {
-      const h = (b.getAttribute("href") || "").toLowerCase();
-      const t = (b.getAttribute("title") || "").toLowerCase();
-      const c = (b.className || "").toLowerCase();
-      const html = (b.innerHTML || "").toLowerCase();
-      return (
-        c.includes("btn-primary") ||
-        c.includes("pencil") ||
-        c.includes("edit") ||
-        t.includes("editar") ||
-        t.includes("alterar") ||
-        html.includes("pencil") ||
-        html.includes("edit")
-      );
-    });
+    notify(`Abrindo edição do agendamento #${agendamento} (Lápis Azul) | Médico: ${nomeMedico}...`, 55);
 
-    // Se não achou por classe, o lápis é o 4º botão (índice 3)
-    if (!btnLapis && botoesLinha.length >= 4) {
-      btnLapis = botoesLinha[3];
+    if (!btnLapis) {
+      const botoesLinha = Array.from(linhaAlvo.querySelectorAll("a, button, [role='button']"));
+      btnLapis = botoesLinha.find((b) => {
+        const h = (b.getAttribute("href") || "").toLowerCase();
+        const t = (b.getAttribute("title") || "").toLowerCase();
+        const c = (b.className || "").toLowerCase();
+        const html = (b.innerHTML || "").toLowerCase();
+        return (
+          c.includes("btn-primary") ||
+          c.includes("pencil") ||
+          c.includes("edit") ||
+          t.includes("editar") ||
+          t.includes("alterar") ||
+          html.includes("pencil") ||
+          html.includes("edit")
+        );
+      });
+      if (!btnLapis && botoesLinha.length >= 4) {
+        btnLapis = botoesLinha[3];
+      }
     }
 
     if (!btnLapis) {
@@ -662,7 +822,7 @@
     }
 
     simularClique(btnLapis);
-    await esperar(2000); // Aguarda abertura da tela/modal de edição
+    await esperar(2200); // Aguarda abertura da tela/modal de edição
 
     // 5. Localizar o dropdown de Laboratório de Destino
     notify(`Alterando laboratório para <strong>${nomeLabFormatado}</strong>...`, 65);
@@ -694,8 +854,12 @@
 
     // 5.1 Retirar da guia de apoio os exames que são da bancada local (Urina, PSO, etc.)
     const examesBancadaRetirados = [];
+    const containerEdicao =
+      document.querySelector(".modal.show, .modal.in, .modal[style*='display: block'], div[role='dialog'], form.form-horizontal, form") ||
+      document;
+
     const linhasExamesEdicao = Array.from(
-      document.querySelectorAll("table tbody tr, .list-group-item, div[class*='exame']")
+      containerEdicao.querySelectorAll("table tbody tr, .list-group-item, div[class*='exame']")
     ).filter(
       (el) =>
         el.innerText &&
@@ -1000,20 +1164,14 @@
     // -----------------------------------------------------------------------
     // PASSO 4: Extrair Dados Reais da Linha (Médico, Data, Hora, Lista de Exames)
     // -----------------------------------------------------------------------
-    const colunas = Array.from(linhaAlvo.querySelectorAll("td"));
-    const textoDataHora = colunas[0]?.innerText?.trim() || "";
-    const numeroAgendamento = colunas[1]?.innerText?.trim() || agendamento;
-    const nomeMedico = colunas[2]?.innerText?.trim() || "";
-    const textoExames = colunas[3]?.innerText?.trim() || "";
+    const dadosGuia = extrairDadosDaLinhaAgendamento(linhaAlvo, agendamento);
+    const textoDataHora = dadosGuia.data || "";
+    const numeroAgendamento = dadosGuia.agendamento || agendamento;
+    const nomeMedico = dadosGuia.medico || "";
+    const textoExames = dadosGuia.exames || "";
+    const diaNumero = dadosGuia.diaNumero || "";
 
     notify(`Dados extraídos: Agendamento #${numeroAgendamento} | Médico: ${nomeMedico} | Data: ${textoDataHora}`, 50);
-
-    // Extrair dia da coleta (ex: "16/11/2026" -> dia 16)
-    let diaNumero = "";
-    if (textoDataHora.includes("/")) {
-      const matchDia = textoDataHora.match(/(\d{1,2})\/\d{1,2}\/\d{4}/);
-      if (matchDia) diaNumero = parseInt(matchDia[1], 10);
-    }
 
     // Separar lista de exames por vírgula
     const listaExamesNomes = textoExames

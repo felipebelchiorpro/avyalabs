@@ -211,7 +211,7 @@ export default function LaboratorioApoioPage() {
           laboratorioDestino: laboratorioDestino,
           destinoExames: {
             bioquimica: 'SAO_LUCAS',
-            hemograma: 'LABORATÓRIO MS',
+            hemograma: 'MS',
             local: 'MUNICIPAL',
           },
           bancadaUrl: window.location.origin,
@@ -219,56 +219,9 @@ export default function LaboratorioApoioPage() {
         '*'
       );
 
-      // Simulação rápida de enriquecimento / retorno (se a extensão não responder imediatamente)
-      await new Promise((r) => setTimeout(r, 700));
-
-      // Mock com separação de exames de rotina padrão para visualização imediata
-      const examesMock = [
-        'HEMOGRAMA COMPLETO COM PLAQUETAS',
-        'GLICOSE (GLICEMIA DE JEJUM)',
-        'COLESTEROL TOTAL E FRAÇÕES',
-        'TRIGLICERÍDEOS',
-        'URÉIA',
-        'CREATININA',
-        'URINA TIPO I (EAS)',
-        'PESQUISA DE SANGUE OCULTO (PSO)',
-      ];
-
-      const examesMS: string[] = [];
-      const examesSaoLucas: string[] = [];
-      const examesLocal: string[] = [];
-
-      examesMock.forEach((ex) => {
-        const c = classificarExame(ex);
-        if (c.categoria === 'LabMS') examesMS.push(ex);
-        else if (c.categoria === 'SaoLucas') examesSaoLucas.push(ex);
-        else examesLocal.push(ex);
-      });
-
-      const novoRegistro: RegistroTriagemAutomatica = {
-        id: `triagem_${Date.now()}`,
-        prontuario: prontuarioLimpo || '0005704',
-        agendamento: agendamentoLimpo || '37032',
-        paciente: 'PACIENTE CONECTA SUS',
-        dataNascimento: '15/04/1982',
-        medico: 'Dr. Clínico Geral / UBS',
-        hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        examesMS,
-        examesSaoLucas,
-        examesLocal,
-        statusSADT: 'sucesso',
-      };
-
-      const listaAtualizada = [novoRegistro, ...historicoEnvios];
-      setHistoricoEnvios(listaAtualizada);
-      setUltimoResultado(novoRegistro);
-      localStorage.setItem('bancadalab_historico_apoio_v2', JSON.stringify(listaAtualizada));
-
-      setProntuarioBusca('');
-      setAgendamentoBusca('');
       exibirNotificacao(
-        `Prontuário #${prontuarioLimpo || novoRegistro.prontuario} localizado! Agendamento #${agendamentoLimpo || novoRegistro.agendamento} roteado com sucesso.`,
-        'sucesso'
+        `Comando enviado ao Conecta SUS! Alterando agendamento #${agendamentoLimpo}...`,
+        'alerta'
       );
     } catch (err) {
       exibirNotificacao('Erro ao processar roteamento automático do agendamento.', 'erro');

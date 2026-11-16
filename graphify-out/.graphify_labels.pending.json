@@ -1,10 +1,11 @@
 {
-  "0": "ModalSelecionarOperador.tsx",
+  "0": "react",
   "1": "triagem-edta/page.tsx",
   "2": "extratorBancada.ts",
   "3": "D1PreparedStatement",
   "4": "content_conectasus.js",
   "5": "compilerOptions",
+  "6": "D1Database",
   "8": "extensao-chrome/manifest.json",
   "9": "urinalise.ts",
   "10": "background.js",
@@ -16,6 +17,6 @@
   "19": "vercel.json",
   "20": "configurar_planilha_google.js",
   "21": "postcss.config.mjs",
-  "23": "next",
+  "23": "laudos/route.ts",
   "29": "TriagemEdtaReal.tsx"
 }
