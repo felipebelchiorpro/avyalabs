@@ -357,9 +357,25 @@ async function iniciarBuscaConectaSus({ prontuario, agendamento, bancadaApiUrl }
   }
 }
 
+let ultimoBancadaTabId = null;
+
 // Escuta mensagens dos content scripts e do popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
+    if (sender?.tab?.id) {
+      // Se a mensagem partiu de uma aba do BancadaLab
+      if (sender.tab.url && !sender.tab.url.includes("conectasus.com.br")) {
+        ultimoBancadaTabId = sender.tab.id;
+      }
+    }
+
+    if (message.type === "BANCADALAB_PROGRESSO_CONECTASUS") {
+      if (ultimoBancadaTabId) {
+        await notificarBancada(ultimoBancadaTabId, message);
+      }
+      return;
+    }
+
     if (message.type === "CONECTASUS_TOKEN_ENCONTRADO" && message.token) {
       await chrome.storage.local.set({
         conectasus_bearer_token: message.token,
@@ -370,15 +386,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.type === "BANCADALAB_INICIAR_BUSCA") {
-      const result = await iniciarBuscaConectaSus(message, sender?.tab?.id || null);
+      const result = await iniciarBuscaConectaSus(message, sender?.tab?.id || ultimoBancadaTabId);
       sendResponse(result);
       return;
     }
 
     if (message.type === "BANCADALAB_EXECUTAR_APOIO") {
-      const bancadaTabId = sender?.tab?.id || null;
+      const bancadaTabId = sender?.tab?.id || ultimoBancadaTabId;
       try {
-        await atualizarLog(`Iniciando automação de tela para agendamento #${message.agendamento} (${message.destinoNome || "Apoio"})`, "info");
+        await atualizarLog(`Iniciando automação autônoma de bancada para agendamento #${message.agendamento}`, "info");
         const abaConecta = await localizarAbaConectaSus();
 
         if (!abaConecta) {
@@ -392,9 +408,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         chrome.tabs.sendMessage(
           abaConecta.id,
           {
-            type: "EXECUTAR_AUTOMACAO_APOIO_CONECTASUS",
+            type: "EXECUTAR_SEPARACAO_INTELIGENTE_SADT",
             agendamento: message.agendamento,
+            prontuario: message.prontuario,
             destinoExames: message.destinoExames || {},
+            modo: message.modo || "automatico",
           },
           async (res) => {
             if (chrome.runtime.lastError) {
@@ -405,13 +423,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
 
             if (res && res.ok) {
-              await atualizarLog(`Automação Conecta SUS concluída com sucesso para agendamento #${message.agendamento}`, "success");
+              await atualizarLog(`Automação Conecta SUS finalizada com sucesso para agendamento #${message.agendamento}`, "success");
               await notificarBancada(bancadaTabId, {
                 type: "BANCADALAB_RETORNO_CONECTASUS",
                 ok: true,
                 agendamento: message.agendamento,
                 resultado: res.resultado,
-                status: "Processado no Conecta SUS com sucesso",
+                status: "SADT gerada e roteada no Conecta SUS com sucesso",
               });
             } else {
               const erroFalha = res?.error || "Não foi possível completar a automação no Conecta SUS.";
