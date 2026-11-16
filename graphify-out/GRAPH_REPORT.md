@@ -1,17 +1,17 @@
 # Graph Report - Urinalise PWA Automatico  (2026-11-16)
 
 ## Corpus Check
-- 60 files · ~132,954 words
+- 60 files · ~133,263 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 5 file(s) not represented in the graph (top: (none) 2, .ico 1, .css 1)
 
 ## Summary
-- 409 nodes · 976 edges · 26 communities (20 shown, 6 thin omitted)
+- 409 nodes · 975 edges · 26 communities (20 shown, 6 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 1 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `8237449b`
+- Built from commit: `21e37c5d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -82,8 +82,8 @@ Cohesion: 0.20
 Nodes (9): @emnapi/runtime@^1.11.3, pdf-parse@^2.4.5, @types/pdf-parse@^1.1.5, name, private, version, @emnapi/runtime, pdf-parse (+1 more)
 
 ### Community 4 - "content_conectasus.js"
-Cohesion: 0.33
-Nodes (11): aguardarElemento(), atualizarHud(), classificarDestinoExame(), criarNovoAgendamentoNoConectaSus(), executarFluxoCompletoConectaSus(), iniciarObservadorSupervisor(), obterOuCriarHud(), procurarJwtEmStorage() (+3 more)
+Cohesion: 0.32
+Nodes (10): atualizarHud(), classificarDestinoExame(), criarNovoAgendamentoNoConectaSus(), executarFluxoCompletoConectaSus(), iniciarObservadorSupervisor(), obterOuCriarHud(), procurarJwtEmStorage(), simularClique() (+2 more)
 
 ### Community 5 - "compilerOptions"
 Cohesion: 0.11

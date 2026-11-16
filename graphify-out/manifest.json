@@ -420,15 +420,15 @@
     "semantic_hash": ""
   },
   "extensao-chrome/content_conectasus.js": {
-    "mtime": 1794800050.3799717,
-    "seen": 1794800088.2211297,
-    "ast_hash": "7edfc8db5c7665b9b6bc7eb2fb2d6d74",
+    "mtime": 1794800320.7668252,
+    "seen": 1794800338.9544773,
+    "ast_hash": "728651b9733d9e6daeafb7638e92e4c5",
     "semantic_hash": ""
   },
   "extensao-chrome/manifest.json": {
-    "mtime": 1794800077.7259312,
-    "seen": 1794800088.2211342,
-    "ast_hash": "cdd021d831b450497b9120cfb000664a",
+    "mtime": 1794800328.2893267,
+    "seen": 1794800338.954481,
+    "ast_hash": "df20142f8afd370eadcc60753214fcb0",
     "semantic_hash": ""
   },
   "extensao-chrome/popup.js": {

@@ -464,15 +464,24 @@
     // (Se já estiver na tela do paciente /create/[id], pula direto para o Passo 2!)
     // -----------------------------------------------------------------------
     const urlAtual = window.location.href;
+    const temAbasPerfil = Array.from(document.querySelectorAll("a, button, li, .nav-link")).some((el) => {
+      const t = (el.textContent || "").trim().toUpperCase();
+      return t.includes("EXAMES AGENDADOS") || t.includes("AGENDAR EXAMES");
+    });
+
     const jaEstaNoPerfilDoPaciente =
       urlAtual.includes("/agendamento-exame/create") ||
       urlAtual.includes("/exame-laboratorial/agendamento-exame/create") ||
-      urlAtual.includes("/create/");
+      urlAtual.includes("/create/") ||
+      temAbasPerfil;
 
     if (!jaEstaNoPerfilDoPaciente) {
-      notify(`Pesquisando Prontuário Municipal ${prontuario || agendamento} na listagem...`, 20);
+      notify(`Pesquisando Prontuário Municipal ${prontuario || agendamento} na listagem...`, 18);
 
-      const selectTipoBusca = document.querySelector("select.form-control, select");
+      const selects = Array.from(document.querySelectorAll("select"));
+      const selectTipoBusca = selects.find((s) =>
+        Array.from(s.options).some((o) => (o.text || "").toUpperCase().includes("PRONTUÁRIO"))
+      );
       if (selectTipoBusca) {
         const optPront = Array.from(selectTipoBusca.options).find((o) =>
           (o.text || "").toUpperCase().includes("PRONTUÁRIO")
@@ -480,31 +489,89 @@
         if (optPront) {
           selectTipoBusca.value = optPront.value;
           selectTipoBusca.dispatchEvent(new Event("change", { bubbles: true }));
+          await esperar(200);
         }
       }
 
       const inputBusca = document.querySelector(
-        "input[placeholder*='buscar'], input[type='search'], input.form-control"
+        "input[placeholder*='buscar' i], input[placeholder*='pesquisar' i], input[type='search'], input.form-control"
       );
-      if (inputBusca) {
-        simularInput(inputBusca, prontuario || agendamento);
-        await esperar(400);
+      if (!inputBusca) throw new Error("Campo de busca do Conecta SUS não encontrado.");
 
-        const btnBuscar = Array.from(document.querySelectorAll("button")).find(
-          (b) => (b.textContent || "").trim().toUpperCase() === "BUSCAR"
+      simularInput(inputBusca, prontuario || agendamento);
+      await esperar(400);
+
+      const btnBuscar = Array.from(document.querySelectorAll("button, input[type='submit']")).find(
+        (b) => (b.textContent || b.value || "").trim().toUpperCase() === "BUSCAR"
+      );
+      if (btnBuscar) {
+        simularClique(btnBuscar);
+      } else {
+        inputBusca.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
+      }
+
+      notify("Aguardando retorno da busca na tabela...", 22);
+      await esperar(2000);
+
+      // Aguarda linha do paciente carregar
+      let linhaPaciente = null;
+      const fimEsperaBusca = Date.now() + 6000;
+      while (Date.now() < fimEsperaBusca) {
+        const trs = Array.from(document.querySelectorAll("table tbody tr")).filter(
+          (tr) => tr.innerText && !tr.innerText.includes("Nenhum") && !tr.innerText.includes("Carregando")
         );
-        if (btnBuscar) simularClique(btnBuscar);
-
-        await esperar(1800);
-        const linhaPaciente = await aguardarElemento("table tbody tr", 4000);
-        if (linhaPaciente) {
-          const btnAcaoPaciente = linhaPaciente.querySelector("a[href*='agendamento-exame/create'], button, a");
-          if (btnAcaoPaciente) {
-            notify("Abrindo tela de agendamentos do paciente...", 30);
-            simularClique(btnAcaoPaciente);
-            await esperar(2200);
-          }
+        if (trs.length > 0) {
+          linhaPaciente = trs[0];
+          break;
         }
+        await esperar(300);
+      }
+
+      if (!linhaPaciente) {
+        throw new Error(`Paciente com prontuário ${prontuario || agendamento} não localizado na tabela.`);
+      }
+
+      notify("Paciente localizado! Abrindo tela de agendamentos...", 28);
+
+      // Procura botão/link de ação na linha para abrir o agendamento
+      const botoesLinha = Array.from(
+        linhaPaciente.querySelectorAll("a, button, [role='button'], i, span")
+      );
+      let btnAcao = botoesLinha.find((b) => {
+        const h = (b.getAttribute("href") || "").toLowerCase();
+        const t = (b.getAttribute("title") || "").toLowerCase();
+        const c = (b.className || "").toLowerCase();
+        return (
+          h.includes("create") ||
+          h.includes("agendamento") ||
+          t.includes("agendar") ||
+          t.includes("exame") ||
+          c.includes("calendar") ||
+          c.includes("btn-primary") ||
+          c.includes("btn-info")
+        );
+      });
+
+      if (!btnAcao) {
+        const linksLinha = Array.from(linhaPaciente.querySelectorAll("a, button"));
+        btnAcao = linksLinha[linksLinha.length - 1] || linhaPaciente;
+      }
+
+      simularClique(btnAcao);
+      await esperar(2500);
+
+      // Aguarda até a tela do paciente carregar com as abas
+      const fimEsperaPerfil = Date.now() + 8000;
+      while (Date.now() < fimEsperaPerfil) {
+        const urlAgora = window.location.href;
+        const abasAgora = Array.from(document.querySelectorAll("a, button, li, .nav-link")).some((el) => {
+          const t = (el.textContent || "").trim().toUpperCase();
+          return t.includes("EXAMES AGENDADOS") || t.includes("AGENDAR EXAMES");
+        });
+        if (urlAgora.includes("create") || abasAgora) {
+          break;
+        }
+        await esperar(400);
       }
     } else {
       notify("Já no perfil do paciente. Prosseguindo direto para agendamentos...", 25);
@@ -517,15 +584,32 @@
     await esperar(800);
 
     const abas = Array.from(document.querySelectorAll("a, button, li a, .nav-link, span"));
-    const abaExamesAgendados = abas.find((el) => (el.textContent || "").trim().toUpperCase() === "EXAMES AGENDADOS");
+    const abaExamesAgendados = abas.find((el) => {
+      const t = (el.textContent || "").trim().toUpperCase();
+      return t === "EXAMES AGENDADOS" || t.includes("EXAMES AGENDADOS");
+    });
+
     if (abaExamesAgendados) {
       simularClique(abaExamesAgendados);
-      await esperar(1400);
+      await esperar(1600);
     }
 
-    const tabelaAgendados = await aguardarElemento("table tbody tr", 4000);
-    if (!tabelaAgendados) {
-      throw new Error("Tabela de exames agendados não carregou.");
+    // Aguarda a tabela de exames agendados carregar (tolerância de até 8s)
+    let tabelaCarregou = false;
+    const fimEsperaTabela = Date.now() + 8000;
+    while (Date.now() < fimEsperaTabela) {
+      const trs = Array.from(document.querySelectorAll("table tbody tr")).filter(
+        (tr) => tr.innerText && !tr.innerText.includes("Carregando") && tr.innerText.trim().length > 0
+      );
+      if (trs.length > 0) {
+        tabelaCarregou = true;
+        break;
+      }
+      await esperar(400);
+    }
+
+    if (!tabelaCarregou) {
+      throw new Error("Tabela de exames agendados não carregou após 8 segundos.");
     }
 
     // -----------------------------------------------------------------------
