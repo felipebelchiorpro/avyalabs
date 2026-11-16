@@ -9,7 +9,6 @@
 // =========================================================================
 
 (function () {
-  if (window.__BANCADALAB_CONECTASUS_ACTIVE__) return;
   window.__BANCADALAB_CONECTASUS_ACTIVE__ = true;
 
   console.log(
@@ -84,12 +83,21 @@
       } else if (tipo === "erro") {
         elTag.style.background = "#dc2626";
         elTag.textContent = "ERRO";
+      } else if (tipo === "pronto") {
+        elTag.style.background = "#0891b2";
+        elTag.textContent = "CONECTADO";
       } else {
         elTag.style.background = "#0891b2";
         elTag.textContent = "EM EXECUÇÃO";
       }
     }
   }
+
+  // Inicializa o HUD imediatamente para que o operador veja a confirmação visual
+  try {
+    obterOuCriarHud();
+    atualizarHud("Robô BancadaLab conectado à aba do Conecta SUS. Pronto para triar!", 100, "pronto");
+  } catch (_) {}
 
   // =========================================================================
   // 2. CAPTURA DO TOKEN DA SESSÃO
@@ -651,6 +659,11 @@
   // 8. LISTENER DE MENSAGENS DO BACKGROUND
   // =========================================================================
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.type === "PING_CONECTASUS") {
+      sendResponse({ ok: true, active: true });
+      return true;
+    }
+
     if (message.type === "OBTER_TOKEN_CONECTASUS") {
       const token = procurarJwtEmStorage();
       sendResponse({ ok: Boolean(token), token });

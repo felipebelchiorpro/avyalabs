@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "extensao-chrome/background.js": {
-    "mtime": 1794796191.1883917,
-    "seen": 1794796265.481527,
-    "ast_hash": "3f29f86061c803c6ffdcf8709e604bd9",
+    "mtime": 1794799785.5721555,
+    "seen": 1794799843.8891084,
+    "ast_hash": "602091e26ac7a02e003a2b2c9a575988",
     "semantic_hash": ""
   },
   "extensao-chrome/content_bancadalab.js": {
@@ -420,15 +420,15 @@
     "semantic_hash": ""
   },
   "extensao-chrome/content_conectasus.js": {
-    "mtime": 1794799168.6368558,
-    "seen": 1794799237.4449294,
-    "ast_hash": "d8003b09ea3fd6774bbe1b5bacae7867",
+    "mtime": 1794799827.4721882,
+    "seen": 1794799843.8893416,
+    "ast_hash": "c946df5f913f5cfa5389ff1a2038113b",
     "semantic_hash": ""
   },
   "extensao-chrome/manifest.json": {
-    "mtime": 1794799180.3221903,
-    "seen": 1794799237.4449332,
-    "ast_hash": "837ba91219dcb01eb4b18da1fc7fc2d4",
+    "mtime": 1794799834.6581898,
+    "seen": 1794799843.8893456,
+    "ast_hash": "a6b1a76c958a2fb231b48552ebb8d987",
     "semantic_hash": ""
   },
   "extensao-chrome/popup.js": {
