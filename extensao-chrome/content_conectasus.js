@@ -30,8 +30,8 @@
       msg = categoria;
       categoria = "ROBO";
     }
-    const limpo = typeof msg === "string" ? msg.replace(/<[^>]*>/g, "") : JSON.stringify(msg);
-    const entrada = `[${new Date().toLocaleTimeString("pt-BR")}] [${categoria.toUpperCase()}] ${limpo}`;
+    const textoMsg = typeof msg === "string" ? msg : JSON.stringify(msg);
+    const entrada = `[${new Date().toLocaleTimeString("pt-BR")}] [${categoria.toUpperCase()}] ${textoMsg}`;
     window.__BANCADALAB_LOGS__.push(entrada);
     if (window.__BANCADALAB_LOGS__.length > 500) window.__BANCADALAB_LOGS__.shift();
 
