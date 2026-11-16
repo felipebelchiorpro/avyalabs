@@ -199,7 +199,11 @@ async function executarApoioConectaSus(message, sendResponse) {
 // 3. LISTENER CENTRAL DE MENSAGENS
 // =========================================================================
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "BANCADALAB_PROGRESSO_CONECTASUS") {
+  if (
+    message.type === "BANCADALAB_PROGRESSO_CONECTASUS" ||
+    message.type === "BANCADALAB_RETORNO_CONECTASUS" ||
+    message.type === "BANCADALAB_ERRO_CONECTASUS"
+  ) {
     notificarTodasAbasBancadaLab(message);
     return;
   }

@@ -461,12 +461,15 @@
 
     // -----------------------------------------------------------------------
     // PASSO 1: Se estiver na tela LISTA DE PACIENTE, busca pelo Prontuário
+    // (Se já estiver na tela do paciente /create/[id], pula direto para o Passo 2!)
     // -----------------------------------------------------------------------
     const urlAtual = window.location.href;
-    if (
-      urlAtual.includes("/agendamento-exame/index") ||
-      document.querySelector("h2, h3, h4, .box-title")?.innerText?.includes("LISTA DE PACIENTE")
-    ) {
+    const jaEstaNoPerfilDoPaciente =
+      urlAtual.includes("/agendamento-exame/create") ||
+      urlAtual.includes("/exame-laboratorial/agendamento-exame/create") ||
+      urlAtual.includes("/create/");
+
+    if (!jaEstaNoPerfilDoPaciente) {
       notify(`Pesquisando Prontuário Municipal ${prontuario || agendamento} na listagem...`, 20);
 
       const selectTipoBusca = document.querySelector("select.form-control, select");
@@ -483,26 +486,28 @@
       const inputBusca = document.querySelector(
         "input[placeholder*='buscar'], input[type='search'], input.form-control"
       );
-      if (!inputBusca) throw new Error("Campo de busca do Conecta SUS não encontrado.");
+      if (inputBusca) {
+        simularInput(inputBusca, prontuario || agendamento);
+        await esperar(400);
 
-      simularInput(inputBusca, prontuario || agendamento);
-      await esperar(400);
+        const btnBuscar = Array.from(document.querySelectorAll("button")).find(
+          (b) => (b.textContent || "").trim().toUpperCase() === "BUSCAR"
+        );
+        if (btnBuscar) simularClique(btnBuscar);
 
-      const btnBuscar = Array.from(document.querySelectorAll("button")).find(
-        (b) => (b.textContent || "").trim().toUpperCase() === "BUSCAR"
-      );
-      if (btnBuscar) simularClique(btnBuscar);
-
-      await esperar(1800);
-      const linhaPaciente = await aguardarElemento("table tbody tr", 4000);
-      if (!linhaPaciente) throw new Error(`Prontuário ${prontuario || agendamento} não localizado na tabela.`);
-
-      const btnAcaoPaciente = linhaPaciente.querySelector("a[href*='agendamento-exame/create'], button, a");
-      if (btnAcaoPaciente) {
-        notify("Abrindo tela de agendamentos do paciente...", 30);
-        simularClique(btnAcaoPaciente);
-        await esperar(2200);
+        await esperar(1800);
+        const linhaPaciente = await aguardarElemento("table tbody tr", 4000);
+        if (linhaPaciente) {
+          const btnAcaoPaciente = linhaPaciente.querySelector("a[href*='agendamento-exame/create'], button, a");
+          if (btnAcaoPaciente) {
+            notify("Abrindo tela de agendamentos do paciente...", 30);
+            simularClique(btnAcaoPaciente);
+            await esperar(2200);
+          }
+        }
       }
+    } else {
+      notify("Já no perfil do paciente. Prosseguindo direto para agendamentos...", 25);
     }
 
     // -----------------------------------------------------------------------
@@ -689,6 +694,15 @@
             }
           );
 
+          try {
+            chrome.runtime.sendMessage({
+              type: "BANCADALAB_RETORNO_CONECTASUS",
+              ok: true,
+              agendamento: message.agendamento,
+              resultado,
+            });
+          } catch (_) {}
+
           sendResponse({
             ok: true,
             agendamento: message.agendamento,
@@ -698,6 +712,12 @@
         } catch (err) {
           console.error("[BancadaLab Autônomo] Erro no fluxo:", err);
           atualizarHud(`Erro: ${err.message}`, 100, "erro");
+          try {
+            chrome.runtime.sendMessage({
+              type: "BANCADALAB_ERRO_CONECTASUS",
+              error: err.message || "Erro no Conecta SUS",
+            });
+          } catch (_) {}
           sendResponse({
             ok: false,
             error: err.message || "Erro durante a separação dos agendamentos no Conecta SUS.",

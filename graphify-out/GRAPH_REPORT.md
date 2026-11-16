@@ -1,7 +1,7 @@
 # Graph Report - Urinalise PWA Automatico  (2026-11-16)
 
 ## Corpus Check
-- 60 files · ~132,901 words
+- 60 files · ~132,954 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 5 file(s) not represented in the graph (top: (none) 2, .ico 1, .css 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `2532dab2`
+- Built from commit: `8237449b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -57,12 +57,12 @@
   src/app/api/laudos/route.ts → src/lib/d1Service.ts
 - `POST()` --calls--> `salvarOuAtualizarLaudo()`  [EXTRACTED]
   src/app/api/salvar-laudo/route.ts → src/lib/d1Service.ts
+- `ResultadoExtracaoBancada` --references--> `ItemTriagemEdta`  [EXTRACTED]
+  src/lib/extratorBancada.ts → src/types/urinalise.ts
 - `RelatorioTriagemEdtaPrintViewProps` --references--> `LabConfig`  [EXTRACTED]
   src/components/RelatorioTriagemEdtaPrintView.tsx → src/types/urinalise.ts
 - `StatusBadgeProps` --references--> `StatusLaudo`  [EXTRACTED]
   src/components/StatusBadge.tsx → src/types/urinalise.ts
-- `ResultadoExtracaoBancada` --references--> `ItemTriagemEdta`  [EXTRACTED]
-  src/lib/extratorBancada.ts → src/types/urinalise.ts
 
 ## Import Cycles
 - None detected.
