@@ -1,7 +1,7 @@
 # Graph Report - Urinalise PWA Automatico  (2026-11-15)
 
 ## Corpus Check
-- 60 files · ~132,430 words
+- 60 files · ~132,597 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 5 file(s) not represented in the graph (top: (none) 2, .ico 1, .css 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b876ebed`
+- Built from commit: `dda34289`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -67,8 +67,8 @@
   src/lib/googleSheets.ts → src/lib/d1Service.ts
 - `listarTriagemEdta()` --calls--> `listarTriagemEdta()`  [EXTRACTED]
   src/lib/googleSheets.ts → src/lib/d1Service.ts
-- `salvarTriagemEdta()` --calls--> `salvarTriagemEdta()`  [EXTRACTED]
-  src/lib/googleSheets.ts → src/lib/d1Service.ts
+- `POST()` --calls--> `salvarRotinaDia()`  [EXTRACTED]
+  src/app/api/rotina/route.ts → src/lib/d1Service.ts
 
 ## Import Cycles
 - None detected.

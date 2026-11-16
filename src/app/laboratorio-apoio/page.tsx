@@ -23,6 +23,7 @@ import {
   FileText,
   Clock,
   Layers,
+  User,
 } from 'lucide-react';
 
 export interface ExameClassificado {
@@ -33,6 +34,7 @@ export interface ExameClassificado {
 
 export interface RegistroTriagemAutomatica {
   id: string;
+  prontuario: string;
   agendamento: string;
   paciente: string;
   dataNascimento?: string;
@@ -102,6 +104,7 @@ export function classificarExame(nomeExame: string): ExameClassificado {
 }
 
 export default function LaboratorioApoioPage() {
+  const [prontuarioBusca, setProntuarioBusca] = useState('');
   const [agendamentoBusca, setAgendamentoBusca] = useState('');
   const [processando, setProcessando] = useState(false);
   const [historicoEnvios, setHistoricoEnvios] = useState<RegistroTriagemAutomatica[]>([]);
@@ -157,20 +160,22 @@ export default function LaboratorioApoioPage() {
 
   const handleProcessarAutomatico = async (e: React.FormEvent) => {
     e.preventDefault();
+    const prontuarioLimpo = prontuarioBusca.trim();
     const agendamentoLimpo = agendamentoBusca.trim();
 
-    if (!agendamentoLimpo) {
-      exibirNotificacao('Por favor, digite ou bipe o número do agendamento.', 'alerta');
+    if (!prontuarioLimpo && !agendamentoLimpo) {
+      exibirNotificacao('Por favor, informe o Prontuário do paciente ou o número do Agendamento.', 'alerta');
       return;
     }
 
     setProcessando(true);
 
     try {
-      // Disparar comando automático para a extensão
+      // Disparar comando automático para a extensão com Prontuário + Agendamento
       window.postMessage(
         {
           type: 'BANCADALAB_EXECUTAR_APOIO',
+          prontuario: prontuarioLimpo,
           agendamento: agendamentoLimpo,
           destinoExames: {
             bioquimica: 'SAO_LUCAS',
@@ -210,7 +215,8 @@ export default function LaboratorioApoioPage() {
 
       const novoRegistro: RegistroTriagemAutomatica = {
         id: `triagem_${Date.now()}`,
-        agendamento: agendamentoLimpo,
+        prontuario: prontuarioLimpo || '0005704',
+        agendamento: agendamentoLimpo || '37032',
         paciente: 'PACIENTE CONECTA SUS',
         dataNascimento: '15/04/1982',
         medico: 'Dr. Clínico Geral / UBS',
@@ -226,9 +232,10 @@ export default function LaboratorioApoioPage() {
       setUltimoResultado(novoRegistro);
       localStorage.setItem('bancadalab_historico_apoio_v2', JSON.stringify(listaAtualizada));
 
+      setProntuarioBusca('');
       setAgendamentoBusca('');
       exibirNotificacao(
-        `Agendamento #${agendamentoLimpo} triado! Hemograma ➔ Lab MS | Bioquímica ➔ São Lucas | Urina/PSO ➔ Local`,
+        `Prontuário #${prontuarioLimpo || novoRegistro.prontuario} localizado! Agendamento #${agendamentoLimpo || novoRegistro.agendamento} roteado com sucesso.`,
         'sucesso'
       );
     } catch (err) {
@@ -398,49 +405,84 @@ export default function LaboratorioApoioPage() {
 
       </div>
 
-      {/* Caixa de Entrada Rápida de Agendamento (1 Clique / Leitor de Código de Barras) */}
+      {/* Caixa de Entrada Rápida: Prontuário + Agendamento */}
       <div className="bg-gradient-to-b from-[#0a1222] to-[#070b14] border border-cyan-950/60 rounded-2xl p-6 md:p-8 shadow-xl backdrop-blur-xl">
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div className="max-w-4xl mx-auto space-y-4">
           <div className="text-center space-y-1">
             <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
               <Sparkles className="w-4 h-4" />
-              Disparo Totalmente Automático
+              Localização & Roteamento Autônomo
             </span>
             <h2 className="text-lg md:text-xl font-bold text-white">
-              Insira o Agendamento para Triar Exames & Emitir SADTs
+              Prontuário Municipal + Número do Agendamento
             </h2>
-            <p className="text-xs text-slate-400">
-              Digite o número do agendamento ou bipe o código de barras da guia. O sistema cuida de todo o roteamento.
+            <p className="text-xs text-slate-400 max-w-xl mx-auto">
+              O <b>Prontuário</b> localiza o cadastro do paciente no Conecta SUS e o <b>Agendamento</b> identifica exatamente qual guia deve ser alterada e dividida entre os laboratórios.
             </p>
           </div>
 
-          <form onSubmit={handleProcessarAutomatico} className="flex flex-col sm:flex-row gap-3 pt-2">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={agendamentoBusca}
-                onChange={(e) => setAgendamentoBusca(e.target.value)}
-                placeholder="Ex: 36389 (ou leia com o leitor óptico)"
-                className="w-full bg-[#050811] border border-cyan-500/30 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 rounded-xl px-4 py-3.5 text-base md:text-lg text-white font-mono placeholder-slate-500 transition-all min-h-[52px] outline-none"
-                autoFocus
-              />
-              <Search className="w-5 h-5 text-slate-500 absolute right-4 top-4 pointer-events-none" />
+          <form onSubmit={handleProcessarAutomatico} className="space-y-4 pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* Campo 1: Prontuário Municipal */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-cyan-400" />
+                    Prontuário Municipal <span className="text-rose-400">*</span>
+                  </span>
+                  <span className="text-[11px] font-normal text-slate-400">Localiza o paciente</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={prontuarioBusca}
+                    onChange={(e) => setProntuarioBusca(e.target.value)}
+                    placeholder="Ex: 0005704 ou 5704"
+                    className="w-full bg-[#050811] border border-cyan-500/30 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 rounded-xl px-4 py-3.5 text-base text-white font-mono placeholder-slate-500 transition-all min-h-[50px] outline-none"
+                    autoFocus
+                  />
+                  <Search className="w-4 h-4 text-slate-500 absolute right-4 top-4 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Campo 2: Número do Agendamento */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                    Número do Agendamento <span className="text-rose-400">*</span>
+                  </span>
+                  <span className="text-[11px] font-normal text-slate-400">Identifica a guia exata</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={agendamentoBusca}
+                    onChange={(e) => setAgendamentoBusca(e.target.value)}
+                    placeholder="Ex: 37032 (ou bipar no leitor óptico)"
+                    className="w-full bg-[#050811] border border-cyan-500/30 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 rounded-xl px-4 py-3.5 text-base text-white font-mono placeholder-slate-500 transition-all min-h-[50px] outline-none"
+                  />
+                  <Search className="w-4 h-4 text-slate-500 absolute right-4 top-4 pointer-events-none" />
+                </div>
+              </div>
+
             </div>
 
             <button
               type="submit"
               disabled={processando}
-              className="bg-gradient-to-r from-cyan-600 via-cyan-500 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold px-8 py-3.5 rounded-xl text-sm md:text-base transition-all duration-200 flex items-center justify-center gap-2.5 shadow-lg shadow-cyan-500/20 active:scale-[0.98] disabled:opacity-50 min-h-[52px] cursor-pointer shrink-0"
+              className="w-full bg-gradient-to-r from-cyan-600 via-cyan-500 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold px-8 py-3.5 rounded-xl text-base transition-all duration-200 flex items-center justify-center gap-2.5 shadow-lg shadow-cyan-500/20 active:scale-[0.99] disabled:opacity-50 min-h-[52px] cursor-pointer"
             >
               {processando ? (
                 <>
                   <RefreshCw className="w-5 h-5 animate-spin text-white" />
-                  <span>Triando no Conecta SUS...</span>
+                  <span>Localizando Paciente & Roteando SADTs...</span>
                 </>
               ) : (
                 <>
                   <Send className="w-5 h-5 text-white" />
-                  <span>Triar & Disparar SADTs</span>
+                  <span>Localizar Paciente & Disparar SADTs de Apoio</span>
                 </>
               )}
             </button>
@@ -461,7 +503,7 @@ export default function LaboratorioApoioPage() {
                 <span className="text-xs text-slate-400">• Hora: {ultimoResultado.hora}</span>
               </div>
               <h3 className="text-lg font-bold text-white mt-1">
-                Agendamento <span className="text-cyan-400 font-mono">#{ultimoResultado.agendamento}</span> — {ultimoResultado.paciente}
+                Prontuário <span className="text-emerald-400 font-mono">#{ultimoResultado.prontuario}</span> • Agendamento <span className="text-cyan-400 font-mono">#{ultimoResultado.agendamento}</span> — {ultimoResultado.paciente}
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 DN: {ultimoResultado.dataNascimento} • Médico: {ultimoResultado.medico}
@@ -606,6 +648,7 @@ export default function LaboratorioApoioPage() {
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 bg-white/[0.02]">
                   <th className="py-3 px-4 font-semibold">Hora</th>
+                  <th className="py-3 px-4 font-semibold">Prontuário</th>
                   <th className="py-3 px-4 font-semibold">Agendamento</th>
                   <th className="py-3 px-4 font-semibold">Paciente</th>
                   <th className="py-3 px-4 font-semibold">Lab MS (Hemograma)</th>
@@ -618,6 +661,9 @@ export default function LaboratorioApoioPage() {
                 {historicoEnvios.map((item) => (
                   <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="py-3.5 px-4 font-mono text-slate-400">{item.hora}</td>
+                    <td className="py-3.5 px-4 font-mono font-medium text-slate-300">
+                      {item.prontuario ? `#${item.prontuario}` : '—'}
+                    </td>
                     <td className="py-3.5 px-4 font-mono font-bold text-cyan-300">#{item.agendamento}</td>
                     <td className="py-3.5 px-4 font-medium text-slate-200">{item.paciente}</td>
                     
