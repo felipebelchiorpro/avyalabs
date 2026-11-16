@@ -52,6 +52,38 @@
         }
       );
     }
+
+    if (event.data.type === "BANCADALAB_EXECUTAR_APOIO") {
+      const { agendamento, destinoExames, destinoNome } = event.data;
+      chrome.runtime.sendMessage(
+        {
+          type: "BANCADALAB_EXECUTAR_APOIO",
+          agendamento,
+          destinoExames: destinoExames || {},
+          destinoNome: destinoNome || "São Lucas",
+          bancadaApiUrl: window.location.origin,
+        },
+        (res) => {
+          if (chrome.runtime.lastError) {
+            window.postMessage(
+              {
+                type: "BANCADALAB_ERRO_CONECTASUS",
+                error: "Extensão desconectada. Verifique se o Conecta SUS está aberto.",
+              },
+              "*"
+            );
+          } else if (res && res.ok === false) {
+            window.postMessage(
+              {
+                type: "BANCADALAB_ERRO_CONECTASUS",
+                error: res.error,
+              },
+              "*"
+            );
+          }
+        }
+      );
+    }
   });
 
   // Recebe progresso / retorno / erro do background e repassa para a página React

@@ -374,6 +374,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse(result);
       return;
     }
+
+    if (message.type === "BANCADALAB_EXECUTAR_APOIO") {
+      const bancadaTabId = sender?.tab?.id || null;
+      try {
+        await atualizarLog(`Iniciando automação de tela para agendamento #${message.agendamento} (${message.destinoNome || "Apoio"})`, "info");
+        const abaConecta = await localizarAbaConectaSus();
+
+        if (!abaConecta) {
+          const errMsg = "Aba do Conecta SUS não encontrada. Abra https://caconde.conectasus.com.br e faça login.";
+          await notificarBancada(bancadaTabId, { type: "BANCADALAB_ERRO_CONECTASUS", error: errMsg });
+          sendResponse({ ok: false, error: errMsg });
+          return;
+        }
+
+        // Envia ordem para o content script da aba do Conecta SUS
+        chrome.tabs.sendMessage(
+          abaConecta.id,
+          {
+            type: "EXECUTAR_AUTOMACAO_APOIO_CONECTASUS",
+            agendamento: message.agendamento,
+            destinoExames: message.destinoExames || {},
+          },
+          async (res) => {
+            if (chrome.runtime.lastError) {
+              const erroMsg = "Falha ao comunicar com a página do Conecta SUS: " + chrome.runtime.lastError.message;
+              await atualizarLog(erroMsg, "error");
+              await notificarBancada(bancadaTabId, { type: "BANCADALAB_ERRO_CONECTASUS", error: erroMsg });
+              return;
+            }
+
+            if (res && res.ok) {
+              await atualizarLog(`Automação Conecta SUS concluída com sucesso para agendamento #${message.agendamento}`, "success");
+              await notificarBancada(bancadaTabId, {
+                type: "BANCADALAB_RETORNO_CONECTASUS",
+                ok: true,
+                agendamento: message.agendamento,
+                resultado: res.resultado,
+                status: "Processado no Conecta SUS com sucesso",
+              });
+            } else {
+              const erroFalha = res?.error || "Não foi possível completar a automação no Conecta SUS.";
+              await atualizarLog(`Erro automação: ${erroFalha}`, "error");
+              await notificarBancada(bancadaTabId, { type: "BANCADALAB_ERRO_CONECTASUS", error: erroFalha });
+            }
+          }
+        );
+
+        sendResponse({ ok: true, status: "enviado_para_conectasus" });
+      } catch (err) {
+        sendResponse({ ok: false, error: err.message });
+      }
+      return;
+    }
   })();
 
   return true;

@@ -19,6 +19,7 @@ import {
   Sparkles,
   ShieldCheck,
   RefreshCw,
+  Building2,
 } from 'lucide-react';
 
 export function SidebarLateral() {
@@ -146,6 +147,14 @@ export function SidebarLateral() {
           badgeColor: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
           icon: Archive,
           iconColor: 'text-emerald-400 group-hover:text-emerald-300',
+        },
+        {
+          label: 'Envio Lab. Apoio',
+          href: '/laboratorio-apoio',
+          badge: 'SADT',
+          badgeColor: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+          icon: Building2,
+          iconColor: 'text-sky-400 group-hover:text-sky-300',
         },
       ],
     },

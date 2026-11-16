@@ -13,7 +13,8 @@ import {
   Database,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Building2,
 } from 'lucide-react';
 
 export default function HomeDashboard() {
@@ -85,7 +86,7 @@ export default function HomeDashboard() {
         <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">
           Bancadas de Rotina e Operação
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           
           {/* Card: Triagem do Dia / Urinálise */}
           <Link
@@ -168,6 +169,27 @@ export default function HomeDashboard() {
             </h3>
             <p className="text-xs text-slate-400 mt-1">
               Gradinha local e controle interno de hemoglobina glicada.
+            </p>
+          </Link>
+
+          {/* Card: Envio Lab. Apoio */}
+          <Link
+            href="/laboratorio-apoio"
+            className="group relative bg-white/[0.02] hover:bg-white/[0.05] border border-white/10 hover:border-sky-500/40 p-5 rounded-2xl backdrop-blur-xl transition-all duration-300 cursor-pointer active:scale-[0.99]"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 group-hover:scale-105 transition-transform">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 uppercase">
+                SADT
+              </span>
+            </div>
+            <h3 className="text-base font-semibold text-white group-hover:text-sky-400 transition-colors">
+              Envio Lab. Apoio
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Encaminhamento de exames para São Lucas e Apoio SUS com automação.
             </p>
           </Link>
 
