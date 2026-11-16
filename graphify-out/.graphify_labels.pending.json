@@ -1,12 +1,10 @@
 {
-  "0": "extratorBancada.ts",
+  "0": "extrair-arquivo/route.ts",
   "1": "triagem-edta/page.tsx",
-  "2": "package.json",
   "3": "D1Database",
   "4": "content_conectasus.js",
   "5": "compilerOptions",
   "6": "devDependencies",
-  "7": "layout.tsx",
   "8": "extensao-chrome/manifest.json",
   "9": "urinalise.ts",
   "10": "background.js",

@@ -20,9 +20,28 @@
   const JWT_REGEX = /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/;
 
   // =========================================================================
-  // 1. HUD VISUAL FLUTUANTE (OVERLAY DE STATUS EM TEMPO REAL)
-  // Permite ao operador acompanhar cada etapa na tela do Conecta SUS
+  // 1. HUD VISUAL FLUTUANTE (OVERLAY DE STATUS EM TEMPO REAL) + RECORDER DE LOGS
+  // Permite ao operador acompanhar cada etapa na tela do Conecta SUS e copiar logs
   // =========================================================================
+  window.__BANCADALAB_LOGS__ = window.__BANCADALAB_LOGS__ || [];
+
+  function gravarLog(msg) {
+    const limpo = typeof msg === "string" ? msg.replace(/<[^>]*>/g, "") : JSON.stringify(msg);
+    const entrada = `[${new Date().toLocaleTimeString("pt-BR")}] ${limpo}`;
+    window.__BANCADALAB_LOGS__.push(entrada);
+    if (window.__BANCADALAB_LOGS__.length > 100) window.__BANCADALAB_LOGS__.shift();
+  }
+
+  // Função global acessível via console
+  window.copiarLogsBancadaLab = function () {
+    const texto = window.__BANCADALAB_LOGS__.join("\n");
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(texto);
+      console.log("%c[BancadaLab] Logs copiados com sucesso para a Área de Transferência! Basta colar no chat.", "color:#059669;font-weight:bold;");
+    }
+    return texto;
+  };
+
   let hudElement = null;
 
   function obterOuCriarHud() {
@@ -50,7 +69,12 @@
           <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22d3ee;box-shadow:0 0 8px #22d3ee;animation:pulse 1.5s infinite;"></span>
           <strong style="color:#22d3ee;font-size:14px;letter-spacing:0.5px;">BancadaLab SUS • Automação</strong>
         </div>
-        <span id="bancadalab-hud-tag" style="background:#0891b2;color:#ffffff;font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;text-transform:uppercase;">ATIVO</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button id="bancadalab-btn-copiar-logs" title="Copiar relatório e logs desta sessão para enviar ao assistente" style="cursor:pointer;background:#0e3748;color:#22d3ee;border:1px solid #0891b2;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:bold;transition:background 0.2s;">
+            📋 COPIAR LOGS
+          </button>
+          <span id="bancadalab-hud-tag" style="background:#0891b2;color:#ffffff;font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;text-transform:uppercase;">ATIVO</span>
+        </div>
       </div>
       <div id="bancadalab-hud-msg" style="color:#e2e8f0;line-height:1.4;margin-bottom:6px;font-weight:500;">Aguardando comando...</div>
       <div style="background:#0f172a;height:4px;border-radius:2px;overflow:hidden;">
@@ -60,10 +84,29 @@
 
     document.body.appendChild(hud);
     hudElement = hud;
+
+    const btnCopiar = hud.querySelector("#bancadalab-btn-copiar-logs");
+    if (btnCopiar) {
+      btnCopiar.addEventListener("click", () => {
+        const texto = window.__BANCADALAB_LOGS__.join("\n") || "Nenhum log registrado ainda.";
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(texto).then(() => {
+            btnCopiar.textContent = "✓ COPIADO!";
+            btnCopiar.style.background = "#059669";
+            setTimeout(() => {
+              btnCopiar.textContent = "📋 COPIAR LOGS";
+              btnCopiar.style.background = "#0e3748";
+            }, 3000);
+          });
+        }
+      });
+    }
+
     return hud;
   }
 
   function atualizarHud(mensagem, progressoPercent = null, tipo = "info") {
+    gravarLog(mensagem);
     const hud = obterOuCriarHud();
     hud.style.display = "block";
     const elMsg = hud.querySelector("#bancadalab-hud-msg");
