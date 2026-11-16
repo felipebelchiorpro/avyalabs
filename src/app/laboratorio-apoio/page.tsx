@@ -107,7 +107,7 @@ export default function LaboratorioApoioPage() {
   const [prontuarioBusca, setProntuarioBusca] = useState('');
   const [agendamentoBusca, setAgendamentoBusca] = useState('');
   const [modoOperacao, setModoOperacao] = useState<'mudar_laboratorio' | 'separar'>('mudar_laboratorio');
-  const [laboratorioDestino, setLaboratorioDestino] = useState<'SAO_LUCAS' | 'MS' | 'MUNICIPAL'>('SAO_LUCAS');
+  const [laboratorioDestino, setLaboratorioDestino] = useState<'MS' | 'SAO_LUCAS' | 'MUNICIPAL'>('MS');
   const [processando, setProcessando] = useState(false);
   const [historicoEnvios, setHistoricoEnvios] = useState<RegistroTriagemAutomatica[]>([]);
   const [ultimoResultado, setUltimoResultado] = useState<RegistroTriagemAutomatica | null>(null);
@@ -369,68 +369,47 @@ export default function LaboratorioApoioPage() {
         </div>
       </div>
 
-      {/* Regra de Roteamento SUS (3 Cards Visuais Explicativos) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Regra de Roteamento SUS (2 Grandes Blocos: Apoio vs Bancada Local) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         
-        {/* Card 1: Laboratório MS */}
-        <div className="p-4 rounded-2xl bg-purple-950/20 border border-purple-500/30 flex items-start gap-3.5">
-          <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
-            <TestTube2 className="w-5 h-5 text-purple-400" />
+        {/* Bloco 1: Laboratório de Apoio MS (Malote Externo: Bioquímica + Hemograma) */}
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-purple-950/30 to-cyan-950/20 border border-purple-500/30 flex items-start gap-4">
+          <div className="p-3 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
+            <TestTube2 className="w-6 h-6 text-purple-400" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white">Laboratório MS</h3>
+              <h3 className="text-sm font-bold text-white">Laboratório de Apoio MS</h3>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                APOIO HEMATOLOGIA
+                MALOTE EXTERNO OFICIAL
               </span>
             </div>
-            <p className="text-xs text-purple-200/80 font-medium mt-1">
-              Todos os <b>Hemogramas</b> (Tubo EDTA tampa roxa).
+            <p className="text-xs text-purple-200/90 font-medium mt-1">
+              <b>Todos os Bioquímicos & Hemogramas vão para o Laboratório MS</b> (Hemograma, Ureia, Creatinina, Glicemia, Colesterol, TGO, TGP, Ácido Úrico, etc.).
             </p>
             <p className="text-[11px] text-slate-400 mt-1">
-              Gera SADT de remessa e vai no malote de sangue.
+              A guia inteira de sangue é transferida para o Laboratório MS e gera a SADT impressa de remessa.
             </p>
           </div>
         </div>
 
-        {/* Card 2: Laboratório São Lucas */}
-        <div className="p-4 rounded-2xl bg-cyan-950/20 border border-cyan-500/30 flex items-start gap-3.5">
-          <div className="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shrink-0">
-            <Microscope className="w-5 h-5 text-cyan-400" />
+        {/* Bloco 2: Laboratório Municipal (Fica SOMENTE a Bancada Local) */}
+        <div className="p-5 rounded-2xl bg-emerald-950/25 border border-emerald-500/30 flex items-start gap-4">
+          <div className="p-3 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+            <FlaskConical className="w-6 h-6 text-emerald-400" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white">Laboratório São Lucas</h3>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                APOIO BIOQUÍMICA
-              </span>
-            </div>
-            <p className="text-xs text-cyan-200/80 font-medium mt-1">
-              <b>Bioquímica Geral</b> (Ureia, Creatinina, Colesterol, Glicemia).
-            </p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Gera SADT de bioquímica terceirizada.
-            </p>
-          </div>
-        </div>
-
-        {/* Card 3: Laboratório Municipal (Local) */}
-        <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 flex items-start gap-3.5">
-          <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-            <FlaskConical className="w-5 h-5 text-emerald-400" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white">Laboratório Municipal</h3>
+              <h3 className="text-sm font-bold text-white">Laboratório Municipal (Posto de Saúde)</h3>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                BANCADA LOCAL
+                SOMENTE BANCADA LOCAL
               </span>
             </div>
-            <p className="text-xs text-emerald-200/80 font-medium mt-1">
-              <b>Urinálise (EAS)</b>, <b>Sangue Oculto (PSO)</b> e <b>Rápidos</b>.
+            <p className="text-xs text-emerald-200/90 font-medium mt-1">
+              <b>Fica retido no posto:</b> Urina Tipo I (EAS), Pesquisa de Sangue Oculto (PSO), Testes Rápidos e Glicada Retida.
             </p>
             <p className="text-[11px] text-slate-400 mt-1">
-              Não sai no malote. Fica para leitura interna local.
+              Esses exames não saem no malote. Ficam para análise e laudo direto nas bancadas do posto.
             </p>
           </div>
         </div>
@@ -491,32 +470,32 @@ export default function LaboratorioApoioPage() {
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <button
                     type="button"
-                    onClick={() => setLaboratorioDestino('SAO_LUCAS')}
-                    className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                      laboratorioDestino === 'SAO_LUCAS'
-                        ? 'bg-cyan-500/30 border-cyan-400 text-cyan-200'
+                    onClick={() => setLaboratorioDestino('MS')}
+                    className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                      laboratorioDestino === 'MS'
+                        ? 'bg-purple-500/30 border-purple-400 text-purple-200 shadow-sm'
                         : 'bg-[#050811] border-white/10 text-slate-400 hover:text-white'
                     }`}
                   >
-                    🔬 São Lucas (Bioquímica)
+                    🩸 Lab MS (Apoio Oficial)
                   </button>
                   <button
                     type="button"
-                    onClick={() => setLaboratorioDestino('MS')}
+                    onClick={() => setLaboratorioDestino('SAO_LUCAS')}
                     className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                      laboratorioDestino === 'MS'
-                        ? 'bg-purple-500/30 border-purple-400 text-purple-200'
+                      laboratorioDestino === 'SAO_LUCAS'
+                        ? 'bg-cyan-500/30 border-cyan-400 text-cyan-200 shadow-sm'
                         : 'bg-[#050811] border-white/10 text-slate-400 hover:text-white'
                     }`}
                   >
-                    🩸 Lab MS (Hemograma)
+                    🔬 São Lucas
                   </button>
                   <button
                     type="button"
                     onClick={() => setLaboratorioDestino('MUNICIPAL')}
                     className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
                       laboratorioDestino === 'MUNICIPAL'
-                        ? 'bg-emerald-500/30 border-emerald-400 text-emerald-200'
+                        ? 'bg-emerald-500/30 border-emerald-400 text-emerald-200 shadow-sm'
                         : 'bg-[#050811] border-white/10 text-slate-400 hover:text-white'
                     }`}
                   >
