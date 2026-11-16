@@ -20,24 +20,148 @@
   const JWT_REGEX = /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/;
 
   // =========================================================================
-  // 1. HUD VISUAL FLUTUANTE (OVERLAY DE STATUS EM TEMPO REAL) + RECORDER DE LOGS
-  // Permite ao operador acompanhar cada etapa na tela do Conecta SUS e copiar logs
+  // 1. HUD VISUAL FLUTUANTE + FLIGHT RECORDER (TELEMETRIA F12 COMPLETA)
+  // Captura Console, Requisições Network (Fetch/XHR), Cliques e Modais
   // =========================================================================
   window.__BANCADALAB_LOGS__ = window.__BANCADALAB_LOGS__ || [];
 
-  function gravarLog(msg) {
+  function gravarLog(categoria, msg) {
+    if (arguments.length === 1) {
+      msg = categoria;
+      categoria = "ROBO";
+    }
     const limpo = typeof msg === "string" ? msg.replace(/<[^>]*>/g, "") : JSON.stringify(msg);
-    const entrada = `[${new Date().toLocaleTimeString("pt-BR")}] ${limpo}`;
+    const entrada = `[${new Date().toLocaleTimeString("pt-BR")}] [${categoria.toUpperCase()}] ${limpo}`;
     window.__BANCADALAB_LOGS__.push(entrada);
-    if (window.__BANCADALAB_LOGS__.length > 100) window.__BANCADALAB_LOGS__.shift();
+    if (window.__BANCADALAB_LOGS__.length > 500) window.__BANCADALAB_LOGS__.shift();
+
+    // Atualiza contador no botão de cópia do HUD se visível
+    const btnCopiar = document.querySelector("#bancadalab-btn-copiar-logs");
+    if (btnCopiar && !btnCopiar.textContent.includes("✓")) {
+      btnCopiar.textContent = `📋 COPIAR LOGS (${window.__BANCADALAB_LOGS__.length})`;
+    }
   }
+
+  // Interceptar todos os cliques do operador e do robô na página
+  document.addEventListener(
+    "click",
+    (e) => {
+      try {
+        const el = e.target;
+        if (!el || el.closest?.("#bancadalab-conecta-hud")) return;
+        const tag = (el.tagName || "").toLowerCase();
+        const cls = (el.className || "").toString().slice(0, 40);
+        const id = el.id ? `#${el.id}` : "";
+        const title = el.getAttribute("title") || "";
+        const href = el.getAttribute("href") || "";
+        const txt = (el.innerText || el.value || "").trim().slice(0, 30).replace(/\s+/g, " ");
+        gravarLog("CLIQUE", `<${tag}${id} class="${cls}" title="${title}" href="${href}"> "${txt}"`);
+      } catch (_) {}
+    },
+    true
+  );
+
+  // Injetar script no contexto da página para espelhar Console e Network (Fetch/XHR) do F12
+  try {
+    const scriptInterceptor = document.createElement("script");
+    scriptInterceptor.textContent = `
+      (function() {
+        if (window.__BANCADALAB_INTERCEPTOR_ATTACHED__) return;
+        window.__BANCADALAB_INTERCEPTOR_ATTACHED__ = true;
+
+        function enviarEvento(tipo, dados) {
+          try {
+            window.postMessage({
+              source: "bancadalab_telemetria",
+              tipo,
+              dados: typeof dados === "object" ? JSON.stringify(dados) : String(dados)
+            }, "*");
+          } catch (_) {}
+        }
+
+        // 1. Espelhar Console (F12)
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        console.warn = function(...args) {
+          enviarEvento("CONSOLE_WARN", args.map(a => typeof a === "object" ? JSON.stringify(a) : String(a)).join(" "));
+          originalWarn.apply(console, args);
+        };
+        console.error = function(...args) {
+          enviarEvento("CONSOLE_ERROR", args.map(a => typeof a === "object" ? JSON.stringify(a) : String(a)).join(" "));
+          originalError.apply(console, args);
+        };
+
+        // 2. Espelhar Fetch
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+          const url = typeof args[0] === "string" ? args[0] : (args[0]?.url || "");
+          const metodo = (args[1]?.method || "GET").toUpperCase();
+          const urlLimpa = url.replace(window.location.origin, "");
+          try {
+            const resp = await originalFetch.apply(this, args);
+            enviarEvento("NETWORK_FETCH", \`\${metodo} \${urlLimpa} -> \${resp.status}\`);
+            return resp;
+          } catch(err) {
+            enviarEvento("NETWORK_FETCH_ERRO", \`\${metodo} \${urlLimpa} -> FALHA: \${err.message}\`);
+            throw err;
+          }
+        };
+
+        // 3. Espelhar XMLHttpRequest (Axios / jQuery)
+        const originalXhrOpen = XMLHttpRequest.prototype.open;
+        const originalXhrSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.open = function(metodo, url) {
+          this.__bancadaMetodo = metodo;
+          this.__bancadaUrl = url;
+          return originalXhrOpen.apply(this, arguments);
+        };
+        XMLHttpRequest.prototype.send = function() {
+          this.addEventListener("load", () => {
+            const urlLimpa = String(this.__bancadaUrl || "").replace(window.location.origin, "");
+            enviarEvento("NETWORK_XHR", \`\${(this.__bancadaMetodo || "GET").toUpperCase()} \${urlLimpa} -> \${this.status}\`);
+          });
+          return originalXhrSend.apply(this, arguments);
+        };
+      })();
+    `;
+    (document.head || document.documentElement).appendChild(scriptInterceptor);
+    scriptInterceptor.remove();
+  } catch (errInj) {
+    console.warn("[BancadaLab] Interceptor F12 não injetado:", errInj);
+  }
+
+  // Ouvir eventos repassados do contexto da página
+  window.addEventListener("message", (ev) => {
+    if (ev.source !== window || !ev.data || ev.data.source !== "bancadalab_telemetria") return;
+    const { tipo, dados } = ev.data;
+    if (tipo === "CONSOLE_ERROR" || tipo === "NETWORK_FETCH_ERRO") {
+      gravarLog("F12_ERRO", dados);
+    } else if (tipo.startsWith("NETWORK")) {
+      gravarLog("NETWORK", dados);
+    } else {
+      gravarLog("F12", dados);
+    }
+  });
 
   // Função global acessível via console
   window.copiarLogsBancadaLab = function () {
-    const texto = window.__BANCADALAB_LOGS__.join("\n");
+    const cabecalho = [
+      "===========================================================",
+      "=== RELATÓRIO DE TELEMETRIA BANCADALAB SUS (F12) ===",
+      `URL Atual: ${window.location.href}`,
+      `Horário da Coleta: ${new Date().toLocaleString("pt-BR")}`,
+      `Total de Eventos Registrados: ${window.__BANCADALAB_LOGS__.length}`,
+      "===========================================================",
+      "",
+    ].join("\n");
+
+    const texto = cabecalho + (window.__BANCADALAB_LOGS__.join("\n") || "Nenhum log registrado ainda.");
     if (navigator.clipboard) {
       navigator.clipboard.writeText(texto);
-      console.log("%c[BancadaLab] Logs copiados com sucesso para a Área de Transferência! Basta colar no chat.", "color:#059669;font-weight:bold;");
+      console.log(
+        "%c[BancadaLab] Logs F12 completos copiados para a Área de Transferência!",
+        "color:#059669;font-weight:bold;"
+      );
     }
     return texto;
   };
@@ -53,7 +177,7 @@
     hud.style.top = "16px";
     hud.style.right = "16px";
     hud.style.zIndex = "9999999";
-    hud.style.maxWidth = "460px";
+    hud.style.maxWidth = "480px";
     hud.style.background = "#070b14";
     hud.style.color = "#f8fafc";
     hud.style.borderRadius = "12px";
@@ -67,16 +191,19 @@
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;border-bottom:1px solid #164e63;padding-bottom:6px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22d3ee;box-shadow:0 0 8px #22d3ee;animation:pulse 1.5s infinite;"></span>
-          <strong style="color:#22d3ee;font-size:14px;letter-spacing:0.5px;">BancadaLab SUS • Automação</strong>
+          <strong style="color:#22d3ee;font-size:13px;letter-spacing:0.5px;">BancadaLab SUS • Gravador F12</strong>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
-          <button id="bancadalab-btn-copiar-logs" title="Copiar relatório e logs desta sessão para enviar ao assistente" style="cursor:pointer;background:#0e3748;color:#22d3ee;border:1px solid #0891b2;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:bold;transition:background 0.2s;">
-            📋 COPIAR LOGS
+          <button id="bancadalab-btn-limpar-logs" title="Limpar logs gravados para iniciar um novo teste" style="cursor:pointer;background:transparent;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:3px 7px;font-size:10px;font-weight:600;transition:all 0.2s;">
+            LIMPAR
           </button>
-          <span id="bancadalab-hud-tag" style="background:#0891b2;color:#ffffff;font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;text-transform:uppercase;">ATIVO</span>
+          <button id="bancadalab-btn-copiar-logs" title="Copiar relatório e logs completos do F12 (cliques, requisições, erros)" style="cursor:pointer;background:#0891b2;color:#ffffff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;transition:all 0.2s;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+            📋 COPIAR LOGS (0)
+          </button>
+          <span id="bancadalab-hud-tag" style="background:#059669;color:#ffffff;font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;text-transform:uppercase;">ATIVO</span>
         </div>
       </div>
-      <div id="bancadalab-hud-msg" style="color:#e2e8f0;line-height:1.4;margin-bottom:6px;font-weight:500;">Aguardando comando...</div>
+      <div id="bancadalab-hud-msg" style="color:#e2e8f0;line-height:1.4;margin-bottom:6px;font-weight:500;">Gravador de eventos F12 pronto. Realize a ação ou execute o robô.</div>
       <div style="background:#0f172a;height:4px;border-radius:2px;overflow:hidden;">
         <div id="bancadalab-hud-bar" style="background:linear-gradient(90deg, #0891b2, #059669);height:100%;width:0%;transition:width 0.4s ease;"></div>
       </div>
@@ -88,17 +215,25 @@
     const btnCopiar = hud.querySelector("#bancadalab-btn-copiar-logs");
     if (btnCopiar) {
       btnCopiar.addEventListener("click", () => {
-        const texto = window.__BANCADALAB_LOGS__.join("\n") || "Nenhum log registrado ainda.";
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(texto).then(() => {
-            btnCopiar.textContent = "✓ COPIADO!";
-            btnCopiar.style.background = "#059669";
-            setTimeout(() => {
-              btnCopiar.textContent = "📋 COPIAR LOGS";
-              btnCopiar.style.background = "#0e3748";
-            }, 3000);
-          });
-        }
+        const texto = window.copiarLogsBancadaLab();
+        btnCopiar.textContent = "✓ COPIADO COM SUCESSO!";
+        btnCopiar.style.background = "#059669";
+        setTimeout(() => {
+          btnCopiar.textContent = `📋 COPIAR LOGS (${window.__BANCADALAB_LOGS__.length})`;
+          btnCopiar.style.background = "#0891b2";
+        }, 3000);
+      });
+    }
+
+    const btnLimpar = hud.querySelector("#bancadalab-btn-limpar-logs");
+    if (btnLimpar) {
+      btnLimpar.addEventListener("click", () => {
+        window.__BANCADALAB_LOGS__ = [];
+        if (btnCopiar) btnCopiar.textContent = "📋 COPIAR LOGS (0)";
+        btnLimpar.textContent = "LIMPO!";
+        setTimeout(() => {
+          btnLimpar.textContent = "LIMPAR";
+        }, 1500);
       });
     }
 
@@ -106,7 +241,7 @@
   }
 
   function atualizarHud(mensagem, progressoPercent = null, tipo = "info") {
-    gravarLog(mensagem);
+    gravarLog("ROBO", mensagem);
     const hud = obterOuCriarHud();
     hud.style.display = "block";
     const elMsg = hud.querySelector("#bancadalab-hud-msg");
@@ -822,17 +957,21 @@
     }
 
     simularClique(btnLapis);
+    gravarLog("ROBO", `Lápis azul clicado para agendamento #${agendamento}. Aguardando abertura da edição...`);
     await esperar(2200); // Aguarda abertura da tela/modal de edição
 
     // 5. Localizar o dropdown de Laboratório de Destino
     notify(`Alterando laboratório para <strong>${nomeLabFormatado}</strong>...`, 65);
     const selects = Array.from(document.querySelectorAll("select"));
+    gravarLog("ROBO", `Total de <select> encontrados na tela: ${selects.length}`);
+
     const selectLab = selects.find((s) => {
       const opts = Array.from(s.options).map((o) => (o.text || "").toUpperCase());
       return opts.some((t) => t.includes("SÃO LUCAS") || t.includes("SAO LUCAS") || t.includes("MS") || t.includes("MUNICIPAL"));
     });
 
     if (selectLab) {
+      gravarLog("ROBO", `Select de Laboratório localizado: ${selectLab.name || selectLab.id || "sem id"}`);
       const termo = (laboratorioAlvo || "").toUpperCase();
       let optionAlvo = null;
       if (termo.includes("MS")) {
@@ -848,8 +987,11 @@
         selectLab.dispatchEvent(new Event("change", { bubbles: true }));
         selectLab.dispatchEvent(new Event("input", { bubbles: true }));
         notify(`✓ Laboratório selecionado: <strong>${optionAlvo.text}</strong>!`, 70);
+        gravarLog("ROBO", `Laboratório alterado para: ${optionAlvo.text} (valor: ${optionAlvo.value})`);
         await esperar(1200);
       }
+    } else {
+      gravarLog("AVISO", "Dropdown de laboratório NÃO encontrado na tela após clicar no lápis!");
     }
 
     // 5.1 Retirar da guia de apoio os exames que são da bancada local (Urina, PSO, etc.)
@@ -870,6 +1012,8 @@
           el.innerText.toUpperCase().includes("PARASITOLOGICO"))
     );
 
+    gravarLog("ROBO", `Total de exames de bancada detectados para remoção: ${linhasExamesEdicao.length}`);
+
     for (const linhaExame of linhasExamesEdicao) {
       const textoExame = (linhaExame.innerText || "").toUpperCase();
       const ehBancadaLocal =
@@ -886,12 +1030,15 @@
         examesBancadaRetirados.push(nomeLimpo || "URINA TIPO I");
 
         notify(`Retirando exame de bancada (${nomeLimpo}) da SADT de apoio...`, 75);
+        gravarLog("ROBO", `Removendo exame de bancada da guia: ${nomeLimpo}`);
         const btnLixeira = linhaExame.querySelector(
           ".btn-danger, .fa-trash, a[title*='Excluir' i], button[title*='Excluir' i], a[title*='Remover' i], button[title*='Remover' i], [class*='trash']"
         );
         if (btnLixeira) {
           simularClique(btnLixeira);
           await esperar(2000); // Aguarda confirmação do modal de supervisor
+        } else {
+          gravarLog("AVISO", `Botão de lixeira não encontrado para exame: ${nomeLimpo}`);
         }
       }
     }
@@ -905,8 +1052,11 @@
     });
 
     if (btnSalvar) {
+      gravarLog("ROBO", `Botão Salvar localizado: "${(btnSalvar.textContent || btnSalvar.value || '').trim()}". Clicando...`);
       simularClique(btnSalvar);
       await esperar(3500); // Aguarda POST 201 Created no servidor
+    } else {
+      gravarLog("AVISO", "Botão Salvar NÃO encontrado após edição!");
     }
 
     // 7. Voltar para aba "EXAMES AGENDADOS" e emitir a SADT do apoio

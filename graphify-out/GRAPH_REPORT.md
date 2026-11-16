@@ -1,32 +1,34 @@
 # Graph Report - Urinalise PWA Automatico  (2026-11-16)
 
 ## Corpus Check
-- 60 files · ~135,620 words
+- 60 files · ~137,296 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 5 file(s) not represented in the graph (top: (none) 2, .ico 1, .css 1)
 
 ## Summary
-- 413 nodes · 986 edges · 20 communities (14 shown, 6 thin omitted)
+- 413 nodes · 987 edges · 22 communities (16 shown, 6 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 1 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `f4753b94`
+- Built from commit: `407f0ed0`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- react
+- ModalSelecionarOperador.tsx
 - triagem-edta/page.tsx
 - extratorBancada.ts
 - D1PreparedStatement
 - content_conectasus.js
 - compilerOptions
 - D1Database
+- urina/page.tsx
 - extensao-chrome/manifest.json
 - urinalise.ts
 - background.js
 - manifest.json
+- layout.tsx
 - package.json
 - d1Service.ts
 - vercel.json
@@ -61,19 +63,19 @@
 ## Import Cycles
 - None detected.
 
-## Communities (20 total, 6 thin omitted)
+## Communities (22 total, 6 thin omitted)
 
-### Community 0 - "react"
-Cohesion: 0.09
-Nodes (28): nextConfig, lucide-react, next, react, ExameClassificado, RegistroTriagemAutomatica, geistMono, geistSans (+20 more)
+### Community 0 - "ModalSelecionarOperador.tsx"
+Cohesion: 0.40
+Nodes (12): Logo(), ModalSelecionarOperador(), ModalSelecionarOperadorProps, GrupoMenu, ItemMenu, Navbar(), adicionarOperador(), definirOperadorAtivo() (+4 more)
 
 ### Community 1 - "triagem-edta/page.tsx"
 Cohesion: 0.21
 Nodes (22): TriagemEdtaPage(), DadosPacienteCapturados, EdtaOcrScanner(), EdtaOcrScannerProps, RelatorioTriagemEdtaPrintView(), getAudioContext(), tocarSomApenasGlicada(), tocarSomApenasHemograma() (+14 more)
 
 ### Community 2 - "extratorBancada.ts"
-Cohesion: 0.12
-Nodes (22): dynamic, extractTextFromPdf(), POST(), revalidate, ImportarRotinaPage(), MapaBancadaPrintView(), classificarExameBancada(), extrairExamesBancadaConectaSUS() (+14 more)
+Cohesion: 0.10
+Nodes (26): pdf-parse@^2.4.5, xlsx@^0.18.5, pdf-parse, xlsx, dynamic, extractTextFromPdf(), POST(), revalidate (+18 more)
 
 ### Community 4 - "content_conectasus.js"
 Cohesion: 0.28
@@ -83,13 +85,17 @@ Nodes (14): atualizarHud(), classificarDestinoExame(), criarNovoAgendamentoNoCon
 Cohesion: 0.11
 Nodes (18): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+10 more)
 
+### Community 7 - "urina/page.tsx"
+Cohesion: 0.24
+Nodes (14): BancadaOperacionalPage(), VALORES_PADRAO_NORMAL, VALORES_SEM_URINA, BarraAcoesTiragem(), baixarXlsxUrinalise(), baixarXmlUrinalise(), escaparXml(), estaNoIntervaloData() (+6 more)
+
 ### Community 8 - "extensao-chrome/manifest.json"
 Cohesion: 0.15
 Nodes (12): action, default_popup, default_title, background, service_worker, content_scripts, description, host_permissions (+4 more)
 
 ### Community 9 - "urinalise.ts"
-Cohesion: 0.08
-Nodes (45): dynamic, POST(), revalidate, ConsultaAuditoriaPage(), PainelLaudosPage(), BancadaOperacionalPage(), VALORES_PADRAO_NORMAL, VALORES_SEM_URINA (+37 more)
+Cohesion: 0.07
+Nodes (40): nextConfig, lucide-react, next, react, dynamic, POST(), revalidate, ConsultaAuditoriaPage() (+32 more)
 
 ### Community 10 - "background.js"
 Cohesion: 0.46
@@ -99,9 +105,13 @@ Nodes (6): atualizarLog(), executarApoioConectaSus(), garantirContentScriptInjet
 Cohesion: 0.20
 Nodes (9): background_color, description, display, icons, name, orientation, short_name, start_url (+1 more)
 
+### Community 14 - "layout.tsx"
+Cohesion: 0.29
+Nodes (6): geistMono, geistSans, metadata, RootLayout(), viewport, SidebarLateral()
+
 ### Community 15 - "package.json"
 Cohesion: 0.05
-Nodes (51): eslintConfig, dependencies, @emnapi/core@^1.11.3, @emnapi/runtime@^1.11.3, googleapis@^188.0.0, html5-qrcode@^2.3.8, lucide-react@^1.61.0, next@16.4.3 (+43 more)
+Nodes (48): eslintConfig, dependencies, @emnapi/core@^1.11.3, @emnapi/runtime@^1.11.3, googleapis@^188.0.0, html5-qrcode@^2.3.8, lucide-react@^1.61.0, next@16.4.3 (+40 more)
 
 ### Community 17 - "d1Service.ts"
 Cohesion: 0.06
@@ -125,17 +135,17 @@ Nodes (6): limparDataNasc(), limparProntuario(), PacienteRotinaEdta, StatusTriag
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `next` connect `react` to `triagem-edta/page.tsx`, `extratorBancada.ts`, `urinalise.ts`, `package.json`, `d1Service.ts`, `laudos/route.ts`?**
+- **Why does `next` connect `urinalise.ts` to `ModalSelecionarOperador.tsx`, `triagem-edta/page.tsx`, `extratorBancada.ts`, `urina/page.tsx`, `layout.tsx`, `package.json`, `d1Service.ts`, `laudos/route.ts`?**
   _High betweenness centrality (0.156) - this node is a cross-community bridge._
-- **Should `react` be split into smaller, more focused modules?**
-  _Cohesion score 0.08695652173913043 - nodes in this community are weakly interconnected._
-- **Why does `react` connect `react` to `triagem-edta/page.tsx`, `extratorBancada.ts`, `urinalise.ts`, `package.json`, `TriagemEdtaReal.tsx`?**
-  _High betweenness centrality (0.080) - this node is a cross-community bridge._
 - **Should `extratorBancada.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.11965811965811966 - nodes in this community are weakly interconnected._
-- **Why does `lucide-react` connect `react` to `triagem-edta/page.tsx`, `extratorBancada.ts`, `urinalise.ts`, `package.json`, `TriagemEdtaReal.tsx`?**
-  _High betweenness centrality (0.043) - this node is a cross-community bridge._
+  _Cohesion score 0.1010752688172043 - nodes in this community are weakly interconnected._
+- **Why does `react` connect `urinalise.ts` to `ModalSelecionarOperador.tsx`, `triagem-edta/page.tsx`, `extratorBancada.ts`, `urina/page.tsx`, `package.json`, `TriagemEdtaReal.tsx`?**
+  _High betweenness centrality (0.080) - this node is a cross-community bridge._
 - **Should `compilerOptions` be split into smaller, more focused modules?**
   _Cohesion score 0.10526315789473684 - nodes in this community are weakly interconnected._
+- **Why does `lucide-react` connect `urinalise.ts` to `ModalSelecionarOperador.tsx`, `triagem-edta/page.tsx`, `extratorBancada.ts`, `urina/page.tsx`, `package.json`, `TriagemEdtaReal.tsx`?**
+  _High betweenness centrality (0.043) - this node is a cross-community bridge._
 - **Should `urinalise.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.07720782654680064 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06923076923076923 - nodes in this community are weakly interconnected._
+- **Should `package.json` be split into smaller, more focused modules?**
+  _Cohesion score 0.05128205128205128 - nodes in this community are weakly interconnected._
