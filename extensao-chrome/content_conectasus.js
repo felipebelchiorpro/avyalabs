@@ -242,10 +242,16 @@
   }
 
   // =========================================================================
-  // 5. AUTORIZAÇÃO AUTOMÁTICA DE POP-UPS (CONFIRMAÇÃO + SUPERVISOR)
+  // 5. AUTORIZAÇÃO AUTOMÁTICA DE POP-UPS (CONFIRMAÇÃO + SUPERVISOR) COM DEBOUNCE
   // =========================================================================
+  let ultimoCliqueModalMs = 0;
+  let elementoClicadoRecentemente = null;
+
   function iniciarObservadorSupervisor() {
     const observer = new MutationObserver(() => {
+      // Debounce estrito de 1200ms para evitar cliques múltiplos em Vue.js
+      if (Date.now() - ultimoCliqueModalMs < 1200) return;
+
       const modais = Array.from(document.querySelectorAll(".modal, .modal-dialog, div[role='dialog']")).filter(
         (m) => m.offsetParent !== null
       );
@@ -262,9 +268,12 @@
           const btnSim = Array.from(modal.querySelectorAll("button, a, input[type='button']")).find(
             (b) => (b.textContent || b.value || "").trim().toUpperCase() === "SIM"
           );
-          if (btnSim && !btnSim.disabled) {
-            console.log("%c[BancadaLab] Pop-up 'Deseja continuar?' detectado! Clicando em 'Sim'...", "color:#059669;font-weight:bold;");
+          if (btnSim && !btnSim.disabled && btnSim !== elementoClicadoRecentemente) {
+            ultimoCliqueModalMs = Date.now();
+            elementoClicadoRecentemente = btnSim;
+            console.log("%c[BancadaLab] Pop-up 'Deseja continuar?' detectado! Clicando em 'Sim' (clique único)...", "color:#059669;font-weight:bold;");
             simularClique(btnSim);
+            setTimeout(() => { elementoClicadoRecentemente = null; }, 2500);
             return;
           }
         }
@@ -274,9 +283,12 @@
           const btnAutorizar = Array.from(modal.querySelectorAll("button, a, input[type='button']")).find(
             (b) => (b.textContent || b.value || "").trim().toUpperCase() === "AUTORIZAR"
           );
-          if (btnAutorizar && !btnAutorizar.disabled) {
-            console.log("%c[BancadaLab] Pop-up 'Autorização do supervisor' detectado! Clicando em 'Autorizar'...", "color:#059669;font-weight:bold;");
+          if (btnAutorizar && !btnAutorizar.disabled && btnAutorizar !== elementoClicadoRecentemente) {
+            ultimoCliqueModalMs = Date.now();
+            elementoClicadoRecentemente = btnAutorizar;
+            console.log("%c[BancadaLab] Pop-up 'Autorização do supervisor' detectado! Clicando em 'Autorizar' (clique único)...", "color:#059669;font-weight:bold;");
             simularClique(btnAutorizar);
+            setTimeout(() => { elementoClicadoRecentemente = null; }, 2500);
             return;
           }
         }
@@ -557,8 +569,10 @@
         btnAcao = linksLinha[linksLinha.length - 1] || linhaPaciente;
       }
 
-      simularClique(btnAcao);
-      await esperar(2500);
+      if (!window.location.href.includes("create")) {
+        simularClique(btnAcao);
+      }
+      await esperar(2000);
 
       // Aguarda até a tela do paciente carregar com as abas
       const fimEsperaPerfil = Date.now() + 8000;

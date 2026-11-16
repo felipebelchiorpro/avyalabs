@@ -1,7 +1,7 @@
 # Graph Report - Urinalise PWA Automatico  (2026-11-16)
 
 ## Corpus Check
-- 60 files · ~133,263 words
+- 60 files · ~133,449 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 5 file(s) not represented in the graph (top: (none) 2, .ico 1, .css 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `21e37c5d`
+- Built from commit: `ea428e16`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
