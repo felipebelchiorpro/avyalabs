@@ -1,10 +1,12 @@
 {
   "0": "extrair-arquivo/route.ts",
   "1": "triagem-edta/page.tsx",
-  "3": "D1Database",
+  "2": "extratorBancada.ts",
+  "3": "package.json",
   "4": "content_conectasus.js",
   "5": "compilerOptions",
   "6": "devDependencies",
+  "7": "layout.tsx",
   "8": "extensao-chrome/manifest.json",
   "9": "urinalise.ts",
   "10": "background.js",
@@ -12,7 +14,6 @@
   "12": "content_bancadalab.js",
   "13": "manifest.json",
   "15": "dependencies",
-  "16": "D1PreparedStatement",
   "17": "d1Service.ts",
   "19": "vercel.json",
   "20": "configurar_planilha_google.js",
@@ -21,6 +22,5 @@
   "26": "scripts",
   "27": "eslint.config.mjs",
   "28": "EdtaBarcodeScanner.tsx",
-  "29": "TriagemEdtaReal.tsx",
-  "30": "lucide-react"
+  "29": "TriagemEdtaReal.tsx"
 }

@@ -503,6 +503,187 @@
   }
 
   // =========================================================================
+  // 6.2 FLUXO RÁPIDO: APENAS MUDAR LABORATÓRIO DO AGENDAMENTO (LÁPIS AZUL)
+  // Quando a guia já está certa e o operador só quer transferir para Apoio
+  // =========================================================================
+  async function executarApenasMudancaLaboratorio(
+    { agendamento, prontuario, laboratorioAlvo = "SAO_LUCAS" },
+    notify
+  ) {
+    const nomeLabFormatado =
+      laboratorioAlvo.includes("MS") ? "MS LABORATÓRIOS" : "LABORATÓRIO SÃO LUCAS";
+
+    notify(`Iniciando transferência da guia #${agendamento} para <strong>${nomeLabFormatado}</strong>...`, 15);
+
+    // 1. Garantir que estamos na tela do paciente (mesma lógica resiliente)
+    const urlAtual = window.location.href;
+    const temAbasPerfil = Array.from(document.querySelectorAll("a, button, li, .nav-link")).some((el) => {
+      const t = (el.textContent || "").trim().toUpperCase();
+      return t.includes("EXAMES AGENDADOS") || t.includes("AGENDAR EXAMES");
+    });
+
+    const jaEstaNoPerfil =
+      urlAtual.includes("/agendamento-exame/create") ||
+      urlAtual.includes("/exame-laboratorial/agendamento-exame/create") ||
+      urlAtual.includes("/create/") ||
+      temAbasPerfil;
+
+    if (!jaEstaNoPerfil) {
+      notify(`Pesquisando Prontuário #${prontuario || agendamento} para abrir o paciente...`, 20);
+      const inputBusca = document.querySelector(
+        "input[placeholder*='buscar' i], input[placeholder*='pesquisar' i], input[type='search'], input.form-control"
+      );
+      if (inputBusca) {
+        simularInput(inputBusca, prontuario || agendamento);
+        await esperar(400);
+        const btnBuscar = Array.from(document.querySelectorAll("button, input[type='submit']")).find(
+          (b) => (b.textContent || b.value || "").trim().toUpperCase() === "BUSCAR"
+        );
+        if (btnBuscar) simularClique(btnBuscar);
+        await esperar(2000);
+
+        const trs = Array.from(document.querySelectorAll("table tbody tr")).filter(
+          (tr) => tr.innerText && !tr.innerText.includes("Nenhum") && !tr.innerText.includes("Carregando")
+        );
+        if (trs.length > 0) {
+          const btnAcao = trs[0].querySelector("a[href*='create'], button, a");
+          if (btnAcao) {
+            simularClique(btnAcao);
+            await esperar(2500);
+          }
+        }
+      }
+    }
+
+    // 2. Acessar aba "EXAMES AGENDADOS"
+    notify("Acessando aba 'EXAMES AGENDADOS'...", 35);
+    const abas = Array.from(document.querySelectorAll("a, button, li, .nav-link, span"));
+    const abaExames = abas.find((el) => (el.textContent || "").trim().toUpperCase() === "EXAMES AGENDADOS");
+    if (abaExames) {
+      simularClique(abaExames);
+      await esperar(1600);
+    }
+
+    // 3. Localizar a linha do agendamento
+    notify(`Localizando agendamento #${agendamento} na tabela...`, 45);
+    const linhas = Array.from(document.querySelectorAll("table tbody tr"));
+    let linhaAlvo = null;
+    if (agendamento) {
+      linhaAlvo = linhas.find((tr) => (tr.innerText || "").includes(String(agendamento).trim()));
+    }
+    if (!linhaAlvo && linhas.length > 0) {
+      linhaAlvo = linhas[linhas.length - 1];
+    }
+
+    if (!linhaAlvo) {
+      throw new Error(`Agendamento #${agendamento} não encontrado na lista do paciente.`);
+    }
+
+    // 4. Localizar e Clicar no LÁPIS AZUL (Botão de Edição)
+    notify(`Abrindo edição do agendamento #${agendamento} (Lápis Azul)...`, 55);
+    const botoesLinha = Array.from(linhaAlvo.querySelectorAll("a, button, [role='button']"));
+    let btnLapis = botoesLinha.find((b) => {
+      const h = (b.getAttribute("href") || "").toLowerCase();
+      const t = (b.getAttribute("title") || "").toLowerCase();
+      const c = (b.className || "").toLowerCase();
+      const html = (b.innerHTML || "").toLowerCase();
+      return (
+        c.includes("btn-primary") ||
+        c.includes("pencil") ||
+        c.includes("edit") ||
+        t.includes("editar") ||
+        t.includes("alterar") ||
+        html.includes("pencil") ||
+        html.includes("edit")
+      );
+    });
+
+    // Se não achou por classe, o lápis é o 4º botão (índice 3)
+    if (!btnLapis && botoesLinha.length >= 4) {
+      btnLapis = botoesLinha[3];
+    }
+
+    if (!btnLapis) {
+      throw new Error(`Botão de edição (Lápis Azul) não encontrado para o agendamento #${agendamento}.`);
+    }
+
+    simularClique(btnLapis);
+    await esperar(2000); // Aguarda abertura da tela/modal de edição
+
+    // 5. Localizar o dropdown de Laboratório de Destino
+    notify(`Alterando laboratório para <strong>${nomeLabFormatado}</strong>...`, 70);
+    const selects = Array.from(document.querySelectorAll("select"));
+    const selectLab = selects.find((s) => {
+      const opts = Array.from(s.options).map((o) => (o.text || "").toUpperCase());
+      return opts.some((t) => t.includes("SÃO LUCAS") || t.includes("SAO LUCAS") || t.includes("MS") || t.includes("MUNICIPAL"));
+    });
+
+    if (selectLab) {
+      const termo = (laboratorioAlvo || "").toUpperCase();
+      let optionAlvo = null;
+      if (termo.includes("MS")) {
+        optionAlvo = Array.from(selectLab.options).find((o) => (o.text || "").toUpperCase().includes("MS"));
+      } else if (termo.includes("LUCAS") || termo.includes("SAO_LUCAS")) {
+        optionAlvo = Array.from(selectLab.options).find((o) => (o.text || "").toUpperCase().includes("LUCAS"));
+      } else {
+        optionAlvo = Array.from(selectLab.options).find((o) => (o.text || "").toUpperCase().includes("MUNICIPAL"));
+      }
+
+      if (optionAlvo) {
+        selectLab.value = optionAlvo.value;
+        selectLab.dispatchEvent(new Event("change", { bubbles: true }));
+        selectLab.dispatchEvent(new Event("input", { bubbles: true }));
+        notify(`✓ Laboratório selecionado: <strong>${optionAlvo.text}</strong>!`, 80);
+        await esperar(1500); // O observador de supervisor cuidará de pop-ups se aparecerem
+      }
+    }
+
+    // 6. Clicar em "Salvar"
+    notify("Gravando alterações no Conecta SUS...", 85);
+    const botoes = Array.from(document.querySelectorAll("button, input[type='submit'], a.btn"));
+    const btnSalvar = botoes.find((b) => {
+      const txt = (b.textContent || b.value || "").trim().toUpperCase();
+      return txt === "SALVAR" || txt.includes("SALVAR");
+    });
+
+    if (btnSalvar) {
+      simularClique(btnSalvar);
+      await esperar(3500); // Aguarda POST 201 Created no servidor
+    }
+
+    // 7. Voltar para aba "EXAMES AGENDADOS"
+    notify("Atualizando tabela e emitindo SADT...", 92);
+    const abasRetorno = Array.from(document.querySelectorAll("a, button, li, .nav-link, span"));
+    const abaAgendadosRetorno = abasRetorno.find((el) => (el.textContent || "").trim().toUpperCase() === "EXAMES AGENDADOS");
+    if (abaAgendadosRetorno) {
+      simularClique(abaAgendadosRetorno);
+      await esperar(1800);
+    }
+
+    // 8. Clicar no botão da Impressora da guia
+    const linhasFinais = Array.from(document.querySelectorAll("table tbody tr"));
+    const linhaEditada = linhasFinais.find((tr) => (tr.innerText || "").includes(String(agendamento).trim())) || linhasFinais[0];
+
+    if (linhaEditada) {
+      const btnPrint = linhaEditada.querySelector(".btn-info, a[href*='imprimir' i], button[title*='imprimir' i]");
+      if (btnPrint) {
+        notify("Abrindo SADT oficial para impressão...", 98, "sucesso");
+        simularClique(btnPrint);
+      }
+    }
+
+    notify(`✓ Sucesso! Laboratório alterado para ${nomeLabFormatado} e SADT emitida!`, 100, "sucesso");
+
+    return {
+      ok: true,
+      agendamento,
+      prontuario,
+      laboratorioDestino: nomeLabFormatado,
+      status: `Laboratório alterado para ${nomeLabFormatado} com sucesso`,
+    };
+  }
+
+  // =========================================================================
   // 7. FLUXO MESTRE: LOCALIZAÇÃO, EXTRAÇÃO E SEPARAÇÃO DE SADTs
   // =========================================================================
   async function executarFluxoCompletoConectaSus({ agendamento, prontuario }, progressoCallback) {
@@ -848,22 +1029,38 @@
 
     if (
       message.type === "EXECUTAR_AUTOMACAO_APOIO_CONECTASUS" ||
-      message.type === "EXECUTAR_SEPARACAO_INTELIGENTE_SADT"
+      message.type === "EXECUTAR_SEPARACAO_INTELIGENTE_SADT" ||
+      message.type === "EXECUTAR_MUDANCA_LABORATORIO"
     ) {
       (async () => {
         try {
-          const resultado = await executarFluxoCompletoConectaSus(
-            {
-              agendamento: message.agendamento,
-              prontuario: message.prontuario,
-            },
-            (etapaMsg) => {
-              chrome.runtime.sendMessage({
-                type: "BANCADALAB_PROGRESSO_CONECTASUS",
-                mensagem: etapaMsg,
-              });
-            }
-          );
+          const isMudancaDireta = message.modo === "mudar_laboratorio" || message.type === "EXECUTAR_MUDANCA_LABORATORIO";
+          const notifyProgresso = (etapaMsg) => {
+            chrome.runtime.sendMessage({
+              type: "BANCADALAB_PROGRESSO_CONECTASUS",
+              mensagem: etapaMsg,
+            });
+          };
+
+          let resultado = null;
+          if (isMudancaDireta) {
+            resultado = await executarApenasMudancaLaboratorio(
+              {
+                agendamento: message.agendamento,
+                prontuario: message.prontuario,
+                laboratorioAlvo: message.laboratorioDestino || message.destinoExames?.bioquimica || "SAO_LUCAS",
+              },
+              notifyProgresso
+            );
+          } else {
+            resultado = await executarFluxoCompletoConectaSus(
+              {
+                agendamento: message.agendamento,
+                prontuario: message.prontuario,
+              },
+              notifyProgresso
+            );
+          }
 
           try {
             chrome.runtime.sendMessage({
@@ -878,7 +1075,7 @@
             ok: true,
             agendamento: message.agendamento,
             resultado,
-            mensagem: `Agendamentos separados com sucesso no Conecta SUS!`,
+            mensagem: `Operação concluída com sucesso no Conecta SUS!`,
           });
         } catch (err) {
           console.error("[BancadaLab Autônomo] Erro no fluxo:", err);

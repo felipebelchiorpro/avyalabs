@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "BancadaLab SUS • Conecta SUS Ponte",
-  "version": "2.1.6",
+  "version": "2.2.0",
   "description": "Consulta instantânea via API interna do Conecta SUS (Caconde) em segundo plano e grava no Cloudflare D1 do BancadaLab.",
   "permissions": [
     "tabs",

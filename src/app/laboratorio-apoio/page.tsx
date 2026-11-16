@@ -106,6 +106,8 @@ export function classificarExame(nomeExame: string): ExameClassificado {
 export default function LaboratorioApoioPage() {
   const [prontuarioBusca, setProntuarioBusca] = useState('');
   const [agendamentoBusca, setAgendamentoBusca] = useState('');
+  const [modoOperacao, setModoOperacao] = useState<'mudar_laboratorio' | 'separar'>('mudar_laboratorio');
+  const [laboratorioDestino, setLaboratorioDestino] = useState<'SAO_LUCAS' | 'MS' | 'MUNICIPAL'>('SAO_LUCAS');
   const [processando, setProcessando] = useState(false);
   const [historicoEnvios, setHistoricoEnvios] = useState<RegistroTriagemAutomatica[]>([]);
   const [ultimoResultado, setUltimoResultado] = useState<RegistroTriagemAutomatica | null>(null);
@@ -205,6 +207,8 @@ export default function LaboratorioApoioPage() {
           type: 'BANCADALAB_EXECUTAR_APOIO',
           prontuario: prontuarioLimpo,
           agendamento: agendamentoLimpo,
+          modo: modoOperacao,
+          laboratorioDestino: laboratorioDestino,
           destinoExames: {
             bioquimica: 'SAO_LUCAS',
             hemograma: 'LABORATÓRIO MS',
@@ -450,6 +454,78 @@ export default function LaboratorioApoioPage() {
           </div>
 
           <form onSubmit={handleProcessarAutomatico} className="space-y-4 pt-2">
+            {/* Escolha do Modo de Operação */}
+            <div className="bg-[#050811] p-1.5 rounded-xl border border-cyan-500/20 flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => setModoOperacao('mudar_laboratorio')}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  modoOperacao === 'mudar_laboratorio'
+                    ? 'bg-gradient-to-r from-cyan-600 to-cyan-500 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>⚡ Mudar Apenas Laboratório (Lápis Azul)</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/20 font-mono">Mais Ágil</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setModoOperacao('separar')}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  modoOperacao === 'separar'
+                    ? 'bg-gradient-to-r from-cyan-600 to-emerald-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>🔄 Criar Novos Agendamentos Dedicados</span>
+              </button>
+            </div>
+
+            {/* Seletor de Laboratório Alvo (quando no modo mudar_laboratorio) */}
+            {modoOperacao === 'mudar_laboratorio' && (
+              <div className="bg-cyan-950/20 p-3 rounded-xl border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fadeIn">
+                <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Building2 className="w-4 h-4 text-cyan-400" />
+                  Mudar Guia para qual Laboratório de Destino?
+                </span>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => setLaboratorioDestino('SAO_LUCAS')}
+                    className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                      laboratorioDestino === 'SAO_LUCAS'
+                        ? 'bg-cyan-500/30 border-cyan-400 text-cyan-200'
+                        : 'bg-[#050811] border-white/10 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    🔬 São Lucas (Bioquímica)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLaboratorioDestino('MS')}
+                    className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                      laboratorioDestino === 'MS'
+                        ? 'bg-purple-500/30 border-purple-400 text-purple-200'
+                        : 'bg-[#050811] border-white/10 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    🩸 Lab MS (Hemograma)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLaboratorioDestino('MUNICIPAL')}
+                    className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                      laboratorioDestino === 'MUNICIPAL'
+                        ? 'bg-emerald-500/30 border-emerald-400 text-emerald-200'
+                        : 'bg-[#050811] border-white/10 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    🧪 Municipal (Local)
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
               {/* Campo 1: Prontuário Municipal */}
@@ -505,12 +581,26 @@ export default function LaboratorioApoioPage() {
               {processando ? (
                 <>
                   <RefreshCw className="w-5 h-5 animate-spin text-white" />
-                  <span>Localizando Paciente & Roteando SADTs...</span>
+                  <span>
+                    {modoOperacao === 'mudar_laboratorio'
+                      ? 'Alterando Laboratório no Lápis Azul & Emitindo SADT...'
+                      : 'Localizando Paciente & Separando Agendamentos...'}
+                  </span>
                 </>
               ) : (
                 <>
                   <Send className="w-5 h-5 text-white" />
-                  <span>Localizar Paciente & Disparar SADTs de Apoio</span>
+                  <span>
+                    {modoOperacao === 'mudar_laboratorio'
+                      ? `⚡ Mudar Agendamento para ${
+                          laboratorioDestino === 'SAO_LUCAS'
+                            ? 'São Lucas'
+                            : laboratorioDestino === 'MS'
+                            ? 'Lab MS'
+                            : 'Municipal'
+                        } (Lápis Azul) & Emitir SADT`
+                      : 'Localizar Paciente & Criar Novos Agendamentos'}
+                  </span>
                 </>
               )}
             </button>

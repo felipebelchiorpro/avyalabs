@@ -408,27 +408,27 @@
     "semantic_hash": ""
   },
   "extensao-chrome/background.js": {
-    "mtime": 1794800069.585465,
-    "seen": 1794800088.220923,
-    "ast_hash": "efd93c7a24f6bc69d069a72ff823ccea",
+    "mtime": 1794855549.508436,
+    "seen": 1794855748.9479897,
+    "ast_hash": "1a5f0e616b675cb4d213ef90736eba90",
     "semantic_hash": ""
   },
   "extensao-chrome/content_bancadalab.js": {
-    "mtime": 1794796138.7254643,
-    "seen": 1794796265.4815307,
-    "ast_hash": "5a84ced4830ab1827512d6d9b167bd17",
+    "mtime": 1794855575.5985174,
+    "seen": 1794855748.947993,
+    "ast_hash": "466fc9633737f4a0469c2783a5a12d85",
     "semantic_hash": ""
   },
   "extensao-chrome/content_conectasus.js": {
-    "mtime": 1794855094.073246,
-    "seen": 1794855117.4451215,
-    "ast_hash": "fb63ceeb0120e5358d09572b5f94a351",
+    "mtime": 1794855525.0467708,
+    "seen": 1794855748.9479957,
+    "ast_hash": "56bd25855073d25eb1a5bd883298616a",
     "semantic_hash": ""
   },
   "extensao-chrome/manifest.json": {
-    "mtime": 1794855104.2540026,
-    "seen": 1794855117.445125,
-    "ast_hash": "01fbfed971b857d2141f91bdac43d469",
+    "mtime": 1794855700.7236078,
+    "seen": 1794855748.9479973,
+    "ast_hash": "a0b59fec192c97e4d22fd41b239c3197",
     "semantic_hash": ""
   },
   "extensao-chrome/popup.js": {
@@ -450,9 +450,9 @@
     "semantic_hash": ""
   },
   "src/app/laboratorio-apoio/page.tsx": {
-    "mtime": 1794799203.7587154,
-    "seen": 1794799237.448108,
-    "ast_hash": "bc81b88796ffdd853086624ed8c3b782",
+    "mtime": 1794855689.6004303,
+    "seen": 1794855748.951737,
+    "ast_hash": "61df28e64efaa9a21292de0aa6eb49fd",
     "semantic_hash": ""
   },
   "package-lock.json": {

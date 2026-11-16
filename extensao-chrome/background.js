@@ -158,7 +158,8 @@ async function executarApoioConectaSus(message, sendResponse) {
       agendamento,
       prontuario,
       destinoExames: destinoExames || {},
-      modo: modo || "automatico",
+      laboratorioDestino: message.laboratorioDestino || "SAO_LUCAS",
+      modo: modo || "mudar_laboratorio",
     },
     async (res) => {
       if (chrome.runtime.lastError) {

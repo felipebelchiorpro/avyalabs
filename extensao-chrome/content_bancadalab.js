@@ -56,14 +56,15 @@
 
     // Disparo da Automação de Separação Inteligente de SADT / Apoio
     if (event.data.type === "BANCADALAB_EXECUTAR_APOIO") {
-      const { agendamento, prontuario, destinoExames, modo } = event.data;
+      const { agendamento, prontuario, destinoExames, modo, laboratorioDestino } = event.data;
       chrome.runtime.sendMessage(
         {
           type: "BANCADALAB_EXECUTAR_APOIO",
           agendamento,
           prontuario,
           destinoExames: destinoExames || {},
-          modo: modo || "automatico",
+          laboratorioDestino: laboratorioDestino || "SAO_LUCAS",
+          modo: modo || "mudar_laboratorio",
           bancadaApiUrl: window.location.origin,
         },
         (res) => {
