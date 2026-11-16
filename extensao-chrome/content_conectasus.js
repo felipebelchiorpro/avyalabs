@@ -345,6 +345,68 @@
   iniciarObservadorSupervisor();
 
   // =========================================================================
+  // 5.5 SELEÇÃO AUTOMÁTICA DE MÉDICO NO AUTOCOMPLETE COM CAIXINHA FLUTUANTE
+  // =========================================================================
+  async function selecionarMedicoNoAutocomplete(medicoNome, notify) {
+    if (!medicoNome) return;
+    notify(`Vinculando médico solicitante: <strong>${medicoNome}</strong>...`);
+
+    const inputProfissional = document.querySelector(
+      "input#medico_solicitante, input[name*='medico'], input[name*='profissional'], input[placeholder*='conselho' i], input[placeholder*='profissional' i], input[placeholder*='médico' i], input.ui-autocomplete-input"
+    );
+
+    if (!inputProfissional) {
+      console.warn("[BancadaLab] Campo de médico solicitante não encontrado.");
+      return;
+    }
+
+    inputProfissional.focus();
+    inputProfissional.value = "";
+    inputProfissional.dispatchEvent(new Event("input", { bubbles: true }));
+
+    // Digita os 2 primeiros termos para ativar a busca e abrir a caixinha do Conecta SUS
+    const partesNome = medicoNome.trim().split(" ");
+    const termoBusca = partesNome.length > 1 ? `${partesNome[0]} ${partesNome[1]}` : partesNome[0];
+
+    inputProfissional.value = termoBusca;
+    inputProfissional.dispatchEvent(new Event("input", { bubbles: true }));
+    inputProfissional.dispatchEvent(new Event("change", { bubbles: true }));
+    inputProfissional.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "a" }));
+    inputProfissional.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "a" }));
+
+    // Aguarda a caixinha de sugestões abrir
+    let itemSelecionado = null;
+    const maxWait = Date.now() + 2500;
+    while (Date.now() < maxWait) {
+      const sugestoes = Array.from(
+        document.querySelectorAll(
+          ".ui-autocomplete li, .ui-menu-item, ul.dropdown-menu li, .autocomplete-suggestions div, [class*='suggestion'], [role='option'], .dropdown-menu a"
+        )
+      ).filter((el) => el.offsetParent !== null && el.innerText.trim().length > 0);
+
+      if (sugestoes.length > 0) {
+        itemSelecionado =
+          sugestoes.find((it) =>
+            (it.innerText || "").toUpperCase().includes(partesNome[0].toUpperCase())
+          ) || sugestoes[0];
+        break;
+      }
+      await esperar(200);
+    }
+
+    if (itemSelecionado) {
+      notify(`Selecionado na caixinha: <strong>${itemSelecionado.innerText.trim()}</strong>`);
+      simularClique(itemSelecionado);
+      await esperar(600);
+    } else {
+      inputProfissional.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowDown" }));
+      await esperar(200);
+      inputProfissional.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
+      await esperar(300);
+    }
+  }
+
+  // =========================================================================
   // 6. CRIAÇÃO DE NOVO AGENDAMENTO PARA LABORATÓRIO ESPECÍFICO (MS OU SÃO LUCAS)
   // =========================================================================
   async function criarNovoAgendamentoNoConectaSus(
@@ -364,27 +426,9 @@
       await esperar(1500);
     }
 
-    // 2. Preencher Profissional Solicitante (Médico)
+    // 2. Preencher e Selecionar Profissional Solicitante na caixinha do autocomplete
     if (medico) {
-      notify(`Vinculando médico solicitante: <strong>${medico}</strong>...`);
-      const inputProfissional = document.querySelector(
-        "input[placeholder*='conselho'], input[placeholder*='profissional'], input[name*='medico'], input[name*='profissional'], input#medico_solicitante, input[placeholder*='médico']"
-      );
-
-      if (inputProfissional) {
-        simularInput(inputProfissional, medico);
-        await esperar(800);
-
-        // Se abrir dropdown de autocomplete com o médico, clica na sugestão
-        const sugestoes = Array.from(
-          document.querySelectorAll(".dropdown-menu li, .ui-menu-item, .autocomplete-suggestion, li")
-        );
-        const itemMedico = sugestoes.find((it) => (it.innerText || "").toUpperCase().includes(medico.toUpperCase()));
-        if (itemMedico) {
-          simularClique(itemMedico);
-          await esperar(500);
-        }
-      }
+      await selecionarMedicoNoAutocomplete(medico, notify);
     }
 
     // 3. Selecionar Coleta e Laboratório de Destino
