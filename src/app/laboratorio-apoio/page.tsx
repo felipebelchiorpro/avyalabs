@@ -135,10 +135,26 @@ export default function LaboratorioApoioPage() {
       if (event.data?.type === 'BANCADALAB_EXTENSAO_PRONTA') {
         setExtensaoAtiva(true);
       }
+      if (event.data?.type === 'BANCADALAB_PROGRESSO_CONECTASUS') {
+        if (event.data.mensagem) {
+          exibirNotificacao(event.data.mensagem, 'alerta');
+        }
+      }
       if (event.data?.type === 'BANCADALAB_RETORNO_CONECTASUS') {
-        if (event.data.paciente || event.data.resultado) {
+        const res = event.data.resultado;
+        if (res && res.ok) {
+          setUltimoResultado((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              medico: res.medico || prev.medico,
+              examesMS: res.examesMS || prev.examesMS,
+              examesSaoLucas: res.examesSaoLucas || prev.examesSaoLucas,
+              examesLocal: res.examesMunicipal || prev.examesLocal,
+            };
+          });
           exibirNotificacao(
-            `✓ Conecta SUS: SADTs roteadas para o agendamento #${event.data.agendamento || ''}!`,
+            `✓ Conecta SUS: Novos agendamentos criados e SADTs emitidas para #${event.data.agendamento || ''}!`,
             'sucesso'
           );
         }

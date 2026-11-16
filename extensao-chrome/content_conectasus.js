@@ -1,19 +1,27 @@
 // =========================================================================
-// BancadaLab SUS • Content Script (Automação Oficial Conecta SUS)
-// Executa na aba ativa: https://caconde.conectasus.com.br
-// Baseado no fluxo operacional gravado em vídeo (Bancada SUS Caconde)
+// BancadaLab SUS • Content Script (Automação Conecta SUS • Multi-SADT)
+// Executa na aba: https://caconde.conectasus.com.br
+// Divide agendamentos misturados em SADTs específicas por laboratório:
+//   1) Laboratório MS -> Hemogramas (Hematologia)
+//   2) São Lucas     -> Bioquímica & Hormônios
+//   3) Municipal     -> Urinálise, Sangue Oculto (PSO) e Glicada local
+// Mantendo o mesmo médico solicitante e mesma data/horário de coleta!
 // =========================================================================
 
 (function () {
   if (window.__BANCADALAB_CONECTASUS_ACTIVE__) return;
   window.__BANCADALAB_CONECTASUS_ACTIVE__ = true;
 
-  console.log("%c[BancadaLab SUS]%c Content Script Conecta SUS carregado com inteligência de bancada.", "color:#0891B2;font-weight:bold;", "color:default;");
+  console.log(
+    "%c[BancadaLab SUS]%c Robô de Separação de Agendamentos e SADTs ativo no Conecta SUS.",
+    "color:#0891B2;font-weight:bold;",
+    "color:default;"
+  );
 
   const JWT_REGEX = /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/;
 
   // =========================================================================
-  // 1. CAPTURA DO BEARER TOKEN
+  // 1. CAPTURA DO TOKEN DA SESSÃO
   // =========================================================================
   function procurarJwtEmStorage() {
     const storages = [];
@@ -56,7 +64,7 @@
   sincronizarTokenComBackground();
 
   // =========================================================================
-  // 2. CÉREBRO DE CLASSIFICAÇÃO DOS EXAMES (MATRIZ SUS CACONDE)
+  // 2. CLASSIFICAÇÃO DOS EXAMES
   // =========================================================================
   function classificarDestinoExame(textoExame) {
     const norm = (textoExame || "").toUpperCase().trim();
@@ -66,11 +74,11 @@
       return {
         destino: "MS",
         nomeLaboratorio: "LABORATÓRIO MS",
-        tipo: "Hematologia (Tubo EDTA)",
+        tipo: "Hematologia",
       };
     }
 
-    // 🔬 2. BIOQUÍMICOS -> LABORATÓRIO SÃO LUCAS
+    // 🔬 2. BIOQUÍMICA -> SÃO LUCAS
     if (
       norm.includes("UREIA") ||
       norm.includes("URÉIA") ||
@@ -103,15 +111,15 @@
       return {
         destino: "SAO_LUCAS",
         nomeLaboratorio: "LABORATÓRIO SÃO LUCAS",
-        tipo: "Bioquímica / Geral",
+        tipo: "Bioquímica",
       };
     }
 
-    // 🧪 3. BANCADA LOCAL -> LABORATÓRIO MUNICIPAL (Urina, Sangue Oculto PSO, Rápidos e Glicada Retida)
+    // 🧪 3. BANCADA LOCAL -> MUNICIPAL
     return {
       destino: "MUNICIPAL",
       nomeLaboratorio: "LABORATORIO MUNICIPAL DE CACONDE",
-      tipo: "Bancada Local (Urina/PSO)",
+      tipo: "Bancada Local (Urina/PSO/Glicada)",
     };
   }
 
@@ -120,7 +128,7 @@
   // =========================================================================
   const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  async function aguardarElemento(seletor, timeoutMs = 5000) {
+  async function aguardarElemento(seletor, timeoutMs = 6000) {
     const inicio = Date.now();
     while (Date.now() - inicio < timeoutMs) {
       const el = document.querySelector(seletor);
@@ -148,24 +156,31 @@
   }
 
   // =========================================================================
-  // 4. AUTORIZAÇÃO AUTOMÁTICA DE SUPERVISOR (MODAL DE CONFIRMAÇÃO)
-  // Quando o Conecta SUS pede "Autorização do supervisor" ao remover exame,
-  // este observador localiza o botão "Autorizar" e clica instantaneamente.
+  // 4. AUTORIZAÇÃO AUTOMÁTICA DE SUPERVISOR (POP-UP)
+  // Clica automaticamente no botão "Autorizar" sempre que o modal abre
   // =========================================================================
   function iniciarObservadorSupervisor() {
     const observer = new MutationObserver(() => {
-      // Procura modais com título ou texto de autorização
-      const modalSupervisor = Array.from(document.querySelectorAll(".modal, .modal-dialog, div[role='dialog']")).find(
-        (m) => (m.innerText || "").toUpperCase().includes("AUTORIZAÇÃO DO SUPERVISOR") || (m.innerText || "").toUpperCase().includes("AUTORIZAR")
+      const modalSupervisor = Array.from(
+        document.querySelectorAll(".modal, .modal-dialog, div[role='dialog']")
+      ).find(
+        (m) =>
+          (m.innerText || "").toUpperCase().includes("AUTORIZAÇÃO DO SUPERVISOR") ||
+          (m.innerText || "").toUpperCase().includes("AUTORIZAR")
       );
 
       if (modalSupervisor) {
-        const btnAutorizar = Array.from(modalSupervisor.querySelectorAll("button, input[type='button'], a")).find(
+        const btnAutorizar = Array.from(
+          modalSupervisor.querySelectorAll("button, input[type='button'], a")
+        ).find(
           (b) => (b.textContent || b.value || "").trim().toUpperCase() === "AUTORIZAR"
         );
 
         if (btnAutorizar && !btnAutorizar.disabled) {
-          console.log("%c[BancadaLab] Pop-up de Autorização do Supervisor detectado! Clicando em 'Autorizar'...", "color:#059669;font-weight:bold;");
+          console.log(
+            "%c[BancadaLab] Pop-up 'Autorização do supervisor' detectado! Clicando em Autorizar...",
+            "color:#059669;font-weight:bold;"
+          );
           simularClique(btnAutorizar);
         }
       }
@@ -175,87 +190,232 @@
     return observer;
   }
 
-  // Ativa observador do supervisor
   iniciarObservadorSupervisor();
 
   // =========================================================================
-  // 5. MOTOR AUTÔNOMO: EXECUÇÃO DO FLUXO DO VÍDEO NO CONECTA SUS
+  // 5. CRIAÇÃO DE NOVO AGENDAMENTO PARA LABORATÓRIO ESPECÍFICO (MS OU SÃO LUCAS)
   // =========================================================================
-  async function executarFluxoCompletoConectaSus({ agendamento, prontuario, modo = "automatico" }, progressoCallback) {
+  async function criarNovoAgendamentoNoConectaSus(
+    { medico, dataColeta, diaNumero, destinoLab, examesParaIncluir },
+    notify
+  ) {
+    notify(`Iniciando criação de novo agendamento para ${destinoLab}...`);
+
+    // 1. Clicar na aba "AGENDAR EXAMES"
+    const abas = Array.from(document.querySelectorAll("a, button, li, .nav-link, span"));
+    const abaAgendar = abas.find((el) => (el.textContent || "").trim().toUpperCase() === "AGENDAR EXAMES");
+
+    if (abaAgendar) {
+      simularClique(abaAgendar);
+      await esperar(1200);
+    }
+
+    // 2. Preencher Profissional Solicitante (Médico)
+    if (medico) {
+      notify(`Configurando médico solicitante: ${medico}...`);
+      const inputProfissional = document.querySelector(
+        "input[placeholder*='conselho'], input[placeholder*='profissional'], input[name*='medico'], input[name*='profissional'], input#medico_solicitante"
+      );
+
+      if (inputProfissional) {
+        simularInput(inputProfissional, medico);
+        await esperar(800);
+
+        // Se abrir dropdown de autocomplete com o médico, clica na opção
+        const itensAutocomplete = Array.from(
+          document.querySelectorAll(".dropdown-menu li, .ui-menu-item, .autocomplete-suggestion, li")
+        );
+        const itemMedico = itensAutocomplete.find((it) => (it.innerText || "").toUpperCase().includes(medico.toUpperCase()));
+        if (itemMedico) {
+          simularClique(itemMedico);
+          await esperar(500);
+        }
+      }
+    }
+
+    // 3. Selecionar o Laboratório de Destino
+    notify(`Definindo laboratório de destino para: ${destinoLab}...`);
+    const selects = Array.from(document.querySelectorAll("select"));
+    const selectLab = selects.find((s) => {
+      const opts = Array.from(s.options).map((o) => (o.text || "").toUpperCase());
+      return opts.some((t) => t.includes("SÃO LUCAS") || t.includes("MS") || t.includes("MUNICIPAL"));
+    });
+
+    if (selectLab) {
+      const targetTerm = destinoLab === "MS" ? "MS" : destinoLab === "SAO_LUCAS" ? "LUCAS" : "MUNICIPAL";
+      const optionAlvo = Array.from(selectLab.options).find((o) => (o.text || "").toUpperCase().includes(targetTerm));
+      if (optionAlvo) {
+        selectLab.value = optionAlvo.value;
+        selectLab.dispatchEvent(new Event("change", { bubbles: true }));
+        await esperar(800);
+      }
+    }
+
+    // 4. Selecionar a Data da Coleta no Calendário
+    if (diaNumero) {
+      notify(`Selecionando dia ${diaNumero} no calendário do Conecta SUS...`);
+      const celulasDias = Array.from(
+        document.querySelectorAll(".calendar td, table tbody td, [class*='day'], [class*='data']")
+      );
+
+      // Procura a célula que começa com o número do dia da coleta
+      const celulaAlvo = celulasDias.find((td) => {
+        const txt = (td.textContent || "").trim();
+        return txt.startsWith(String(diaNumero)) || txt === String(diaNumero);
+      });
+
+      if (celulaAlvo) {
+        simularClique(celulaAlvo);
+        await esperar(1000);
+      }
+    }
+
+    // 5. Selecionar Horário Disponível (Radio)
+    const radioHorario = document.querySelector("input[type='radio'][name*='horario'], input[type='radio']");
+    if (radioHorario) {
+      simularClique(radioHorario);
+      await esperar(600);
+    }
+
+    // 6. Incluir Exames Solicitados
+    notify(`Adicionando ${examesParaIncluir.length} exame(s) à guia de ${destinoLab}...`);
+    for (const nomeExame of examesParaIncluir) {
+      const inputExame = document.querySelector(
+        "input[placeholder*='Exame'], input[placeholder*='exame'], input[name*='exame'], input#exame"
+      );
+
+      if (inputExame) {
+        simularInput(inputExame, nomeExame);
+        await esperar(600);
+
+        // Clica no botão "Incluir"
+        const btnIncluir = Array.from(document.querySelectorAll("button, a")).find(
+          (b) => (b.textContent || "").trim().toUpperCase() === "INCLUIR"
+        );
+        if (btnIncluir) {
+          simularClique(btnIncluir);
+          await esperar(600);
+        }
+      }
+    }
+
+    // 7. Clicar em "Salvar" no topo da tela
+    notify(`Salvando novo agendamento para ${destinoLab}...`);
+    const btnSalvar = Array.from(document.querySelectorAll("button, input[type='submit']")).find(
+      (b) => (b.textContent || b.value || "").trim().toUpperCase() === "SALVAR"
+    );
+
+    if (btnSalvar) {
+      simularClique(btnSalvar);
+      await esperar(2500);
+    }
+
+    // 8. Voltar para aba "EXAMES AGENDADOS" e emitir a SADT
+    const abaExamesAgendados = Array.from(document.querySelectorAll("a, button, li, .nav-link, span")).find(
+      (el) => (el.textContent || "").trim().toUpperCase() === "EXAMES AGENDADOS"
+    );
+
+    if (abaExamesAgendados) {
+      simularClique(abaExamesAgendados);
+      await esperar(1500);
+
+      // Clica na impressora da linha mais recente
+      const linhasAtualizadas = Array.from(document.querySelectorAll("table tbody tr"));
+      if (linhasAtualizadas.length > 0) {
+        const linhaMaisRecente = linhasAtualizadas[linhasAtualizadas.length - 1];
+        const btnImprimirSADT = linhaMaisRecente.querySelector(
+          "button.btn-info, a.btn-info, [title*='Imprimir'], [title*='SADT'], .fa-print"
+        );
+        if (btnImprimirSADT) {
+          notify(`✓ Emitindo SADT para ${destinoLab}...`);
+          simularClique(btnImprimirSADT);
+          await esperar(1000);
+        }
+      }
+    }
+
+    notify(`✓ Agendamento e SADT de ${destinoLab} finalizados com sucesso!`);
+  }
+
+  // =========================================================================
+  // 6. FLUXO MESTRE: LOCALIZAÇÃO, EXTRAÇÃO E SEPARAÇÃO DE SADTs
+  // =========================================================================
+  async function executarFluxoCompletoConectaSus({ agendamento, prontuario }, progressoCallback) {
     const notify = (msg) => {
       console.log(`[BancadaLab Autônomo] ${msg}`);
       if (typeof progressoCallback === "function") progressoCallback(msg);
     };
 
-    notify(`Iniciando automação no Conecta SUS para agendamento #${agendamento || prontuario}...`);
+    notify(`Iniciando busca do paciente: Prontuário #${prontuario || "—"} | Agendamento #${agendamento || "—"}...`);
 
     // -----------------------------------------------------------------------
-    // PASSO 1: Garantir que estamos na tela do paciente ou pesquisar
+    // PASSO 1: Se estiver na tela LISTA DE PACIENTE, busca pelo Prontuário
     // -----------------------------------------------------------------------
     const urlAtual = window.location.href;
+    if (
+      urlAtual.includes("/agendamento-exame/index") ||
+      document.querySelector("h2, h3, h4, .box-title")?.innerText?.includes("LISTA DE PACIENTE")
+    ) {
+      notify(`Pesquisando Prontuário Municipal ${prontuario || agendamento} na listagem...`);
 
-    // Se estivermos na "LISTA DE PACIENTE"
-    if (urlAtual.includes("/agendamento-exame/index") || document.querySelector("h2, h3, h4, .box-title")?.innerText?.includes("LISTA DE PACIENTE")) {
-      notify("Localizando paciente na Lista de Pacientes...");
-
-      // Selecionar "Prontuário municipal" se houver dropdown
       const selectTipoBusca = document.querySelector("select.form-control, select");
       if (selectTipoBusca) {
-        const optPront = Array.from(selectTipoBusca.options).find((o) => (o.text || "").toUpperCase().includes("PRONTUÁRIO"));
+        const optPront = Array.from(selectTipoBusca.options).find((o) =>
+          (o.text || "").toUpperCase().includes("PRONTUÁRIO")
+        );
         if (optPront) {
           selectTipoBusca.value = optPront.value;
           selectTipoBusca.dispatchEvent(new Event("change", { bubbles: true }));
         }
       }
 
-      // Input de busca
-      const inputBusca = document.querySelector("input[placeholder*='buscar'], input[type='search'], input.form-control");
-      if (!inputBusca) throw new Error("Campo de busca de paciente não encontrado.");
+      const inputBusca = document.querySelector(
+        "input[placeholder*='buscar'], input[type='search'], input.form-control"
+      );
+      if (!inputBusca) throw new Error("Campo de busca do Conecta SUS não encontrado.");
 
       simularInput(inputBusca, prontuario || agendamento);
       await esperar(300);
 
-      // Clicar em Buscar
-      const btnBuscar = Array.from(document.querySelectorAll("button")).find((b) => (b.textContent || "").trim().toUpperCase() === "BUSCAR");
+      const btnBuscar = Array.from(document.querySelectorAll("button")).find(
+        (b) => (b.textContent || "").trim().toUpperCase() === "BUSCAR"
+      );
       if (btnBuscar) simularClique(btnBuscar);
 
-      // Aguardar linha da tabela e abrir perfil do paciente
       await esperar(1500);
       const linhaPaciente = await aguardarElemento("table tbody tr", 4000);
-      if (!linhaPaciente) throw new Error("Nenhum paciente localizado para o termo informado.");
+      if (!linhaPaciente) throw new Error(`Prontuário ${prontuario || agendamento} não localizado na tabela.`);
 
       const btnAcaoPaciente = linhaPaciente.querySelector("a[href*='agendamento-exame/create'], button, a");
       if (btnAcaoPaciente) {
-        notify("Abrindo agendamentos do paciente...");
+        notify("Abrindo tela de agendamentos do paciente...");
         simularClique(btnAcaoPaciente);
         await esperar(2000);
       }
     }
 
     // -----------------------------------------------------------------------
-    // PASSO 2: Alternar para a aba "EXAMES AGENDADOS"
+    // PASSO 2: Acessar a aba "EXAMES AGENDADOS"
     // -----------------------------------------------------------------------
-    notify("Alternando para a aba 'EXAMES AGENDADOS'...");
+    notify("Acessando aba 'EXAMES AGENDADOS'...");
     await esperar(800);
 
     const abas = Array.from(document.querySelectorAll("a, button, li, .nav-link, span"));
     const abaExamesAgendados = abas.find((el) => (el.textContent || "").trim().toUpperCase() === "EXAMES AGENDADOS");
-
     if (abaExamesAgendados) {
       simularClique(abaExamesAgendados);
       await esperar(1200);
     }
 
-    // Aguardar tabela de exames agendados renderizar
     const tabelaAgendados = await aguardarElemento("table tbody tr", 4000);
     if (!tabelaAgendados) {
-      throw new Error("Tabela de exames agendados não carregou na tela.");
+      throw new Error("Tabela de exames agendados não carregou.");
     }
 
     // -----------------------------------------------------------------------
-    // PASSO 3: Localizar a linha do agendamento específico
+    // PASSO 3: Localizar a linha exata do Agendamento (ex: 37032)
     // -----------------------------------------------------------------------
-    notify(`Localizando agendamento #${agendamento}...`);
+    notify(`Localizando guia do agendamento #${agendamento}...`);
     const linhas = Array.from(document.querySelectorAll("table tbody tr"));
 
     let linhaAlvo = null;
@@ -263,103 +423,117 @@
       linhaAlvo = linhas.find((tr) => (tr.innerText || "").includes(String(agendamento).trim()));
     }
     if (!linhaAlvo && linhas.length > 0) {
-      // Se não encontrou pelo número exato, pega a última linha (mais recente)
       linhaAlvo = linhas[linhas.length - 1];
     }
 
     if (!linhaAlvo) {
-      throw new Error(`Linha do agendamento #${agendamento} não encontrada na tabela de agendados.`);
+      throw new Error(`Agendamento #${agendamento} não encontrado na lista do paciente.`);
     }
 
-    // Extrair lista de exames descritos na linha
-    const textoLinha = linhaAlvo.innerText || "";
-    notify(`Agendamento localizado! Conteúdo: ${textoLinha.slice(0, 60)}...`);
-
     // -----------------------------------------------------------------------
-    // PASSO 4: Clicar no botão de EDIÇÃO (Lápis Azul)
+    // PASSO 4: Extrair Dados Reais da Linha (Médico, Data, Hora, Lista de Exames)
     // -----------------------------------------------------------------------
-    const btnEditar = linhaAlvo.querySelector(
-      "button.btn-primary, a.btn-primary, [title*='Editar'], [title*='editar'], .fa-edit, .fa-pencil, a[href*='edit']"
-    );
+    const colunas = Array.from(linhaAlvo.querySelectorAll("td"));
+    const textoDataHora = colunas[0]?.innerText?.trim() || "";
+    const numeroAgendamento = colunas[1]?.innerText?.trim() || agendamento;
+    const nomeMedico = colunas[2]?.innerText?.trim() || "";
+    const textoExames = colunas[3]?.innerText?.trim() || "";
 
-    if (!btnEditar) {
-      throw new Error("Botão de edição (lápis azul) não encontrado na linha do agendamento.");
+    notify(`Dados extraídos: Agendamento #${numeroAgendamento} | Médico: ${nomeMedico} | Data: ${textoDataHora}`);
+
+    // Extrair dia da coleta (ex: "16/11/2026" -> dia 16)
+    let diaNumero = "";
+    if (textoDataHora.includes("/")) {
+      const matchDia = textoDataHora.match(/(\d{1,2})\/\d{1,2}\/\d{4}/);
+      if (matchDia) diaNumero = parseInt(matchDia[1], 10);
     }
 
-    notify("Abrindo modal de edição do agendamento (Lápis Azul)...");
-    simularClique(btnEditar);
-    await esperar(1500);
+    // Separar lista de exames por vírgula
+    const listaExamesNomes = textoExames
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean);
 
-    // -----------------------------------------------------------------------
-    // PASSO 5: Tratar o Modal de Exames Solicitados e Seleção do Laboratório
-    // -----------------------------------------------------------------------
-    notify("Analisando exames e configurando destinos de apoio...");
+    notify(`Exames identificados na guia (${listaExamesNomes.length}): ${listaExamesNomes.join(" • ")}`);
 
-    // 5.1 Seleção do Laboratório no Dropdown
-    const selects = Array.from(document.querySelectorAll("select"));
-    const selectLab = selects.find((s) => {
-      const opts = Array.from(s.options).map((o) => (o.text || "").toUpperCase());
-      return opts.some((t) => t.includes("SÃO LUCAS") || t.includes("SAO LUCAS") || t.includes("MS") || t.includes("MUNICIPAL"));
+    // Separar exames nos 3 destinos oficiais
+    const examesMS = [];
+    const examesSaoLucas = [];
+    const examesMunicipal = [];
+
+    listaExamesNomes.forEach((ex) => {
+      const c = classificarDestinoExame(ex);
+      if (c.destino === "MS") examesMS.push(ex);
+      else if (c.destino === "SAO_LUCAS") examesSaoLucas.push(ex);
+      else examesMunicipal.push(ex);
     });
 
-    // 5.2 Seletor das lixeiras vermelhas de remoção de exames
-    const botoesLixeira = Array.from(document.querySelectorAll(".btn-danger, button[title*='Remover'], button[title*='remover'], .fa-trash, .fa-trash-alt"));
-    notify(`Identificados ${botoesLixeira.length} exames solicitados no agendamento.`);
-
-    // 5.3 Clicar em "Confirmar" no modal de exames
-    const btnConfirmar = Array.from(document.querySelectorAll("button, a")).find(
-      (b) => (b.textContent || "").trim().toUpperCase() === "CONFIRMAR"
+    notify(
+      `Divisão calculada: ${examesMS.length} p/ Lab MS | ${examesSaoLucas.length} p/ São Lucas | ${examesMunicipal.length} p/ Municipal Local`
     );
 
-    if (btnConfirmar) {
-      notify("Confirmando alterações nos exames do agendamento...");
-      simularClique(btnConfirmar);
+    // -----------------------------------------------------------------------
+    // PASSO 5: Criar Novo Agendamento para o Laboratório MS (se houver Hemograma)
+    // -----------------------------------------------------------------------
+    if (examesMS.length > 0) {
+      await criarNovoAgendamentoNoConectaSus(
+        {
+          medico: nomeMedico,
+          dataColeta: textoDataHora,
+          diaNumero,
+          destinoLab: "MS",
+          examesParaIncluir: examesMS,
+        },
+        notify
+      );
+    }
+
+    // -----------------------------------------------------------------------
+    // PASSO 6: Criar Novo Agendamento para o São Lucas (se houver Bioquímica)
+    // -----------------------------------------------------------------------
+    if (examesSaoLucas.length > 0) {
+      await criarNovoAgendamentoNoConectaSus(
+        {
+          medico: nomeMedico,
+          dataColeta: textoDataHora,
+          diaNumero,
+          destinoLab: "SAO_LUCAS",
+          examesParaIncluir: examesSaoLucas,
+        },
+        notify
+      );
+    }
+
+    // -----------------------------------------------------------------------
+    // PASSO 7: No Agendamento Original, emitir a SADT Local (Bancada Urina/PSO)
+    // -----------------------------------------------------------------------
+    notify("Emitindo SADT do agendamento local (Bancada Municipal)...");
+    const btnImpressoraLocal = linhaAlvo.querySelector(
+      "button.btn-info, a.btn-info, [title*='Imprimir'], [title*='SADT'], .fa-print"
+    );
+    if (btnImpressoraLocal) {
+      simularClique(btnImpressoraLocal);
       await esperar(1000);
     }
 
-    // -----------------------------------------------------------------------
-    // PASSO 6: Clicar em "Salvar" no topo da tela
-    // -----------------------------------------------------------------------
-    notify("Salvando alterações do agendamento no Conecta SUS...");
-    const btnSalvar = Array.from(document.querySelectorAll("button, input[type='submit']")).find(
-      (b) => (b.textContent || b.value || "").trim().toUpperCase() === "SALVAR"
+    notify(
+      `✓ Sucesso Total! Agendamentos e SADTs gerados: Lab MS (${examesMS.length}), São Lucas (${examesSaoLucas.length}), Municipal (${examesMunicipal.length}).`
     );
-
-    if (btnSalvar) {
-      simularClique(btnSalvar);
-      await esperar(2000);
-    }
-
-    // -----------------------------------------------------------------------
-    // PASSO 7: Acionar a Impressão da SADT (Ícone da Impressora Azul Clara)
-    // -----------------------------------------------------------------------
-    notify("Acionando emissão da SADT correspondente para impressão...");
-    await esperar(1000);
-
-    // Re-localiza a linha atualizada na tabela
-    const linhasAtualizadas = Array.from(document.querySelectorAll("table tbody tr"));
-    const linhaSADT = linhasAtualizadas.find((tr) => (tr.innerText || "").includes(String(agendamento).trim())) || linhaAlvo;
-
-    const btnImpressora = linhaSADT.querySelector(
-      "button.btn-info, a.btn-info, [title*='Imprimir'], [title*='SADT'], [title*='sadt'], .fa-print"
-    );
-
-    if (btnImpressora) {
-      notify("✓ Botão da Impressora acionado! Gerando guia SADT oficial...");
-      simularClique(btnImpressora);
-    }
-
-    notify(`✓ Sucesso! Automação e roteamento do agendamento #${agendamento} concluídos.`);
 
     return {
       ok: true,
-      agendamento,
-      status: "SADT gerada e roteada com sucesso",
+      prontuario,
+      agendamento: numeroAgendamento,
+      medico: nomeMedico,
+      examesMS,
+      examesSaoLucas,
+      examesMunicipal,
+      status: "Todos os agendamentos e SADTs foram criados e emitidos com sucesso",
     };
   }
 
   // =========================================================================
-  // 6. LISTENER DE MENSAGENS VINDO DO BACKGROUND DA EXTENSÃO
+  // 7. LISTENER DE MENSAGENS DO BACKGROUND
   // =========================================================================
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.type === "OBTER_TOKEN_CONECTASUS") {
@@ -368,14 +542,16 @@
       return true;
     }
 
-    if (message.type === "EXECUTAR_AUTOMACAO_APOIO_CONECTASUS" || message.type === "EXECUTAR_SEPARACAO_INTELIGENTE_SADT") {
+    if (
+      message.type === "EXECUTAR_AUTOMACAO_APOIO_CONECTASUS" ||
+      message.type === "EXECUTAR_SEPARACAO_INTELIGENTE_SADT"
+    ) {
       (async () => {
         try {
           const resultado = await executarFluxoCompletoConectaSus(
             {
               agendamento: message.agendamento,
               prontuario: message.prontuario,
-              modo: message.modo || "automatico",
             },
             (etapaMsg) => {
               chrome.runtime.sendMessage({
@@ -389,13 +565,13 @@
             ok: true,
             agendamento: message.agendamento,
             resultado,
-            mensagem: `Automação executada com sucesso para o agendamento #${message.agendamento}`,
+            mensagem: `Agendamentos separados e SADTs emitidas com sucesso!`,
           });
         } catch (err) {
           console.error("[BancadaLab Autônomo] Erro no fluxo:", err);
           sendResponse({
             ok: false,
-            error: err.message || "Erro durante a execução do fluxo no Conecta SUS.",
+            error: err.message || "Erro durante a separação dos agendamentos no Conecta SUS.",
           });
         }
       })();
