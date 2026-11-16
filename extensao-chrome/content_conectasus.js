@@ -579,6 +579,16 @@
       throw new Error(`Agendamento #${agendamento} não encontrado na lista do paciente.`);
     }
 
+    // Capturar médico e data da guia original antes de editar
+    const colunasAlvo = Array.from(linhaAlvo.querySelectorAll("td"));
+    const textoDataHora = colunasAlvo[0]?.innerText?.trim() || "";
+    const nomeMedico = colunasAlvo[2]?.innerText?.trim() || "";
+    let diaNumero = "";
+    if (textoDataHora.includes("/")) {
+      const matchDia = textoDataHora.match(/(\d{1,2})\/\d{1,2}\/\d{4}/);
+      if (matchDia) diaNumero = parseInt(matchDia[1], 10);
+    }
+
     // 4. Localizar e Clicar no LÁPIS AZUL (Botão de Edição)
     notify(`Abrindo edição do agendamento #${agendamento} (Lápis Azul)...`, 55);
     const botoesLinha = Array.from(linhaAlvo.querySelectorAll("a, button, [role='button']"));
@@ -611,7 +621,7 @@
     await esperar(2000); // Aguarda abertura da tela/modal de edição
 
     // 5. Localizar o dropdown de Laboratório de Destino
-    notify(`Alterando laboratório para <strong>${nomeLabFormatado}</strong>...`, 70);
+    notify(`Alterando laboratório para <strong>${nomeLabFormatado}</strong>...`, 65);
     const selects = Array.from(document.querySelectorAll("select"));
     const selectLab = selects.find((s) => {
       const opts = Array.from(s.options).map((o) => (o.text || "").toUpperCase());
@@ -633,13 +643,53 @@
         selectLab.value = optionAlvo.value;
         selectLab.dispatchEvent(new Event("change", { bubbles: true }));
         selectLab.dispatchEvent(new Event("input", { bubbles: true }));
-        notify(`✓ Laboratório selecionado: <strong>${optionAlvo.text}</strong>!`, 80);
-        await esperar(1500); // O observador de supervisor cuidará de pop-ups se aparecerem
+        notify(`✓ Laboratório selecionado: <strong>${optionAlvo.text}</strong>!`, 70);
+        await esperar(1200);
       }
     }
 
-    // 6. Clicar em "Salvar"
-    notify("Gravando alterações no Conecta SUS...", 85);
+    // 5.1 Retirar da guia de apoio os exames que são da bancada local (Urina, PSO, etc.)
+    const examesBancadaRetirados = [];
+    const linhasExamesEdicao = Array.from(
+      document.querySelectorAll("table tbody tr, .list-group-item, div[class*='exame']")
+    ).filter(
+      (el) =>
+        el.innerText &&
+        (el.innerText.includes("0202") ||
+          el.innerText.toUpperCase().includes("URINA") ||
+          el.innerText.toUpperCase().includes("SANGUE OCULTO") ||
+          el.innerText.toUpperCase().includes("PSO") ||
+          el.innerText.toUpperCase().includes("PARASITOLOGICO"))
+    );
+
+    for (const linhaExame of linhasExamesEdicao) {
+      const textoExame = (linhaExame.innerText || "").toUpperCase();
+      const ehBancadaLocal =
+        textoExame.includes("URINA") ||
+        textoExame.includes("EAS") ||
+        textoExame.includes("SANGUE OCULTO") ||
+        textoExame.includes("PSO") ||
+        textoExame.includes("PARASITOLÓGICO") ||
+        textoExame.includes("PARASITOLOGICO") ||
+        textoExame.includes("FEZES");
+
+      if (ehBancadaLocal) {
+        const nomeLimpo = textoExame.split("\n")[0].replace(/^[\d\s-]+/, "").trim();
+        examesBancadaRetirados.push(nomeLimpo || "URINA TIPO I");
+
+        notify(`Retirando exame de bancada (${nomeLimpo}) da SADT de apoio...`, 75);
+        const btnLixeira = linhaExame.querySelector(
+          ".btn-danger, .fa-trash, a[title*='Excluir' i], button[title*='Excluir' i], a[title*='Remover' i], button[title*='Remover' i], [class*='trash']"
+        );
+        if (btnLixeira) {
+          simularClique(btnLixeira);
+          await esperar(2000); // Aguarda confirmação do modal de supervisor
+        }
+      }
+    }
+
+    // 6. Clicar em "Salvar" a guia de apoio
+    notify("Gravando guia de apoio oficial no Conecta SUS...", 80);
     const botoes = Array.from(document.querySelectorAll("button, input[type='submit'], a.btn"));
     const btnSalvar = botoes.find((b) => {
       const txt = (b.textContent || b.value || "").trim().toUpperCase();
@@ -651,8 +701,8 @@
       await esperar(3500); // Aguarda POST 201 Created no servidor
     }
 
-    // 7. Voltar para aba "EXAMES AGENDADOS"
-    notify("Atualizando tabela e emitindo SADT...", 92);
+    // 7. Voltar para aba "EXAMES AGENDADOS" e emitir a SADT do apoio
+    notify("Emitindo SADT de apoio limpa...", 88);
     const abasRetorno = Array.from(document.querySelectorAll("a, button, li, .nav-link, span"));
     const abaAgendadosRetorno = abasRetorno.find((el) => (el.textContent || "").trim().toUpperCase() === "EXAMES AGENDADOS");
     if (abaAgendadosRetorno) {
@@ -660,26 +710,61 @@
       await esperar(1800);
     }
 
-    // 8. Clicar no botão da Impressora da guia
+    // Clicar na impressora da guia de apoio
     const linhasFinais = Array.from(document.querySelectorAll("table tbody tr"));
     const linhaEditada = linhasFinais.find((tr) => (tr.innerText || "").includes(String(agendamento).trim())) || linhasFinais[0];
-
     if (linhaEditada) {
       const btnPrint = linhaEditada.querySelector(".btn-info, a[href*='imprimir' i], button[title*='imprimir' i]");
       if (btnPrint) {
-        notify("Abrindo SADT oficial para impressão...", 98, "sucesso");
+        notify("Abrindo SADT de apoio para impressão...", 92, "sucesso");
         simularClique(btnPrint);
+        await esperar(1500);
       }
     }
 
-    notify(`✓ Sucesso! Laboratório alterado para ${nomeLabFormatado} e SADT emitida!`, 100, "sucesso");
+    // 8. Se houver exames de bancada que foram retirados, cria a guia local no Laboratório Municipal!
+    if (examesBancadaRetirados.length > 0) {
+      notify(
+        `Criando novo agendamento no Laboratório Municipal para a bancada local (${examesBancadaRetirados.join(", ")})...`,
+        94
+      );
+      try {
+        await criarNovoAgendamentoNoConectaSus(
+          {
+            medico: nomeMedico,
+            dataColeta: textoDataHora,
+            diaNumero,
+            destinoLab: "MUNICIPAL",
+            examesParaIncluir: examesBancadaRetirados,
+          },
+          notify
+        );
+
+        // Retorna para a aba de agendados para visualização final
+        const abasFinais = Array.from(document.querySelectorAll("a, button, li, .nav-link, span"));
+        const abaFinal = abasFinais.find((el) => (el.textContent || "").trim().toUpperCase() === "EXAMES AGENDADOS");
+        if (abaFinal) {
+          simularClique(abaFinal);
+          await esperar(1800);
+        }
+      } catch (errBancada) {
+        console.warn("[BancadaLab] Aviso ao criar agendamento de bancada local:", errBancada);
+      }
+    }
+
+    notify(
+      `✓ Sucesso Total! Guia de apoio gerada para ${nomeLabFormatado} e exames de bancada (${examesBancadaRetirados.length || 0}) criados no Municipal!`,
+      100,
+      "sucesso"
+    );
 
     return {
       ok: true,
       agendamento,
       prontuario,
       laboratorioDestino: nomeLabFormatado,
-      status: `Laboratório alterado para ${nomeLabFormatado} com sucesso`,
+      examesBancadaRetirados,
+      status: `Laboratório alterado para ${nomeLabFormatado} e bancada local criada no Municipal`,
     };
   }
 

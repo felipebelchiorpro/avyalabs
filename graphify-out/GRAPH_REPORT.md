@@ -1,17 +1,17 @@
 # Graph Report - Urinalise PWA Automatico  (2026-11-16)
 
 ## Corpus Check
-- 60 files · ~134,706 words
+- 60 files · ~134,994 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 5 file(s) not represented in the graph (top: (none) 2, .ico 1, .css 1)
 
 ## Summary
-- 411 nodes · 980 edges · 24 communities (20 shown, 4 thin omitted)
+- 411 nodes · 981 edges · 24 communities (20 shown, 4 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 1 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `039ada3f`
+- Built from commit: `bf0ccc6c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -84,7 +84,7 @@ Cohesion: 0.20
 Nodes (9): @emnapi/runtime@^1.11.3, pdf-parse@^2.4.5, @types/pdf-parse@^1.1.5, name, private, version, @emnapi/runtime, pdf-parse (+1 more)
 
 ### Community 4 - "content_conectasus.js"
-Cohesion: 0.29
+Cohesion: 0.30
 Nodes (12): atualizarHud(), classificarDestinoExame(), criarNovoAgendamentoNoConectaSus(), executarApenasMudancaLaboratorio(), executarFluxoCompletoConectaSus(), gravarLog(), iniciarObservadorSupervisor(), obterOuCriarHud() (+4 more)
 
 ### Community 5 - "compilerOptions"
