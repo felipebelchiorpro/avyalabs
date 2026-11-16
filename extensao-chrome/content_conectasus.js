@@ -718,16 +718,46 @@
     // -----------------------------------------------------------------------
     // PASSO 7: Voltar para aba "EXAMES AGENDADOS" para exibir as guias criadas
     // -----------------------------------------------------------------------
-    notify("Atualizando lista de EXAMES AGENDADOS do paciente...", 95);
+    notify("Atualizando lista de EXAMES AGENDADOS do paciente...", 90);
     const abasFinais = Array.from(document.querySelectorAll("a, button, li a, .nav-link, span"));
     const abaAgendadosFinal = abasFinais.find((el) => (el.textContent || "").trim().toUpperCase() === "EXAMES AGENDADOS");
     if (abaAgendadosFinal) {
       simularClique(abaAgendadosFinal);
-      await esperar(1800);
+      await esperar(2000);
     }
 
     notify(
-      `✓ Sucesso Total! Agendamentos gerados e separados: Lab MS (${examesMS.length}), São Lucas (${examesSaoLucas.length}), Municipal (${examesMunicipal.length}).`,
+      `✓ Sucesso Total! Agendamentos gerados e separados no Conecta SUS: Lab MS (${examesMS.length}), São Lucas (${examesSaoLucas.length}), Municipal (${examesMunicipal.length}).`,
+      95,
+      "sucesso"
+    );
+
+    // -----------------------------------------------------------------------
+    // PASSO 8: Acionar impressão das SADTs apenas agora (no final de tudo!)
+    // -----------------------------------------------------------------------
+    notify("Preparando envio das guias SADT para impressão...", 98, "sucesso");
+    await esperar(1200);
+
+    const linhasFinais = Array.from(document.querySelectorAll("table tbody tr"));
+    const botoesImpressora = [];
+
+    for (const tr of linhasFinais) {
+      const btnPrint = tr.querySelector(".btn-info, a[href*='imprimir' i], button[title*='imprimir' i], [class*='print']");
+      if (btnPrint) {
+        botoesImpressora.push(btnPrint);
+      }
+    }
+
+    // Se houver botões de impressora disponíveis na tabela, aciona a impressão da guia mais recente
+    if (botoesImpressora.length > 0) {
+      try {
+        notify("Abrindo SADT para impressão final...", 100, "sucesso");
+        simularClique(botoesImpressora[0]);
+      } catch (_) {}
+    }
+
+    notify(
+      `✓ Agendamentos separados e SADT gerada com sucesso! Pronto para a bancada.`,
       100,
       "sucesso"
     );
