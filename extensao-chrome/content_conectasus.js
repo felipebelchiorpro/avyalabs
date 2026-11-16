@@ -486,6 +486,33 @@
             return;
           }
         }
+
+        // 3. Modal de Sucesso ou Alerta ("Ok")
+        if (
+          texto.includes("SUCESSO") ||
+          texto.includes("SALVO") ||
+          texto.includes("ALTERAÇÃO REALIZADA") ||
+          texto.includes("AGENDAMENTO GRAVADO") ||
+          texto.includes("OPERACAO REALIZADA")
+        ) {
+          const btnOk = Array.from(modal.querySelectorAll("button, a, input[type='button']")).find((b) => {
+            const val = (b.textContent || b.value || "").trim().toUpperCase();
+            return val === "OK" || val === "FECHAR";
+          });
+          if (btnOk && !btnOk.disabled && btnOk !== elementoClicadoRecentemente) {
+            ultimoCliqueModalMs = Date.now();
+            elementoClicadoRecentemente = btnOk;
+            console.log(
+              "%c[BancadaLab] Pop-up 'Ok' de confirmação detectado! Fechando...",
+              "color:#059669;font-weight:bold;"
+            );
+            simularClique(btnOk);
+            setTimeout(() => {
+              elementoClicadoRecentemente = null;
+            }, 2500);
+            return;
+          }
+        }
       }
     });
 
@@ -494,6 +521,61 @@
   }
 
   iniciarObservadorSupervisor();
+
+  // =========================================================================
+  // 5.1 SELEÇÃO DE DIA NO CALENDÁRIO COM VAGAS (ex: "69/25" ou dia "16")
+  // =========================================================================
+  async function clicarDiaNoCalendario(diaNumero, notify) {
+    if (notify) notify(`Localizando dia <strong>${diaNumero || "da coleta"}</strong> no calendário do Conecta SUS...`);
+    gravarLog("ROBO", `Buscando dia ${diaNumero} no calendário do Conecta SUS...`);
+
+    const maxWait = Date.now() + 4500;
+    let celulaAlvo = null;
+
+    while (Date.now() < maxWait) {
+      const celulas = Array.from(
+        document.querySelectorAll(
+          ".calendar td, table tbody td, [class*='day'], [class*='data'], a.ui-state-default, .fc-day, td[onclick*='agendamento']"
+        )
+      ).filter((td) => td.offsetParent !== null && td.innerText.trim().length > 0);
+
+      if (diaNumero) {
+        celulaAlvo = celulas.find((td) => {
+          const txt = (td.textContent || "").trim();
+          const match = txt.match(/^(\d{1,2})/);
+          if (match && parseInt(match[1], 10) === parseInt(diaNumero, 10)) return true;
+          return txt === String(diaNumero);
+        });
+
+        if (!celulaAlvo) {
+          celulaAlvo = celulas.find((td) => {
+            const txt = (td.textContent || "").trim();
+            return txt.includes(String(diaNumero));
+          });
+        }
+      }
+
+      if (!celulaAlvo) {
+        celulaAlvo = celulas.find((td) => {
+          const txt = (td.textContent || "").trim();
+          return /\d+\s*\/\s*\d+/.test(txt) || /^\d{1,2}$/.test(txt);
+        });
+      }
+
+      if (celulaAlvo) break;
+      await esperar(200);
+    }
+
+    if (celulaAlvo) {
+      gravarLog("ROBO", `Célula do calendário clicada: "${celulaAlvo.innerText.trim().replace(/\s+/g, ' ').slice(0, 30)}"`);
+      simularClique(celulaAlvo);
+      await esperar(2000);
+      return true;
+    } else {
+      gravarLog("AVISO", `Nenhuma célula de data/vagas encontrada no calendário para o dia ${diaNumero}.`);
+      return false;
+    }
+  }
 
   // =========================================================================
   // 5.2 EXTRAÇÃO UNIFICADA E RESILIENTE DA TABELA DO CONECTA SUS
@@ -760,28 +842,16 @@
     }
 
     // 4. Clicar no dia no Calendário (dia da coleta) para abrir o modal de exames
-    if (diaNumero) {
-      notify(`Selecionando dia <strong>${diaNumero}</strong> no calendário do Conecta SUS...`);
-      const celulasDias = Array.from(
-        document.querySelectorAll(".calendar td, table tbody td, [class*='day'], [class*='data'], a.ui-state-default")
-      );
-
-      const celulaAlvo = celulasDias.find((td) => {
-        const txt = (td.textContent || "").trim();
-        return txt === String(diaNumero) || txt.startsWith(String(diaNumero) + " ") || txt.startsWith(String(diaNumero) + "\n");
-      });
-
-      if (celulaAlvo) {
-        simularClique(celulaAlvo);
-        await esperar(1800);
-      }
-    }
+    notify(`Selecionando dia <strong>${diaNumero || "da coleta"}</strong> no calendário do Conecta SUS...`);
+    await clicarDiaNoCalendario(diaNumero, notify);
+    await esperar(2000); // Aguarda confirmações de supervisor e abertura do modal de exames
 
     // 5. No Modal 'Confirmação do agendamento de exame':
     // 5.1 Selecionar o horário disponível (radio button 07:00)
-    const radioHorario = document.querySelector(".modal input[type='radio'], input[type='radio'][name*='horario'], input[type='radio']");
-    if (radioHorario) {
-      simularClique(radioHorario);
+    const radios = Array.from(document.querySelectorAll(".modal input[type='radio'], input[type='radio']"));
+    const radio7 = radios.find((r) => (r.parentElement?.innerText || r.value || "").includes("07:00")) || radios[0];
+    if (radio7) {
+      simularClique(radio7);
       await esperar(500);
     }
 
@@ -793,28 +863,44 @@
       );
 
       if (inputExame) {
-        simularInput(inputExame, nomeExame);
-        await esperar(700);
+        inputExame.focus();
+        inputExame.value = "";
+        inputExame.dispatchEvent(new Event("input", { bubbles: true }));
+        await esperar(200);
 
-        // Se houver checkbox correspondente no dropdown do autocomplete
-        const checkboxesModal = Array.from(document.querySelectorAll(".modal input[type='checkbox'], input[type='checkbox']"));
-        const checkboxExame = checkboxesModal.find((cb) => {
-          const parentText = (cb.parentElement?.innerText || "").toUpperCase();
-          return parentText.includes(nomeExame.toUpperCase());
-        });
+        // Digita termo simplificado (ex: se for "0202050017 - URINA I", digita "URINA" ou o código)
+        const termoBusca = nomeExame.includes("URINA")
+          ? "URINA"
+          : nomeExame.includes("SANGUE OCULTO")
+          ? "SANGUE OCULTO"
+          : nomeExame.split(" - ")[1] || nomeExame;
 
-        if (checkboxExame && !checkboxExame.checked) {
-          simularClique(checkboxExame);
+        simularInput(inputExame, termoBusca);
+        await esperar(800);
+
+        // Se houver caixinha flutuante de sugestões de exame, clica na opção exata
+        const sugestoesExame = Array.from(
+          document.querySelectorAll(
+            ".ui-autocomplete li, .ui-menu-item, [role='option'], .autocomplete-suggestions div, .dropdown-menu li"
+          )
+        ).filter((el) => el.offsetParent !== null && el.innerText.trim().length > 0);
+
+        if (sugestoesExame.length > 0) {
+          const itemAlvo =
+            sugestoesExame.find((s) => (s.innerText || "").toUpperCase().includes(termoBusca.toUpperCase())) ||
+            sugestoesExame[0];
+          simularClique(itemAlvo);
           await esperar(500);
-        } else {
-          // Clica no botão "Incluir"
-          const btnIncluir = Array.from(document.querySelectorAll(".modal button, button, a")).find(
-            (b) => (b.textContent || "").trim().toUpperCase() === "INCLUIR"
-          );
-          if (btnIncluir) {
-            simularClique(btnIncluir);
-            await esperar(600);
-          }
+        }
+
+        // Clica no botão "Incluir"
+        const btnIncluir = Array.from(document.querySelectorAll(".modal button, button, a")).find(
+          (b) => (b.textContent || "").trim().toUpperCase() === "INCLUIR"
+        );
+        if (btnIncluir) {
+          simularClique(btnIncluir);
+          gravarLog("ROBO", `Exame adicionado à grade: ${nomeExame}`);
+          await esperar(800);
         }
       }
     }
@@ -986,15 +1072,20 @@
         selectLab.value = optionAlvo.value;
         selectLab.dispatchEvent(new Event("change", { bubbles: true }));
         selectLab.dispatchEvent(new Event("input", { bubbles: true }));
-        notify(`✓ Laboratório selecionado: <strong>${optionAlvo.text}</strong>!`, 70);
+        notify(`✓ Laboratório selecionado: <strong>${optionAlvo.text}</strong>!`, 65);
         gravarLog("ROBO", `Laboratório alterado para: ${optionAlvo.text} (valor: ${optionAlvo.value})`);
-        await esperar(1200);
+        await esperar(1600); // Aguarda Conecta SUS atualizar o calendário das vagas
       }
     } else {
       gravarLog("AVISO", "Dropdown de laboratório NÃO encontrado na tela após clicar no lápis!");
     }
 
-    // 5.1 Retirar da guia de apoio os exames que são da bancada local (Urina, PSO, etc.)
+    // 5.1 Clicar na célula da data no Calendário para abrir o modal de exames
+    notify(`Abrindo exames do agendamento no calendário (Dia ${diaNumero || "da coleta"})...`, 68);
+    await clicarDiaNoCalendario(diaNumero, notify);
+    await esperar(2000); // Aguarda o modal de exames abrir na tela
+
+    // 5.2 No modal aberto, retirar os exames que são da bancada local (Urina, PSO, etc.)
     const examesBancadaRetirados = [];
     const containerEdicao =
       document.querySelector(".modal.show, .modal.in, .modal[style*='display: block'], div[role='dialog'], form.form-horizontal, form") ||
@@ -1027,23 +1118,35 @@
 
       if (ehBancadaLocal) {
         const nomeLimpo = textoExame.split("\n")[0].replace(/^[\d\s-]+/, "").trim();
-        examesBancadaRetirados.push(nomeLimpo || "URINA TIPO I");
+        const codigoMatch = textoExame.match(/(0202\d{6}\s*-\s*[^\n]+|URINA\s*I|SANGUE\s*OCULTO[^\n]*)/i);
+        examesBancadaRetirados.push(codigoMatch ? codigoMatch[0].trim() : nomeLimpo || "URINA I");
 
-        notify(`Retirando exame de bancada (${nomeLimpo}) da SADT de apoio...`, 75);
+        notify(`Retirando exame de bancada (${nomeLimpo}) da SADT de apoio...`, 72);
         gravarLog("ROBO", `Removendo exame de bancada da guia: ${nomeLimpo}`);
         const btnLixeira = linhaExame.querySelector(
           ".btn-danger, .fa-trash, a[title*='Excluir' i], button[title*='Excluir' i], a[title*='Remover' i], button[title*='Remover' i], [class*='trash']"
         );
         if (btnLixeira) {
           simularClique(btnLixeira);
-          await esperar(2000); // Aguarda confirmação do modal de supervisor
+          await esperar(2000); // Aguarda confirmação do modal de exclusão e autorizações
         } else {
           gravarLog("AVISO", `Botão de lixeira não encontrado para exame: ${nomeLimpo}`);
         }
       }
     }
 
-    // 6. Clicar em "Salvar" a guia de apoio
+    // 5.3 Clicar no botão "Confirmar" no rodapé do modal de exames
+    const btnConfirmarModal = Array.from(containerEdicao.querySelectorAll("button, a")).find(
+      (b) => (b.textContent || b.value || "").trim().toUpperCase() === "CONFIRMAR"
+    );
+    if (btnConfirmarModal) {
+      notify("Confirmando alterações nos exames...", 76);
+      gravarLog("ROBO", "Clicando em 'Confirmar' no modal de exames...");
+      simularClique(btnConfirmarModal);
+      await esperar(1800); // Aguarda fechamento do modal e possíveis pop-ups do supervisor
+    }
+
+    // 6. Clicar em "Salvar" a guia de apoio no topo da tela do Conecta SUS
     notify("Gravando guia de apoio oficial no Conecta SUS...", 80);
     const botoes = Array.from(document.querySelectorAll("button, input[type='submit'], a.btn"));
     const btnSalvar = botoes.find((b) => {
@@ -1054,7 +1157,7 @@
     if (btnSalvar) {
       gravarLog("ROBO", `Botão Salvar localizado: "${(btnSalvar.textContent || btnSalvar.value || '').trim()}". Clicando...`);
       simularClique(btnSalvar);
-      await esperar(3500); // Aguarda POST 201 Created no servidor
+      await esperar(3500); // Aguarda POST 201 Created no servidor e fecha pop-up de sucesso
     } else {
       gravarLog("AVISO", "Botão Salvar NÃO encontrado após edição!");
     }
