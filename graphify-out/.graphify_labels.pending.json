@@ -1,6 +1,8 @@
 {
-  "0": "importar/page.tsx",
+  "0": "extrair-arquivo/route.ts",
   "1": "triagem-edta/page.tsx",
+  "2": "medicos/route.ts",
+  "3": "D1Database",
   "4": "content_conectasus.js",
   "5": "compilerOptions",
   "6": "devDependencies",
@@ -17,7 +19,6 @@
   "20": "configurar_planilha_google.js",
   "21": "postcss.config.mjs",
   "23": "next",
-  "25": "package.json",
   "26": "scripts",
   "27": "eslint.config.mjs",
   "28": "EdtaBarcodeScanner.tsx",

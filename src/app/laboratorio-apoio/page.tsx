@@ -143,18 +143,30 @@ export default function LaboratorioApoioPage() {
       if (event.data?.type === 'BANCADALAB_RETORNO_CONECTASUS') {
         const res = event.data.resultado;
         if (res && res.ok) {
-          setUltimoResultado((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              medico: res.medico || prev.medico,
-              examesMS: res.examesMS || prev.examesMS,
-              examesSaoLucas: res.examesSaoLucas || prev.examesSaoLucas,
-              examesLocal: res.examesMunicipal || prev.examesLocal,
-            };
+          const itemAtualizado: RegistroTriagemAutomatica = {
+            id: `triagem_${Date.now()}`,
+            prontuario: res.prontuario || prontuarioBusca || '0005704',
+            agendamento: res.agendamento || agendamentoBusca || '37032',
+            paciente: 'PACIENTE CONECTA SUS',
+            medico: res.medico || 'Médico Conecta SUS',
+            hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            examesMS: res.examesMS || [],
+            examesSaoLucas: res.examesSaoLucas || [],
+            examesLocal: res.examesMunicipal || [],
+            statusSADT: 'sucesso',
+          };
+
+          setUltimoResultado(itemAtualizado);
+          setHistoricoEnvios((prev) => {
+            const nova = [itemAtualizado, ...prev.filter((p) => p.agendamento !== itemAtualizado.agendamento)];
+            try {
+              localStorage.setItem('bancadalab_historico_apoio_v2', JSON.stringify(nova));
+            } catch (_) {}
+            return nova;
           });
+
           exibirNotificacao(
-            `✓ Conecta SUS: Novos agendamentos criados e SADTs emitidas para #${event.data.agendamento || ''}!`,
+            `✓ Conecta SUS: Novos agendamentos criados com sucesso para #${event.data.agendamento || ''}!`,
             'sucesso'
           );
         }
