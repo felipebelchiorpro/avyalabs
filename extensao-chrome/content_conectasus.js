@@ -1175,6 +1175,8 @@
         supervisor: true,
         supervisor_id: agendamentoAlvo.supervisor_id || 1253,
         carrega_jornada: true,
+        data: agendamentoAlvo.data, // Pinos no mesmo dia da triagem (ex: amanhã dia 17)
+        hora_inicial: agendamentoAlvo.hora_inicial || "07:00",
         coleta_unidade_id: idLabMun,
         coleta_infraestrutura_id: idInfraMun,
         coleta_nome: nomeLabMun,
@@ -1194,6 +1196,27 @@
         a.agendamento_id !== agendamentoAlvo.agendamento_id &&
         a.agendamento_numero !== agendamentoAlvo.agendamento_numero
     );
+
+    // Pré-autorização do supervisor para todos os exames da transação (evita bloqueio de cota!)
+    notify("Validando autorização de supervisor para cotas de exames...", 80);
+    const todosProcedimentos = [...examesApoio, ...examesBancada];
+    for (const p of todosProcedimentos) {
+      const exId = p.exame_id || (typeof p.id === "number" ? p.id : null);
+      if (exId) {
+        try {
+          await fetch(`${apiBase}/exame-laboratorial/agendamento-exame/save-exame-bloqueado`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              exame_id: exId,
+              paciente_id: pacienteId,
+              valor: p.valor || "3.70",
+              motivo_id: 3, // Motivo 3: Autorização de Supervisor por Cota/Jornada
+            }),
+          });
+        } catch (_) {}
+      }
+    }
 
     const payloadFinal = {
       data_atual: dadosPaciente.data_atual || new Date().toLocaleDateString("pt-BR"),

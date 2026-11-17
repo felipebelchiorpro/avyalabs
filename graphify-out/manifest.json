@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "public/graph.html": {
-    "mtime": 1794873222.981565,
-    "seen": 1794876859.0386107,
-    "ast_hash": "f5a6e6c97b19b91961106bf1f314c579",
+    "mtime": 1794876859.0927067,
+    "seen": 1794877676.9840963,
+    "ast_hash": "7aef094b47942dc3e7e19c1b79658b92",
     "semantic_hash": ""
   },
   "public/file.svg": {
@@ -420,9 +420,9 @@
     "semantic_hash": ""
   },
   "extensao-chrome/content_conectasus.js": {
-    "mtime": 1794876767.530607,
-    "seen": 1794876859.0253944,
-    "ast_hash": "7183eacc24f63b0ce068743bf39e48d1",
+    "mtime": 1794877659.514489,
+    "seen": 1794877676.9735348,
+    "ast_hash": "da58a7a77e87787fa523d88dc4ec0309",
     "semantic_hash": ""
   },
   "extensao-chrome/manifest.json": {
