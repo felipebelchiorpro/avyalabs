@@ -22,8 +22,8 @@
   "20": "configurar_planilha_google.js",
   "21": "postcss.config.mjs",
   "22": "EdtaBarcodeScanner.tsx",
-  "23": "next",
+  "23": "listarLaudos",
   "24": "scripts",
-  "25": "AppLayoutWrapper.tsx",
+  "25": "rotina/route.ts",
   "29": "TriagemEdtaReal.tsx"
 }
