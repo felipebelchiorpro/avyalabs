@@ -61,131 +61,11 @@
     true
   );
 
-  // Injetar script no contexto da página para espelhar Console e Network (Fetch/XHR) do F12
-  try {
-    const scriptInterceptor = document.createElement("script");
-    scriptInterceptor.textContent = `
-      (function() {
-        if (window.__BANCADALAB_INTERCEPTOR_ATTACHED__) return;
-        window.__BANCADALAB_INTERCEPTOR_ATTACHED__ = true;
-
-        function enviarEvento(tipo, dados) {
-          try {
-            window.postMessage({
-              source: "bancadalab_telemetria",
-              tipo,
-              dados: typeof dados === "object" ? JSON.stringify(dados) : String(dados)
-            }, "*");
-          } catch (_) {}
-        }
-
-        // 1. Espelhar Console (F12)
-        const originalWarn = console.warn;
-        const originalError = console.error;
-        console.warn = function(...args) {
-          enviarEvento("CONSOLE_WARN", args.map(a => typeof a === "object" ? JSON.stringify(a) : String(a)).join(" "));
-          originalWarn.apply(console, args);
-        };
-        console.error = function(...args) {
-          enviarEvento("CONSOLE_ERROR", args.map(a => typeof a === "object" ? JSON.stringify(a) : String(a)).join(" "));
-          originalError.apply(console, args);
-        };
-
-        // 2. Espelhar Fetch e Capturar Headers de Autenticação
-        const originalFetch = window.fetch;
-        window.fetch = async function(...args) {
-          const url = typeof args[0] === "string" ? args[0] : (args[0]?.url || "");
-          const opts = args[1] || {};
-          const metodo = (opts.method || "GET").toUpperCase();
-          const urlLimpa = url.replace(window.location.origin, "");
-
-          try {
-            const h = opts.headers;
-            let authH = "";
-            let custH = "";
-            if (h) {
-              if (typeof h.get === "function") {
-                authH = h.get("authorization") || h.get("Authorization") || "";
-                custH = h.get("customer") || h.get("Customer") || "";
-              } else if (typeof h === "object") {
-                authH = h["authorization"] || h["Authorization"] || "";
-                custH = h["customer"] || h["Customer"] || "";
-              }
-            }
-            if (authH || custH) {
-              enviarEvento("AUTH_HEADERS_CAPTURA", { auth: authH, customer: custH });
-            }
-          } catch (_) {}
-
-          try {
-            const resp = await originalFetch.apply(this, args);
-            enviarEvento("NETWORK_FETCH", \`\${metodo} \${urlLimpa} -> \${resp.status}\`);
-            return resp;
-          } catch(err) {
-            enviarEvento("NETWORK_FETCH_ERRO", \`\${metodo} \${urlLimpa} -> FALHA: \${err.message}\`);
-            throw err;
-          }
-        };
-
-        // 3. Espelhar XMLHttpRequest (Axios / jQuery) e Capturar Headers
-        const originalXhrOpen = XMLHttpRequest.prototype.open;
-        const originalXhrSend = XMLHttpRequest.prototype.send;
-        const originalXhrSetHeader = XMLHttpRequest.prototype.setRequestHeader;
-
-        XMLHttpRequest.prototype.open = function(metodo, url) {
-          this.__bancadaMetodo = metodo;
-          this.__bancadaUrl = url;
-          return originalXhrOpen.apply(this, arguments);
-        };
-
-        XMLHttpRequest.prototype.setRequestHeader = function(header, val) {
-          try {
-            const hLower = String(header || "").toLowerCase();
-            if (hLower === "authorization") {
-              enviarEvento("AUTH_HEADERS_CAPTURA", { auth: String(val) });
-            } else if (hLower === "customer") {
-              enviarEvento("AUTH_HEADERS_CAPTURA", { customer: String(val) });
-            }
-          } catch (_) {}
-          return originalXhrSetHeader.apply(this, arguments);
-        };
-
-        XMLHttpRequest.prototype.send = function() {
-          this.addEventListener("load", () => {
-            const urlLimpa = String(this.__bancadaUrl || "").replace(window.location.origin, "");
-            enviarEvento("NETWORK_XHR", \`\${(this.__bancadaMetodo || "GET").toUpperCase()} \${urlLimpa} -> \${this.status}\`);
-          });
-          return originalXhrSend.apply(this, arguments);
-        };
-      })();
-    `;
-    (document.head || document.documentElement).appendChild(scriptInterceptor);
-    scriptInterceptor.remove();
-  } catch (errInj) {
-    console.warn("[BancadaLab] Interceptor F12 não injetado:", errInj);
-  }
-
-  // Ouvir eventos repassados do contexto da página
+  // Escutar eventos de logs ou mensagens internas
   window.addEventListener("message", (ev) => {
     if (ev.source !== window || !ev.data || ev.data.source !== "bancadalab_telemetria") return;
     const { tipo, dados } = ev.data;
-    if (tipo === "AUTH_HEADERS_CAPTURA") {
-      try {
-        const obj = typeof dados === "string" ? JSON.parse(dados) : dados;
-        if (obj.auth) {
-          const rawJwt = obj.auth.replace(/^Bearer\s+/i, "").trim();
-          if (rawJwt) {
-            window.__BANCADALAB_AUTH_TOKEN__ = rawJwt;
-            try { localStorage.setItem("__bancadalab_conecta_token__", rawJwt); } catch (_) {}
-            gravarLog("AUTH", "Token JWT Bearer capturado do tráfego ativo com sucesso!");
-          }
-        }
-        if (obj.customer) {
-          window.__BANCADALAB_CUSTOMER__ = obj.customer;
-          try { localStorage.setItem("__bancadalab_conecta_customer__", obj.customer); } catch (_) {}
-        }
-      } catch (_) {}
-    } else if (tipo === "CONSOLE_ERROR" || tipo === "NETWORK_FETCH_ERRO") {
+    if (tipo === "CONSOLE_ERROR" || tipo === "NETWORK_FETCH_ERRO") {
       gravarLog("F12_ERRO", dados);
     } else if (tipo.startsWith("NETWORK")) {
       gravarLog("NETWORK", dados);
@@ -255,8 +135,15 @@
         </div>
       </div>
       <div id="bancadalab-hud-msg" style="color:#e2e8f0;line-height:1.4;margin-bottom:6px;font-weight:500;">Gravador de eventos F12 pronto. Realize a ação ou execute o robô.</div>
-      <div style="background:#0f172a;height:4px;border-radius:2px;overflow:hidden;">
+      <div style="background:#0f172a;height:4px;border-radius:2px;overflow:hidden;margin-bottom:10px;">
         <div id="bancadalab-hud-bar" style="background:linear-gradient(90deg, #0891b2, #059669);height:100%;width:0%;transition:width 0.4s ease;"></div>
+      </div>
+      <!-- Painel de Disparo Manual de Teste e Roteamento -->
+      <div style="display:flex;gap:6px;align-items:center;border-top:1px solid #164e63;padding-top:8px;">
+        <input id="bancadalab-input-agendamento" type="text" placeholder="Nº Agendamento ou Prontuário (ex: 37032)" style="flex:1;min-width:0;padding:6px 10px;background:#0f172a;border:1px solid #0891b2;color:#ffffff;border-radius:6px;font-size:11px;outline:none;" />
+        <button id="bancadalab-btn-disparar-agora" title="Executar Roteamento Atômico do Agendamento Agora" style="cursor:pointer;background:#0891b2;color:#ffffff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:bold;white-space:nowrap;transition:all 0.2s;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+          ⚡ ROTEAT AGORA
+        </button>
       </div>
     `;
 
@@ -285,6 +172,54 @@
         setTimeout(() => {
           btnLimpar.textContent = "LIMPAR";
         }, 1500);
+      });
+    }
+
+    // Botão de Disparo Manual
+    const btnDisparar = hud.querySelector("#bancadalab-btn-disparar-agora");
+    const inputAgendamento = hud.querySelector("#bancadalab-input-agendamento");
+    if (btnDisparar && inputAgendamento) {
+      const acionarDisparo = async () => {
+        const valor = inputAgendamento.value.trim();
+        if (!valor) {
+          alert("Por favor, digite o número do Agendamento (ex: 37032) ou o Prontuário municipal.");
+          inputAgendamento.focus();
+          return;
+        }
+        btnDisparar.disabled = true;
+        btnDisparar.textContent = "⏳ PROCESSANDO...";
+        btnDisparar.style.background = "#d97706";
+
+        try {
+          atualizarHud(`⚡ Iniciando separação do agendamento #${valor}...`, 20);
+          await executarApoioViaApiDireta(
+            { agendamento: valor, prontuario: valor, laboratorioAlvo: "MS" },
+            (msg, pct, tp) => atualizarHud(msg, pct, tp)
+          );
+        } catch (errApi) {
+          gravarLog("FALLBACK", `API direta não concluiu: ${errApi.message}. Tentando via tela (DOM)...`);
+          atualizarHud(`Alternando para modo tela: ${errApi.message}`, 40);
+          try {
+            await executarFluxoCompletoConectaSus(
+              { agendamento: valor, prontuario: valor },
+              (msg, pct, tp) => atualizarHud(msg, pct, tp)
+            );
+          } catch (errDom) {
+            atualizarHud(`Falha: ${errDom.message}`, 100, "erro");
+          }
+        } finally {
+          btnDisparar.disabled = false;
+          btnDisparar.textContent = "⚡ ROTEAT AGORA";
+          btnDisparar.style.background = "#0891b2";
+        }
+      };
+
+      btnDisparar.addEventListener("click", acionarDisparo);
+      inputAgendamento.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          acionarDisparo();
+        }
       });
     }
 
@@ -1021,11 +956,21 @@
     gravarLog("API", `⚡ Iniciando Roteamento Atômico via API REST para Agendamento #${agendamento || "—"}...`);
     notify("⚡ Conectando à API REST interna do Conecta SUS...", 15);
 
-    const token = procurarJwtEmStorage();
+    let token = procurarJwtEmStorage();
+    if (!token) {
+      try {
+        const store = await chrome.storage.local.get(["conectasus_bearer_token", "conectasus_token"]);
+        token = store.conectasus_bearer_token || store.conectasus_token;
+      } catch (_) {}
+    }
     if (!token) {
       throw new Error("Token de autorização JWT não encontrado no storage da sessão.");
     }
-    const customer = obterCustomer();
+    let customer = obterCustomer();
+    try {
+      const store = await chrome.storage.local.get(["conectasus_customer"]);
+      if (store.conectasus_customer) customer = store.conectasus_customer;
+    } catch (_) {}
     const apiBase = "https://api-saude.conectasus.com.br/api";
 
     const headers = {

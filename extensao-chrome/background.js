@@ -95,8 +95,14 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
         });
       }
     }
+    const custHeader = headers.find((h) => h.name.toLowerCase() === "customer");
+    if (custHeader && custHeader.value) {
+      chrome.storage.local.set({
+        conectasus_customer: custHeader.value,
+      });
+    }
   },
-  { urls: ["https://api-saude.conectasus.com.br/*"] },
+  { urls: ["https://api-saude.conectasus.com.br/*", "https://caconde.conectasus.com.br/*"] },
   ["requestHeaders"]
 );
 

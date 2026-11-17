@@ -5,7 +5,6 @@
   "3": "D1PreparedStatement",
   "4": "content_conectasus.js",
   "5": "compilerOptions",
-  "6": "D1Database",
   "7": "urina/page.tsx",
   "8": "extensao-chrome/manifest.json",
   "9": "urinalise.ts",
@@ -22,8 +21,7 @@
   "20": "configurar_planilha_google.js",
   "21": "postcss.config.mjs",
   "22": "EdtaBarcodeScanner.tsx",
-  "23": "listarLaudos",
+  "23": "next",
   "24": "scripts",
-  "25": "rotina/route.ts",
   "29": "TriagemEdtaReal.tsx"
 }
