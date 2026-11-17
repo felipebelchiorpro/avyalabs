@@ -135,15 +135,8 @@
         </div>
       </div>
       <div id="bancadalab-hud-msg" style="color:#e2e8f0;line-height:1.4;margin-bottom:6px;font-weight:500;">Gravador de eventos F12 pronto. Realize a ação ou execute o robô.</div>
-      <div style="background:#0f172a;height:4px;border-radius:2px;overflow:hidden;margin-bottom:10px;">
+      <div style="background:#0f172a;height:4px;border-radius:2px;overflow:hidden;">
         <div id="bancadalab-hud-bar" style="background:linear-gradient(90deg, #0891b2, #059669);height:100%;width:0%;transition:width 0.4s ease;"></div>
-      </div>
-      <!-- Painel de Disparo Manual de Teste e Roteamento -->
-      <div style="display:flex;gap:6px;align-items:center;border-top:1px solid #164e63;padding-top:8px;">
-        <input id="bancadalab-input-agendamento" type="text" placeholder="Nº Agendamento ou Prontuário (ex: 37032)" style="flex:1;min-width:0;padding:6px 10px;background:#0f172a;border:1px solid #0891b2;color:#ffffff;border-radius:6px;font-size:11px;outline:none;" />
-        <button id="bancadalab-btn-disparar-agora" title="Executar Roteamento Atômico do Agendamento Agora" style="cursor:pointer;background:#0891b2;color:#ffffff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:bold;white-space:nowrap;transition:all 0.2s;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
-          ⚡ ROTEAT AGORA
-        </button>
       </div>
     `;
 
@@ -172,54 +165,6 @@
         setTimeout(() => {
           btnLimpar.textContent = "LIMPAR";
         }, 1500);
-      });
-    }
-
-    // Botão de Disparo Manual
-    const btnDisparar = hud.querySelector("#bancadalab-btn-disparar-agora");
-    const inputAgendamento = hud.querySelector("#bancadalab-input-agendamento");
-    if (btnDisparar && inputAgendamento) {
-      const acionarDisparo = async () => {
-        const valor = inputAgendamento.value.trim();
-        if (!valor) {
-          alert("Por favor, digite o número do Agendamento (ex: 37032) ou o Prontuário municipal.");
-          inputAgendamento.focus();
-          return;
-        }
-        btnDisparar.disabled = true;
-        btnDisparar.textContent = "⏳ PROCESSANDO...";
-        btnDisparar.style.background = "#d97706";
-
-        try {
-          atualizarHud(`⚡ Iniciando separação do agendamento #${valor}...`, 20);
-          await executarApoioViaApiDireta(
-            { agendamento: valor, prontuario: valor, laboratorioAlvo: "MS" },
-            (msg, pct, tp) => atualizarHud(msg, pct, tp)
-          );
-        } catch (errApi) {
-          gravarLog("FALLBACK", `API direta não concluiu: ${errApi.message}. Tentando via tela (DOM)...`);
-          atualizarHud(`Alternando para modo tela: ${errApi.message}`, 40);
-          try {
-            await executarFluxoCompletoConectaSus(
-              { agendamento: valor, prontuario: valor },
-              (msg, pct, tp) => atualizarHud(msg, pct, tp)
-            );
-          } catch (errDom) {
-            atualizarHud(`Falha: ${errDom.message}`, 100, "erro");
-          }
-        } finally {
-          btnDisparar.disabled = false;
-          btnDisparar.textContent = "⚡ ROTEAT AGORA";
-          btnDisparar.style.background = "#0891b2";
-        }
-      };
-
-      btnDisparar.addEventListener("click", acionarDisparo);
-      inputAgendamento.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          acionarDisparo();
-        }
       });
     }
 
@@ -1034,11 +979,19 @@
     let agendamentoAlvo = null;
     if (agendamento) {
       agendamentoAlvo = todosAgendamentos.find(
-        (a) => String(a.agendamento_numero) === String(agendamento) || String(a.agendamento_id) === String(agendamento)
+        (a) =>
+          String(a.agendamento_numero || "").trim() === String(agendamento).trim() ||
+          String(a.agendamento_id || "").trim() === String(agendamento).trim()
       );
     }
     if (!agendamentoAlvo) {
-      agendamentoAlvo = todosAgendamentos[0];
+      // Ordena por ID/número de agendamento DECRESCENTE para pegar SEMPRE o mais recente da rotina atual (ex: 37032), NUNCA o de 2025!
+      const ordenados = [...todosAgendamentos].sort((a, b) => {
+        const idA = Number(a.agendamento_numero || a.agendamento_id) || 0;
+        const idB = Number(b.agendamento_numero || b.agendamento_id) || 0;
+        return idB - idA;
+      });
+      agendamentoAlvo = ordenados[0];
     }
 
     const numAgendamentoReal = agendamentoAlvo.agendamento_numero || agendamento || agendamentoAlvo.agendamento_id;
@@ -1700,14 +1653,30 @@
     // PASSO 3: Localizar a linha exata do Agendamento (ex: 37032)
     // -----------------------------------------------------------------------
     notify(`Localizando guia do agendamento #${agendamento}...`, 40);
-    const linhas = Array.from(document.querySelectorAll("table tbody tr"));
+    // Filtrar linhas reais com dados (descartando "Não há registros para exibir" e "Carregando")
+    const linhas = Array.from(document.querySelectorAll("table tbody tr")).filter(
+      (tr) => {
+        const txt = (tr.innerText || "").toUpperCase();
+        return (
+          txt.length > 5 &&
+          !txt.includes("NÃO HÁ REGISTROS") &&
+          !txt.includes("NAO HA REGISTROS") &&
+          !txt.includes("CARREGANDO") &&
+          !txt.includes("NENHUM")
+        );
+      }
+    );
+
+    if (linhas.length === 0) {
+      throw new Error(`A tabela de exames agendados do paciente ainda não possui registros carregados.`);
+    }
 
     let linhaAlvo = null;
     if (agendamento) {
       linhaAlvo = linhas.find((tr) => (tr.innerText || "").includes(String(agendamento).trim()));
     }
     if (!linhaAlvo && linhas.length > 0) {
-      linhaAlvo = linhas[linhas.length - 1];
+      linhaAlvo = linhas[0]; // Primeira linha válida
     }
 
     if (!linhaAlvo) {
