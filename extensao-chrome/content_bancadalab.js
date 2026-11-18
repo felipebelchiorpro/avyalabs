@@ -56,15 +56,17 @@
 
     // Disparo da Automação de Separação Inteligente de SADT / Apoio
     if (event.data.type === "BANCADALAB_EXECUTAR_APOIO") {
-      const { agendamento, prontuario, destinoExames, modo, laboratorioDestino } = event.data;
+      const { agendamento, prontuario, destinoExames, modo, laboratorioDestino, blocosExames, exames } = event.data;
       chrome.runtime.sendMessage(
         {
           type: "BANCADALAB_EXECUTAR_APOIO",
           agendamento,
           prontuario,
           destinoExames: destinoExames || {},
-          laboratorioDestino: laboratorioDestino || "SAO_LUCAS",
+          laboratorioDestino: laboratorioDestino || "MS",
           modo: modo || "mudar_laboratorio",
+          blocosExames: blocosExames || null,
+          exames: exames || null,
           bancadaApiUrl: window.location.origin,
         },
         (res) => {
@@ -73,6 +75,42 @@
               {
                 type: "BANCADALAB_ERRO_CONECTASUS",
                 error: "Falha na extensão: " + chrome.runtime.lastError.message,
+              },
+              "*"
+            );
+          } else if (res && res.ok === false) {
+            window.postMessage(
+              {
+                type: "BANCADALAB_ERRO_CONECTASUS",
+                error: res.error,
+              },
+              "*"
+            );
+          }
+        }
+      );
+      return;
+    }
+
+    // Injeção Sequencial em Lote de Exames no Conecta SUS via DOM
+    if (event.data.type === "BANCADALAB_INJETAR_EXAMES_LOTE") {
+      const { exames, blocosExames, destinoAtual, agendamento, prontuario } = event.data;
+      chrome.runtime.sendMessage(
+        {
+          type: "BANCADALAB_INJETAR_EXAMES_LOTE",
+          exames: exames || [],
+          blocosExames: blocosExames || null,
+          destinoAtual: destinoAtual || "MS",
+          agendamento,
+          prontuario,
+          bancadaApiUrl: window.location.origin,
+        },
+        (res) => {
+          if (chrome.runtime.lastError) {
+            window.postMessage(
+              {
+                type: "BANCADALAB_ERRO_CONECTASUS",
+                error: "Falha na injeção em lote: " + chrome.runtime.lastError.message,
               },
               "*"
             );

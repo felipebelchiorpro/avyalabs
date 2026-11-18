@@ -133,7 +133,7 @@ async function obterTokenSessao() {
 // 2. ORQUESTRAÇÃO DE DIVISÃO DE SADTS / APOIO NO CONECTA SUS
 // =========================================================================
 async function executarApoioConectaSus(message, sendResponse) {
-  const { agendamento, prontuario, destinoExames, modo } = message;
+  const { agendamento, prontuario, destinoExames, modo, blocosExames, exames } = message;
   await atualizarLog(`Ordem recebida: Triar Agendamento #${agendamento || "—"} | Prontuário #${prontuario || "—"}`);
 
   const abaConecta = await localizarAbaConectaSus();
@@ -164,8 +164,10 @@ async function executarApoioConectaSus(message, sendResponse) {
       agendamento,
       prontuario,
       destinoExames: destinoExames || {},
-      laboratorioDestino: message.laboratorioDestino || "SAO_LUCAS",
+      laboratorioDestino: message.laboratorioDestino || "MS",
       modo: modo || "mudar_laboratorio",
+      blocosExames: blocosExames || null,
+      exames: exames || null,
     },
     async (res) => {
       if (chrome.runtime.lastError) {
@@ -203,6 +205,57 @@ async function executarApoioConectaSus(message, sendResponse) {
 }
 
 // =========================================================================
+// 2.1 INJEÇÃO SEQUENCIAL EM LOTE DE EXAMES NO CONECTA SUS
+// =========================================================================
+async function executarInjecaoLoteConectaSus(message, sendResponse) {
+  const { exames = [], blocosExames = null, destinoAtual = "MS", agendamento, prontuario } = message;
+  await atualizarLog(`Iniciando injeção em lote de exames (${exames.length} exames)...`);
+
+  const abaConecta = await localizarAbaConectaSus();
+  if (!abaConecta) {
+    const erroAba = "Nenhuma aba do Conecta SUS aberta para injetar exames em lote.";
+    await atualizarLog(erroAba, "error");
+    await notificarTodasAbasBancadaLab({
+      type: "BANCADALAB_ERRO_CONECTASUS",
+      error: erroAba,
+    });
+    if (typeof sendResponse === "function") sendResponse({ ok: false, error: erroAba });
+    return;
+  }
+
+  await garantirContentScriptInjetado(abaConecta.id);
+
+  chrome.tabs.sendMessage(
+    abaConecta.id,
+    {
+      type: "EXECUTAR_INJECAO_LOTE_EXAMES",
+      exames,
+      blocosExames,
+      destinoAtual,
+      agendamento,
+      prontuario,
+    },
+    async (res) => {
+      if (chrome.runtime.lastError) {
+        const erroMsg = "Falha ao enviar lote de exames para o Conecta SUS: " + chrome.runtime.lastError.message;
+        await atualizarLog(erroMsg, "error");
+        if (typeof sendResponse === "function") sendResponse({ ok: false, error: erroMsg });
+        return;
+      }
+
+      if (res && res.ok) {
+        await atualizarLog(`✓ Injeção em lote concluída com sucesso!`, "success");
+        if (typeof sendResponse === "function") sendResponse({ ok: true, resultado: res.resultado });
+      } else {
+        const errFalha = res?.error || "Falha ao injetar exames em lote.";
+        await atualizarLog(`Erro no lote: ${errFalha}`, "error");
+        if (typeof sendResponse === "function") sendResponse({ ok: false, error: errFalha });
+      }
+    }
+  );
+}
+
+// =========================================================================
 // 3. LISTENER CENTRAL DE MENSAGENS
 // =========================================================================
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -227,6 +280,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "BANCADALAB_EXECUTAR_APOIO") {
     executarApoioConectaSus(message, sendResponse);
     return true; // Comunicação assíncrona
+  }
+
+  if (message.type === "BANCADALAB_INJETAR_EXAMES_LOTE") {
+    executarInjecaoLoteConectaSus(message, sendResponse);
+    return true;
   }
 
   return true;

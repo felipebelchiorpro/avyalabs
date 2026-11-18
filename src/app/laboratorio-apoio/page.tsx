@@ -24,6 +24,9 @@ import {
   Clock,
   Layers,
   User,
+  Zap,
+  ListPlus,
+  Play,
 } from 'lucide-react';
 
 export interface ExameClassificado {
@@ -47,59 +50,46 @@ export interface RegistroTriagemAutomatica {
 }
 
 export function classificarExame(nomeExame: string): ExameClassificado {
-  const norm = nomeExame.toUpperCase();
+  const norm = (nomeExame || '').toUpperCase().trim();
 
-  // 1. HEMOGRAMAS -> LABORATÓRIO MS
-  if (norm.includes('HEMOGRAMA')) {
-    return {
-      nome: nomeExame,
-      categoria: 'LabMS',
-      destinoNome: 'Laboratório MS (Hemograma)',
-    };
-  }
-
-  // 2. BIOQUÍMICA -> SÃO LUCAS
+  // 1. BANCADA LOCAL -> MUNICIPAL (Urina, Sangue Oculto PSO, Dengue, Testes Rápidos, Fezes)
   if (
-    norm.includes('UREIA') ||
-    norm.includes('URÉIA') ||
-    norm.includes('CREATININA') ||
-    norm.includes('COLESTEROL') ||
-    norm.includes('TRIGLICERIDES') ||
-    norm.includes('TRIGLICERÍDEOS') ||
-    norm.includes('GLICEMIA') ||
-    norm.includes('GLICOSE') ||
-    norm.includes('TGO') ||
-    norm.includes('TGP') ||
-    norm.includes('GAMA GT') ||
-    norm.includes('ACIDO URICO') ||
-    norm.includes('ÁCIDO ÚRICO') ||
-    norm.includes('BILIRRUBINA') ||
-    norm.includes('PROTEINAS TOTAIS') ||
-    norm.includes('FOSFATASE') ||
-    norm.includes('SODIO') ||
-    norm.includes('SÓDIO') ||
-    norm.includes('POTASSIO') ||
-    norm.includes('POTÁSSIO') ||
-    norm.includes('CALCIO') ||
-    norm.includes('CÁLCIO') ||
-    norm.includes('TSH') ||
-    norm.includes('T4') ||
-    norm.includes('PSA') ||
-    norm.includes('BIOQUIMICA') ||
-    norm.includes('BIOQUÍMICA')
+    norm.includes('URINA') ||
+    norm.includes('EAS') ||
+    norm.includes('SEDIMENTOSCOPIA') ||
+    norm.includes('EQU') ||
+    norm.includes('SANGUE OCULTO') ||
+    norm.includes('PSO') ||
+    norm.includes('DENGUE') ||
+    norm.includes('COVID') ||
+    norm.includes('TESTE RAPIDO') ||
+    norm.includes('TESTE RÁPIDO') ||
+    norm.includes('HIV') ||
+    norm.includes('SIFILIS') ||
+    norm.includes('SÍFILIS') ||
+    norm.includes('VDRL') ||
+    norm.includes('HBSAG') ||
+    norm.includes('HCV') ||
+    norm.includes('BHCG') ||
+    norm.includes('GRAVIDEZ') ||
+    norm.includes('PARASITOLOGICO') ||
+    norm.includes('PARASITOLÓGICO') ||
+    norm.includes('FEZES') ||
+    norm.includes('COPROLOGICO') ||
+    norm.includes('COPROLÓGICO')
   ) {
     return {
       nome: nomeExame,
-      categoria: 'SaoLucas',
-      destinoNome: 'Laboratório São Lucas (Bioquímica)',
+      categoria: 'Municipal',
+      destinoNome: 'Laboratório Municipal (Bancada Local)',
     };
   }
 
-  // 3. BANCADA LOCAL -> MUNICIPAL (Urina, Sangue Oculto PSO, Rápidos e Glicada Retida)
+  // 2. APOIO MS -> HEMOGRAMA & BIOQUÍMICA (Ureia, Creatinina, Colesterol, Glicemia, etc.)
   return {
     nome: nomeExame,
-    categoria: 'Municipal',
-    destinoNome: 'Laboratório Municipal (Bancada Local)',
+    categoria: 'LabMS',
+    destinoNome: 'Laboratório MS (Hemograma & Bioquímica)',
   };
 }
 
@@ -115,6 +105,8 @@ export default function LaboratorioApoioPage() {
   const [extensaoAtiva, setExtensaoAtiva] = useState(false);
   const [toast, setToast] = useState<{ mensagem: string; tipo: 'sucesso' | 'alerta' | 'erro' } | null>(null);
   const [filtroAba, setFiltroAba] = useState<'todos' | 'LabMS' | 'SaoLucas' | 'Municipal'>('todos');
+  const [loteExamesTexto, setLoteExamesTexto] = useState('');
+  const [injetandoLote, setInjetandoLote] = useState(false);
 
   // Carregar histórico local e detectar extensão
   useEffect(() => {
@@ -210,9 +202,13 @@ export default function LaboratorioApoioPage() {
           modo: modoOperacao,
           laboratorioDestino: laboratorioDestino,
           destinoExames: {
-            bioquimica: 'SAO_LUCAS',
+            bioquimica: 'MS',
             hemograma: 'MS',
             local: 'MUNICIPAL',
+          },
+          blocosExames: {
+            apoio: ultimoResultado?.examesMS || [],
+            municipal: ultimoResultado?.examesLocal || [],
           },
           bancadaUrl: window.location.origin,
         },
@@ -220,7 +216,7 @@ export default function LaboratorioApoioPage() {
       );
 
       exibirNotificacao(
-        `Comando enviado ao Conecta SUS! Alterando agendamento #${agendamentoLimpo}...`,
+        `Comando enviado ao Conecta SUS! Alterando agendamento #${agendamentoLimpo || prontuarioLimpo}...`,
         'alerta'
       );
     } catch (err) {
@@ -228,6 +224,68 @@ export default function LaboratorioApoioPage() {
     } finally {
       setProcessando(false);
     }
+  };
+
+  const handleInjetarLoteExames = (destinoAlvo: 'MS' | 'MUNICIPAL') => {
+    if (!extensaoAtiva) {
+      exibirNotificacao('Extensão Conecta SUS não detectada. Recarregue a página ou ative a extensão no Chrome.', 'alerta');
+      return;
+    }
+
+    setInjetandoLote(true);
+
+    let examesParaInjetar: string[] = [];
+    if (loteExamesTexto.trim()) {
+      examesParaInjetar = loteExamesTexto
+        .split(/[\n,;]+/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+    } else {
+      if (destinoAlvo === 'MS') {
+        examesParaInjetar = ultimoResultado?.examesMS?.length
+          ? ultimoResultado.examesMS
+          : [
+              'HEMOGRAMA',
+              'GLICEMIA',
+              'UREIA',
+              'CREATININA',
+              'COLESTEROL TOTAL',
+              'TRIGLICERIDES',
+              'TGO',
+              'TGP',
+              'GAMA GT',
+              'ACIDO URICO',
+            ];
+      } else {
+        examesParaInjetar = ultimoResultado?.examesLocal?.length
+          ? ultimoResultado.examesLocal
+          : ['URINA I', 'PESQUISA DE SANGUE OCULTO'];
+      }
+    }
+
+    window.postMessage(
+      {
+        type: 'BANCADALAB_INJETAR_EXAMES_LOTE',
+        exames: examesParaInjetar,
+        destinoAtual: destinoAlvo,
+        agendamento: agendamentoBusca.trim() || undefined,
+        prontuario: prontuarioBusca.trim() || undefined,
+        blocosExames: {
+          apoio: destinoAlvo === 'MS' ? examesParaInjetar : [],
+          municipal: destinoAlvo === 'MUNICIPAL' ? examesParaInjetar : [],
+        },
+      },
+      '*'
+    );
+
+    exibirNotificacao(
+      `⚡ Disparando injeção em lote de ${examesParaInjetar.length} exames para ${
+        destinoAlvo === 'MS' ? 'Laboratório MS (Hemograma & Bioquímica)' : 'Laboratório Municipal (Bancada Local)'
+      }...`,
+      'alerta'
+    );
+
+    setTimeout(() => setInjetandoLote(false), 2500);
   };
 
   const copiarAgendamento = (id: string, valor: string) => {
@@ -537,6 +595,138 @@ export default function LaboratorioApoioPage() {
               )}
             </button>
           </form>
+        </div>
+      </div>
+
+      {/* Painel do Motor de Injeção Sequencial em Lote de Exames no Conecta SUS (< 2s) */}
+      <div className="bg-gradient-to-br from-[#0c1322] via-[#09101d] to-[#060b14] border border-cyan-500/30 rounded-2xl p-6 shadow-2xl backdrop-blur-xl space-y-4 animate-fadeIn">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-cyan-500/20 to-emerald-500/20 border border-cyan-500/40 text-cyan-300">
+              <Zap className="w-5 h-5 text-cyan-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-white">Motor de Injeção Sequencial em Lote no Conecta SUS</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  ⚡ &lt; 2 Segundos por Guia
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Simula ação humana via eventos nativos do navegador (<code className="text-cyan-300">input</code>, <code className="text-cyan-300">change</code>, <code className="text-cyan-300">keyup</code>), seleciona o autocomplete e clica em "Incluir" confirmando item a item na grade.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-xs px-3 py-1.5 rounded-lg border font-medium flex items-center gap-1.5 ${
+                extensaoAtiva
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${extensaoAtiva ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+              {extensaoAtiva ? 'Extensão Pronta para Injeção' : 'Aguardando Extensão'}
+            </span>
+          </div>
+        </div>
+
+        {/* Botões de Ação Imediata por Bloco de Destino */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Botão Bloco Apoio MS */}
+          <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-500/30 flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                  <TestTube2 className="w-4 h-4 text-purple-400" />
+                  Bloco Apoio MS (Hemograma & Bioquímica)
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-200 font-mono">
+                  Malote Externo
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 mt-1">
+                Injeta sequencialmente Hemograma, Glicemia, Ureia, Creatinina, Colesterol, Triglicérides, TGO, TGP, Gama GT e Ácido Úrico na guia aberta.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              disabled={injetandoLote}
+              onClick={() => handleInjetarLoteExames('MS')}
+              className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-md shadow-purple-900/30 active:scale-95 cursor-pointer disabled:opacity-50 min-h-[44px]"
+            >
+              {injetandoLote ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                  <span>Injetando no Conecta SUS...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 text-amber-300" />
+                  <span>⚡ Injetar Bloco Apoio MS no Conecta SUS</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Botão Bloco Municipal */}
+          <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                  <FlaskConical className="w-4 h-4 text-emerald-400" />
+                  Bloco Bancada Municipal (Urina & PSO)
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-200 font-mono">
+                  Bancada Local
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 mt-1">
+                Injeta sequencialmente Urina Tipo I (EAS), Pesquisa de Sangue Oculto (PSO), Dengue e Testes Rápidos na guia local.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              disabled={injetandoLote}
+              onClick={() => handleInjetarLoteExames('MUNICIPAL')}
+              className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-900/30 active:scale-95 cursor-pointer disabled:opacity-50 min-h-[44px]"
+            >
+              {injetandoLote ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                  <span>Injetando no Conecta SUS...</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 text-emerald-300" />
+                  <span>🧪 Injetar Bloco Municipal no Conecta SUS</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Campo Opcional para Colar Lista Customizada de Exames */}
+        <div className="bg-[#050811]/60 p-3.5 rounded-xl border border-white/5 space-y-2">
+          <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <ListPlus className="w-3.5 h-3.5 text-cyan-400" />
+              Lista Personalizada de Exames para Injeção (Opcional)
+            </span>
+            <span className="text-[11px] font-normal text-slate-400">
+              Separe por vírgula ou uma linha por exame
+            </span>
+          </label>
+          <input
+            type="text"
+            value={loteExamesTexto}
+            onChange={(e) => setLoteExamesTexto(e.target.value)}
+            placeholder="Ex: HEMOGRAMA, GLICEMIA, UREIA, CREATININA, URINA I (deixe em branco para usar o bloco padrão)"
+            className="w-full bg-[#050811] border border-cyan-500/20 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-500/30 rounded-lg px-3.5 py-2 text-xs text-white placeholder-slate-500 outline-none"
+          />
         </div>
       </div>
 

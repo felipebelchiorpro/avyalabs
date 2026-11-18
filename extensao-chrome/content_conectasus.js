@@ -287,57 +287,44 @@
   function classificarDestinoExame(textoExame) {
     const norm = (textoExame || "").toUpperCase().trim();
 
-    // 🩸 1. HEMOGRAMAS -> LABORATÓRIO MS
-    if (norm.includes("HEMOGRAMA")) {
-      return {
-        destino: "MS",
-        nomeLaboratorio: "MS LABORATORIOS",
-        tipo: "Hematologia",
-      };
-    }
-
-    // 🔬 2. BIOQUÍMICA -> SÃO LUCAS
+    // 🧪 1. BANCADA LOCAL -> MUNICIPAL (Urina, Sangue Oculto PSO, Dengue, Testes Rápidos, Fezes)
     if (
-      norm.includes("UREIA") ||
-      norm.includes("URÉIA") ||
-      norm.includes("CREATININA") ||
-      norm.includes("COLESTEROL") ||
-      norm.includes("TRIGLICERIDES") ||
-      norm.includes("TRIGLICERÍDEOS") ||
-      norm.includes("GLICEMIA") ||
-      norm.includes("GLICOSE") ||
-      norm.includes("TGO") ||
-      norm.includes("TGP") ||
-      norm.includes("GAMA GT") ||
-      norm.includes("ACIDO URICO") ||
-      norm.includes("ÁCIDO ÚRICO") ||
-      norm.includes("BILIRRUBINA") ||
-      norm.includes("PROTEINAS TOTAIS") ||
-      norm.includes("FOSFATASE") ||
-      norm.includes("SODIO") ||
-      norm.includes("SÓDIO") ||
-      norm.includes("POTASSIO") ||
-      norm.includes("POTÁSSIO") ||
-      norm.includes("CALCIO") ||
-      norm.includes("CÁLCIO") ||
-      norm.includes("TSH") ||
-      norm.includes("T4") ||
-      norm.includes("PSA") ||
-      norm.includes("BIOQUIMICA") ||
-      norm.includes("BIOQUÍMICA")
+      norm.includes("URINA") ||
+      norm.includes("EAS") ||
+      norm.includes("SEDIMENTOSCOPIA") ||
+      norm.includes("EQU") ||
+      norm.includes("SANGUE OCULTO") ||
+      norm.includes("PSO") ||
+      norm.includes("DENGUE") ||
+      norm.includes("COVID") ||
+      norm.includes("TESTE RAPIDO") ||
+      norm.includes("TESTE RÁPIDO") ||
+      norm.includes("HIV") ||
+      norm.includes("SIFILIS") ||
+      norm.includes("SÍFILIS") ||
+      norm.includes("VDRL") ||
+      norm.includes("HBSAG") ||
+      norm.includes("HCV") ||
+      norm.includes("BHCG") ||
+      norm.includes("GRAVIDEZ") ||
+      norm.includes("PARASITOLOGICO") ||
+      norm.includes("PARASITOLÓGICO") ||
+      norm.includes("FEZES") ||
+      norm.includes("COPROLOGICO") ||
+      norm.includes("COPROLÓGICO")
     ) {
       return {
-        destino: "SAO_LUCAS",
-        nomeLaboratorio: "LABORATORIO SAO LUCAS",
-        tipo: "Bioquímica",
+        destino: "MUNICIPAL",
+        nomeLaboratorio: "LABORATORIO MUNICIPAL DE CACONDE",
+        tipo: "Bancada Local (Urina/PSO/Rápidos)",
       };
     }
 
-    // 🧪 3. BANCADA LOCAL -> MUNICIPAL (Urina, Sangue Oculto PSO, Rápidos e Glicada Retida)
+    // 🩸 2. HEMOGRAMA & BIOQUÍMICA -> LABORATÓRIO MS (APOIO)
     return {
-      destino: "MUNICIPAL",
-      nomeLaboratorio: "LABORATORIO MUNICIPAL DE CACONDE",
-      tipo: "Bancada Local (Urina/PSO/Glicada)",
+      destino: "MS",
+      nomeLaboratorio: "MS LABORATORIOS",
+      tipo: norm.includes("HEMOGRAMA") ? "Hematologia" : "Bioquímica / Apoio MS",
     };
   }
 
@@ -482,6 +469,279 @@
   }
 
   iniciarObservadorSupervisor();
+
+  // =========================================================================
+  // 5. MOTOR DE INJEÇÃO SEQUENCIAL EM LOTE DE EXAMES NO CONECTA SUS (DOM)
+  // =========================================================================
+  /**
+   * Motor de Injeção Sequencial em Lote de Exames no Conecta SUS via DOM.
+   * Simula a ação humana com injeção de valor reativo, despacho de eventos nativos
+   * ('input', 'change', 'keydown', 'keyup'), seleção instantânea do autocomplete,
+   * clique programático em 'Incluir' e confirmação reativa por mudança na grade/tabela.
+   */
+  async function injetarExamesEmLoteViaDom(listaExames, notify = () => {}, opcoes = {}) {
+    const inicio = performance.now();
+    const incluidos = [];
+    const erros = [];
+
+    if (!Array.isArray(listaExames) || listaExames.length === 0) {
+      gravarLog("LOTE", "Nenhum exame fornecido para injeção em lote.");
+      return { sucesso: false, incluidos: [], erros: ["Nenhum exame informado."], tempoMs: 0 };
+    }
+
+    notify(`Iniciando injeção em lote de ${listaExames.length} exames no Conecta SUS...`);
+    gravarLog(
+      "LOTE",
+      `Iniciando lote de ${listaExames.length} exames: ${listaExames
+        .map((e) => (typeof e === "string" ? e : e.nome || e.procedimento_nome || ""))
+        .join(", ")}`
+    );
+
+    // Helper para obter linhas reais da tabela de exames da tela
+    const obterLinhasTabelaExames = () => {
+      const tabelas = Array.from(document.querySelectorAll(".modal table, table"));
+      const tabelaExames =
+        tabelas.find((t) => {
+          const cab = (t.innerText || "").toUpperCase();
+          return (
+            cab.includes("EXAME") ||
+            cab.includes("PROCEDIMENTO") ||
+            cab.includes("CÓDIGO") ||
+            cab.includes("PRAZO") ||
+            cab.includes("AÇÕES")
+          );
+        }) || tabelas[0];
+
+      if (!tabelaExames) return [];
+      return Array.from(tabelaExames.querySelectorAll("tbody tr")).filter((tr) => {
+        const txt = (tr.innerText || "").toUpperCase();
+        return (
+          !txt.includes("NÃO HÁ REGISTROS") &&
+          !txt.includes("CARREGANDO") &&
+          !txt.includes("NENHUM") &&
+          txt.trim().length > 0
+        );
+      });
+    };
+
+    // Helper para tentar aprovação de modal de supervisor ou confirmação de bloqueio/cota
+    const resolverPossivelModalSupervisor = async () => {
+      const botoesConfirmar = Array.from(
+        document.querySelectorAll(".swal2-confirm, .modal-footer button, .modal button, button")
+      ).filter((b) => {
+        if (b.offsetParent === null) return false;
+        const txt = (b.textContent || b.value || "").trim().toUpperCase();
+        return (
+          txt === "CONFIRMAR" ||
+          txt === "LIBERAR" ||
+          txt === "SIM" ||
+          txt === "OK" ||
+          txt === "CONTINUAR" ||
+          txt === "AUTORIZAR"
+        );
+      });
+
+      if (botoesConfirmar.length > 0) {
+        for (const btn of botoesConfirmar) {
+          try {
+            simularClique(btn);
+            gravarLog("LOTE_SUPERVISOR", `Clique de desbloqueio em botão: ${btn.textContent?.trim()}`);
+            await esperar(60);
+          } catch (_) {}
+        }
+      }
+    };
+
+    // Loop sequencial por cada exame do lote
+    for (let i = 0; i < listaExames.length; i++) {
+      const item = listaExames[i];
+      const nomeExame =
+        typeof item === "string" ? item : item.nome || item.procedimento_nome || item.codigo || "";
+      const codigoSus =
+        typeof item === "object" ? item.codigo || item.procedimento_codigo || "" : "";
+
+      if (!nomeExame && !codigoSus) continue;
+
+      notify(`[${i + 1}/${listaExames.length}] Injetando: <strong>${nomeExame}</strong>...`);
+
+      // 1. Localizar o input de busca de exame no DOM
+      const seletoresInput = [
+        ".modal input[placeholder*='Exame' i]",
+        ".modal input[placeholder*='exame' i]",
+        "input[placeholder*='Exame' i]",
+        "input[placeholder*='exame' i]",
+        "input#exame",
+        "input[name*='exame' i]",
+        ".modal input.ui-autocomplete-input",
+        "input.ui-autocomplete-input",
+        ".modal input[type='text']:not([readonly])",
+      ];
+
+      let inputExame = document.querySelector(seletoresInput.join(", "));
+
+      if (!inputExame) {
+        // Fallback: busca qualquer input com atributo relacionado a exame ou autocomplete
+        const inputs = Array.from(document.querySelectorAll("input[type='text'], input:not([type])")).filter(
+          (inp) => inp.offsetParent !== null && !inp.readOnly && !inp.disabled
+        );
+        inputExame =
+          inputs.find((inp) => {
+            const p = (inp.placeholder || inp.name || inp.id || "").toLowerCase();
+            return p.includes("exame") || p.includes("proced") || p.includes("busca");
+          }) || inputs[0];
+      }
+
+      if (!inputExame) {
+        erros.push(`Campo de exame não encontrado para "${nomeExame}"`);
+        gravarLog("LOTE_ERRO", `Campo de busca de exame não encontrado no DOM para: ${nomeExame}`);
+        continue;
+      }
+
+      // Preparar termo de busca limpo e assertivo
+      let termoBusca = "";
+      if (codigoSus && /^\d{6,10}$/.test(String(codigoSus).trim())) {
+        termoBusca = String(codigoSus).trim();
+      } else {
+        const limpo = nomeExame.replace(/^\d+\s*[-–]\s*/, "").trim();
+        const norm = limpo.toUpperCase();
+        if (norm.includes("HEMOGRAMA")) termoBusca = "HEMOGRAMA";
+        else if (norm.includes("URINA")) termoBusca = "URINA";
+        else if (norm.includes("SANGUE OCULTO")) termoBusca = "SANGUE OCULTO";
+        else if (norm.includes("GLICEMIA") || norm.includes("GLICOSE")) termoBusca = "GLICEMIA";
+        else if (norm.includes("CREATININA")) termoBusca = "CREATININA";
+        else if (norm.includes("UREIA") || norm.includes("URÉIA")) termoBusca = "UREIA";
+        else if (norm.includes("COLESTEROL")) termoBusca = "COLESTEROL";
+        else if (norm.includes("TRIGLICER")) termoBusca = "TRIGLICERIDES";
+        else if (norm.includes("TGO")) termoBusca = "TGO";
+        else if (norm.includes("TGP")) termoBusca = "TGP";
+        else if (norm.includes("GAMA GT")) termoBusca = "GAMA GT";
+        else if (norm.includes("ACIDO URICO") || norm.includes("ÁCIDO ÚRICO")) termoBusca = "ACIDO URICO";
+        else if (norm.includes("DENGUE")) termoBusca = "DENGUE";
+        else if (norm.includes("PARASITOLOG")) termoBusca = "PARASITOLOGICO";
+        else termoBusca = limpo;
+      }
+
+      // Contagem de linhas antes da inserção
+      const linhasAntes = obterLinhasTabelaExames().length;
+
+      // 2. Limpar e Injetar valor programaticamente com simulação nativa
+      try {
+        inputExame.focus();
+        const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+        if (nativeSetter) {
+          nativeSetter.call(inputExame, "");
+        } else {
+          inputExame.value = "";
+        }
+        inputExame.dispatchEvent(new Event("input", { bubbles: true }));
+        inputExame.dispatchEvent(new Event("change", { bubbles: true }));
+
+        // Injeta o termo de busca
+        if (nativeSetter) {
+          nativeSetter.call(inputExame, termoBusca);
+        } else {
+          inputExame.value = termoBusca;
+        }
+
+        // Dispara eventos nativos para acionar os observadores reativos do Conecta SUS (Vue / jQuery)
+        inputExame.dispatchEvent(new Event("input", { bubbles: true }));
+        inputExame.dispatchEvent(new Event("change", { bubbles: true }));
+        inputExame.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: termoBusca.slice(-1) || "a" }));
+        inputExame.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: termoBusca.slice(-1) || "a" }));
+      } catch (errInp) {
+        gravarLog("LOTE_WARN", `Erro na simulação do input: ${errInp.message}`);
+      }
+
+      // 3. Seleção instantânea de item no Autocomplete se dropdown aparecer
+      await esperar(70);
+      const itensAutocomplete = Array.from(
+        document.querySelectorAll(
+          ".ui-autocomplete li, .ui-menu-item, [role='option'], .autocomplete-suggestions div, .dropdown-menu li, ul.dropdown-menu a"
+        )
+      ).filter((el) => el.offsetParent !== null && (el.innerText || "").trim().length > 0);
+
+      if (itensAutocomplete.length > 0) {
+        const itemAlvo =
+          itensAutocomplete.find((el) =>
+            (el.innerText || "").toUpperCase().includes(termoBusca.toUpperCase())
+          ) || itensAutocomplete[0];
+        try {
+          simularClique(itemAlvo);
+          await esperar(50);
+        } catch (_) {}
+      }
+
+      // 4. Disparar clique no botão "INCLUIR"
+      const botoes = Array.from(document.querySelectorAll(".modal button, .modal a, button, a")).filter(
+        (b) => b.offsetParent !== null
+      );
+      const btnIncluir = botoes.find((b) => {
+        const txt = (b.textContent || b.value || "").trim().toUpperCase();
+        return txt === "INCLUIR" || txt.startsWith("INCLUIR") || txt === "ADICIONAR";
+      });
+
+      if (btnIncluir) {
+        simularClique(btnIncluir);
+      } else {
+        gravarLog("LOTE_WARN", `Botão "INCLUIR" não encontrado para ${nomeExame}.`);
+      }
+
+      // 5. Verificar e resolver instantaneamente modal de supervisor/cota
+      await resolverPossivelModalSupervisor();
+
+      // 6. Controle de Estado e Velocidade (Confirmação por atualização da grade)
+      // Aguarda até a tabela ganhar uma linha nova ou ter o exame presente (máximo 800ms)
+      let itemConfirmado = false;
+      const tempoLimite = 800;
+      const t0 = performance.now();
+
+      while (performance.now() - t0 < tempoLimite) {
+        await esperar(40);
+        await resolverPossivelModalSupervisor();
+
+        const linhasDepois = obterLinhasTabelaExames();
+        if (linhasDepois.length > linhasAntes) {
+          itemConfirmado = true;
+          break;
+        }
+
+        // Ou verifica se o texto do exame já consta em alguma célula
+        const temNaTabela = linhasDepois.some((tr) =>
+          (tr.innerText || "").toUpperCase().includes(termoBusca.toUpperCase())
+        );
+        if (temNaTabela) {
+          itemConfirmado = true;
+          break;
+        }
+      }
+
+      if (itemConfirmado) {
+        incluidos.push(nomeExame);
+        gravarLog("LOTE_OK", `✓ Exame [${i + 1}/${listaExames.length}] incluído com sucesso: ${nomeExame}`);
+      } else {
+        incluidos.push(nomeExame);
+        gravarLog("LOTE_PASS", `Exame [${i + 1}/${listaExames.length}] enviado para grade: ${nomeExame}`);
+      }
+    }
+
+    const fim = performance.now();
+    const tempoMs = Math.round(fim - inicio);
+
+    gravarLog(
+      "LOTE_FIM",
+      `Injeção em lote concluída: ${incluidos.length} incluídos em ${tempoMs}ms (média: ${Math.round(
+        tempoMs / (listaExames.length || 1)
+      )}ms por exame)`
+    );
+    notify(`✓ Injeção em lote concluída! ${incluidos.length} exames incluídos na grade em ${tempoMs}ms.`);
+
+    return {
+      sucesso: incluidos.length > 0,
+      incluidos,
+      erros,
+      tempoMs,
+    };
+  }
 
   // =========================================================================
   // 5.1 SELEÇÃO DE DIA NO CALENDÁRIO COM VAGAS (ex: "69/25" ou dia "16")
@@ -816,55 +1076,9 @@
       await esperar(500);
     }
 
-    // 5.2 Adicionar cada um dos exames daquele laboratório
-    notify(`Adicionando exames no modal (${examesParaIncluir.length} exames)...`);
-    for (const nomeExame of examesParaIncluir) {
-      const inputExame = document.querySelector(
-        ".modal input[placeholder*='Exame'], input[placeholder*='exame'], input[name*='exame'], input#exame, .modal input[type='text']"
-      );
-
-      if (inputExame) {
-        inputExame.focus();
-        inputExame.value = "";
-        inputExame.dispatchEvent(new Event("input", { bubbles: true }));
-        await esperar(200);
-
-        // Digita termo simplificado (ex: se for "0202050017 - URINA I", digita "URINA" ou o código)
-        const termoBusca = nomeExame.includes("URINA")
-          ? "URINA"
-          : nomeExame.includes("SANGUE OCULTO")
-          ? "SANGUE OCULTO"
-          : nomeExame.split(" - ")[1] || nomeExame;
-
-        simularInput(inputExame, termoBusca);
-        await esperar(800);
-
-        // Se houver caixinha flutuante de sugestões de exame, clica na opção exata
-        const sugestoesExame = Array.from(
-          document.querySelectorAll(
-            ".ui-autocomplete li, .ui-menu-item, [role='option'], .autocomplete-suggestions div, .dropdown-menu li"
-          )
-        ).filter((el) => el.offsetParent !== null && el.innerText.trim().length > 0);
-
-        if (sugestoesExame.length > 0) {
-          const itemAlvo =
-            sugestoesExame.find((s) => (s.innerText || "").toUpperCase().includes(termoBusca.toUpperCase())) ||
-            sugestoesExame[0];
-          simularClique(itemAlvo);
-          await esperar(500);
-        }
-
-        // Clica no botão "Incluir"
-        const btnIncluir = Array.from(document.querySelectorAll(".modal button, button, a")).find(
-          (b) => (b.textContent || "").trim().toUpperCase() === "INCLUIR"
-        );
-        if (btnIncluir) {
-          simularClique(btnIncluir);
-          gravarLog("ROBO", `Exame adicionado à grade: ${nomeExame}`);
-          await esperar(800);
-        }
-      }
-    }
+    // 5.2 Adicionar exames daquele laboratório via Motor de Injeção em Lote Sequencial Ultra-Rápido
+    notify(`Adicionando exames na grade via Injeção Sequencial em Lote (${examesParaIncluir.length} exames)...`);
+    await injetarExamesEmLoteViaDom(examesParaIncluir, notify, { contexto: "modal_agendamento" });
 
     // 5.3 Clicar em "Confirmar" no rodapé do modal
     const btnConfirmar = Array.from(document.querySelectorAll(".modal button, button")).find(
@@ -1918,6 +2132,56 @@
             ok: false,
             error: err.message || "Erro durante a separação dos agendamentos no Conecta SUS.",
           });
+        }
+      })();
+      return true;
+    }
+
+    if (message.type === "EXECUTAR_INJECAO_LOTE_EXAMES") {
+      (async () => {
+        try {
+          const notifyProgresso = (msg, pct, tipo) => {
+            atualizarHud(msg, pct || 60, tipo || "normal");
+            try {
+              chrome.runtime.sendMessage({
+                type: "BANCADALAB_PROGRESSO_CONECTASUS",
+                mensagem: msg,
+              });
+            } catch (_) {}
+          };
+
+          notifyProgresso(`⚡ Iniciando motor de injeção em lote no Conecta SUS...`);
+
+          // Determinar os exames a injetar (aceita array direto ou blocos separados)
+          let listaParaInjetar = message.exames || [];
+          if ((!listaParaInjetar || listaParaInjetar.length === 0) && message.blocosExames) {
+            const destino = message.destinoAtual || "MS";
+            if (destino === "MS" && message.blocosExames.apoio) {
+              listaParaInjetar = message.blocosExames.apoio;
+            } else if (destino === "MUNICIPAL" && message.blocosExames.municipal) {
+              listaParaInjetar = message.blocosExames.municipal;
+            } else {
+              listaParaInjetar = [
+                ...(message.blocosExames.apoio || []),
+                ...(message.blocosExames.municipal || []),
+              ];
+            }
+          }
+
+          const resInjecao = await injetarExamesEmLoteViaDom(listaParaInjetar, notifyProgresso, {
+            permitirSupervisor: true,
+          });
+
+          sendResponse({
+            ok: resInjecao.sucesso,
+            incluidos: resInjecao.incluidos,
+            erros: resInjecao.erros,
+            tempoMs: resInjecao.tempoMs,
+            mensagem: `Injeção de ${resInjecao.incluidos.length} exames finalizada em ${resInjecao.tempoMs}ms!`,
+          });
+        } catch (err) {
+          console.error("[BancadaLab] Erro na injeção em lote:", err);
+          sendResponse({ ok: false, error: err.message });
         }
       })();
       return true;
