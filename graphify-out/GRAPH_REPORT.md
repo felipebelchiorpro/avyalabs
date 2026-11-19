@@ -1,17 +1,17 @@
-# Graph Report - Urinalise PWA Automatico  (2026-11-17)
+# Graph Report - Urinalise PWA Automatico  (2026-11-19)
 
 ## Corpus Check
-- 60 files · ~141,454 words
+- 60 files · ~143,151 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 5 file(s) not represented in the graph (top: (none) 2, .ico 1, .css 1)
 
 ## Summary
-- 418 nodes · 1008 edges · 18 communities (13 shown, 5 thin omitted)
+- 418 nodes · 1011 edges · 18 communities (13 shown, 5 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 1 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b1f8fd2e`
+- Built from commit: `ec9ad14e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -40,21 +40,21 @@
 5. `getD1Database()` - 23 edges
 6. `next` - 22 edges
 7. `normalizarDataIso()` - 21 edges
-8. `lucide-react` - 19 edges
-9. `normalizarProntuario()` - 18 edges
+8. `normalizarProntuario()` - 20 edges
+9. `lucide-react` - 19 edges
 10. `LaudoUrina` - 17 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `POST()` --calls--> `salvarOuAtualizarLaudo()`  [EXTRACTED]
-  src/app/api/salvar-laudo/route.ts → src/lib/d1Service.ts
-- `POST()` --calls--> `salvarOuAtualizarLaudo()`  [EXTRACTED]
   src/app/api/laudos/route.ts → src/lib/d1Service.ts
-- `ResultadoSalvarTriagemEdta` --references--> `ItemTriagemEdta`  [EXTRACTED]
-  src/lib/d1Service.ts → src/types/urinalise.ts
-- `ResultadoExtracaoBancada` --references--> `ItemTriagemEdta`  [EXTRACTED]
-  src/lib/extratorBancada.ts → src/types/urinalise.ts
+- `POST()` --calls--> `salvarOuAtualizarLaudo()`  [EXTRACTED]
+  src/app/api/salvar-laudo/route.ts → src/lib/d1Service.ts
+- `LoteVdrlPage()` --calls--> `obterOntemIsoLocal()`  [EXTRACTED]
+  src/app/vdrl/page.tsx → src/lib/extratorBancada.ts
 - `RelatorioTriagemEdtaPrintViewProps` --references--> `LabConfig`  [EXTRACTED]
   src/components/RelatorioTriagemEdtaPrintView.tsx → src/types/urinalise.ts
+- `ResultadoSalvarTriagemEdta` --references--> `ItemTriagemEdta`  [EXTRACTED]
+  src/lib/d1Service.ts → src/types/urinalise.ts
 
 ## Import Cycles
 - None detected.

@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { ItemRotina, LaudoUrina, VALORES_PADRAO_NORMAL } from "@/types/urinalise";
+import { ItemRotina, RotinaItem, LaudoUrina, VALORES_PADRAO_NORMAL } from "@/types/urinalise";
 import {
   formatarProntuario,
   normalizarDataIso,
+  normalizarProntuario,
   obterHojeIsoLocal,
   obterOntemIsoLocal,
 } from "@/lib/extratorBancada";
@@ -22,6 +23,11 @@ import {
   Eye,
   X,
   FileSpreadsheet,
+  UserPlus,
+  ArrowDownToLine,
+  PlusCircle,
+  Save,
+  User,
 } from "lucide-react";
 
 export default function LoteVdrlPage() {
@@ -40,6 +46,20 @@ export default function LoteVdrlPage() {
   // Modal de impressão do mapa da bancada
   const [mostrarMapaPrint, setMostrarMapaPrint] = useState<boolean>(false);
   const [mostrarHistoricoFinalizados, setMostrarHistoricoFinalizados] = useState<boolean>(false);
+
+  // Estados para Adicionar Paciente Avulso (VDRL + Triagem do Dia)
+  const [mostrarModalAvulso, setMostrarModalAvulso] = useState<boolean>(false);
+  const [novoNome, setNovoNome] = useState<string>("");
+  const [novoProntuario, setNovoProntuario] = useState<string>("");
+  const [novoIdadeSexo, setNovoIdadeSexo] = useState<string>("SUS");
+  const [novoPosto, setNovoPosto] = useState<string>("UBS Central Caconde");
+  const [novoSolicitante, setNovoSolicitante] = useState<string>("Dr(a). Clínico(a) Geral / UBS");
+  const [incluirUrina, setIncluirUrina] = useState<boolean>(false);
+  const [incluirPso, setIncluirPso] = useState<boolean>(false);
+  const [salvandoAvulso, setSalvandoAvulso] = useState<boolean>(false);
+
+  // Estado de movimentação em lote dos retidos para a triagem de hoje
+  const [isMoverRetidos, setIsMoverRetidos] = useState<boolean>(false);
 
   const hojeIso = useMemo(() => obterHojeIsoLocal(), []);
   const ontemIso = useMemo(() => obterOntemIsoLocal(), []);
@@ -182,6 +202,187 @@ export default function LoteVdrlPage() {
 
   const pendentesCount = todosVdrl.filter((p) => !p.estaFinalizado).length;
   const finalizadosCount = todosVdrl.filter((p) => p.estaFinalizado).length;
+
+  // Pacientes com VDRL retidos/acumulados de datas anteriores ou guardados para lote
+  const retidosAcumulados = useMemo(() => {
+    return todosVdrl.filter(
+      (p) => !p.estaFinalizado && (p.estaAcumulado || p.data !== hojeIso)
+    );
+  }, [todosVdrl, hojeIso]);
+
+  // Salvar Paciente Avulso (VDRL + Triagem do Dia / Urina)
+  const salvarPacienteAvulso = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!novoNome.trim()) {
+      mostrarNotificacao("Informe o nome do paciente.", "warning");
+      return;
+    }
+    if (!novoProntuario.trim()) {
+      mostrarNotificacao("Informe o prontuário do paciente.", "warning");
+      return;
+    }
+
+    setSalvandoAvulso(true);
+    try {
+      const hoje = obterHojeIsoLocal();
+      const prontFormatado = formatarProntuario(novoProntuario);
+      const examesArray = ["VDRL"];
+      if (incluirUrina) examesArray.push("URINA I");
+      if (incluirPso) examesArray.push("SANGUE OCULTO");
+      const exameTexto = examesArray.join(" + ");
+
+      const itemNovo: RotinaItem = {
+        id: `rot-${hoje}-${normalizarProntuario(prontFormatado)}`,
+        data: hoje,
+        prontuario: prontFormatado,
+        nome_paciente: novoNome.trim().toUpperCase(),
+        idade_sexo: novoIdadeSexo.trim() || "SUS",
+        posto_unidade: novoPosto.trim() || "UBS Central Caconde",
+        solicitante: novoSolicitante.trim() || "Dr(a). Clínico(a) Geral / UBS",
+        exame: exameTexto,
+        status_coleta: "REALIZADO",
+        status_laudo: "rascunho",
+        tem_vdrl: true,
+        tem_urina: incluirUrina,
+        tem_pso: incluirPso,
+      };
+
+      // 1. Salvar na rotina_dia do D1
+      const resRot = await fetch("/api/rotina", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itens: [itemNovo], substituir: false }),
+      });
+      const dataRot = await resRot.json();
+      if (!dataRot.ok) throw new Error(dataRot.error || "Erro ao salvar na rotina.");
+
+      // 2. Salvar laudo rascunho com o VDRL
+      await fetch("/api/laudos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...VALORES_PADRAO_NORMAL,
+          prontuario: prontFormatado,
+          nome_paciente: novoNome.trim().toUpperCase(),
+          idade_sexo: novoIdadeSexo.trim() || "SUS",
+          posto_unidade: novoPosto.trim() || "UBS Central Caconde",
+          solicitante: novoSolicitante.trim() || "Dr(a). Clínico(a) Geral / UBS",
+          status: "rascunho",
+          tem_vdrl: true,
+          resultado_vdrl: "Não Reagente",
+          vdrl_acumular_lote: false,
+          tem_urina: incluirUrina,
+          tem_pso: incluirPso,
+          data_atendimento: hoje,
+          data_hora: `${hoje}T12:00:00`,
+        }),
+      });
+
+      mostrarNotificacao(
+        `✓ Paciente ${novoNome.trim().toUpperCase()} cadastrado com sucesso! Já está visível na lista do VDRL e na Triagem do Dia (/urina).`,
+        "success"
+      );
+
+      // Limpa os campos e fecha o modal
+      setNovoNome("");
+      setNovoProntuario("");
+      setIncluirUrina(false);
+      setIncluirPso(false);
+      setMostrarModalAvulso(false);
+
+      await carregarDados();
+    } catch (err: any) {
+      console.error("Erro ao salvar paciente avulso:", err);
+      mostrarNotificacao(`Erro ao cadastrar avulso: ${err.message}`, "error");
+    } finally {
+      setSalvandoAvulso(false);
+    }
+  };
+
+  // Mover Pacientes Retidos / Acumulados para a Triagem do Dia de HOJE
+  const mandarRetidosParaTriagemDeHoje = async (lista: typeof todosVdrl) => {
+    if (!lista || lista.length === 0) {
+      mostrarNotificacao("Nenhum paciente retido selecionado para mover.", "warning");
+      return;
+    }
+
+    setIsMoverRetidos(true);
+    let totalMovidos = 0;
+    try {
+      const hoje = obterHojeIsoLocal();
+      const itensRotinaHoje: RotinaItem[] = lista.map((pac) => {
+        const prontNorm = normalizarProntuario(pac.prontuario);
+        const exameBase = pac.exame || "VDRL";
+        const exameFinal = exameBase.includes("VDRL") ? exameBase : `${exameBase} + VDRL`;
+
+        return {
+          id: `rot-${hoje}-${prontNorm}`,
+          data: hoje,
+          prontuario: formatarProntuario(pac.prontuario),
+          nome_paciente: pac.nome_paciente,
+          idade_sexo: pac.idade_sexo || "SUS",
+          posto_unidade: pac.posto_unidade || "UBS Central Caconde",
+          solicitante: pac.solicitante || "Dr(a). Clínico(a) Geral / UBS",
+          exame: exameFinal,
+          status_coleta: "REALIZADO",
+          status_laudo: "rascunho",
+          tem_vdrl: true,
+          tem_urina: Boolean(pac.tem_urina),
+          tem_pso: Boolean(pac.tem_pso),
+        };
+      });
+
+      // 1. Salvar na rotina_dia do D1 com a data de HOJE
+      const resRot = await fetch("/api/rotina", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itens: itensRotinaHoje, substituir: false }),
+      });
+      const dataRot = await resRot.json();
+      if (!dataRot.ok) throw new Error(dataRot.error || "Erro ao gravar na rotina de hoje.");
+
+      // 2. Atualizar os laudos para data_atendimento de hoje e desmarcar lote acumulado
+      for (const pac of lista) {
+        const laudoExistente = pac.laudo;
+        const resVdrl =
+          titulacoes[pac.chave] && titulacoes[pac.chave] !== "Aguardando lote semanal"
+            ? titulacoes[pac.chave]
+            : "Não Reagente";
+
+        await fetch("/api/laudos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...(laudoExistente || VALORES_PADRAO_NORMAL),
+            prontuario: pac.prontuario,
+            nome_paciente: pac.nome_paciente,
+            idade_sexo: pac.idade_sexo || "SUS",
+            posto_unidade: pac.posto_unidade || "UBS Central Caconde",
+            solicitante: pac.solicitante || "Dr(a). Clínico(a) Geral / UBS",
+            status: "rascunho",
+            tem_vdrl: true,
+            resultado_vdrl: resVdrl,
+            vdrl_acumular_lote: false,
+            data_atendimento: hoje,
+            data_hora: `${hoje}T12:00:00`,
+          }),
+        });
+        totalMovidos++;
+      }
+
+      mostrarNotificacao(
+        `✓ ${totalMovidos} paciente(s) retido(s) enviados para a Triagem do Dia de HOJE! Já estão disponíveis em /urina e na montagem do lote.`,
+        "success"
+      );
+
+      await carregarDados();
+    } catch (err: any) {
+      console.error("Erro ao mover retidos para triagem de hoje:", err);
+      mostrarNotificacao(`Erro ao mover retidos: ${err.message}`, "error");
+    } finally {
+      setIsMoverRetidos(false);
+    }
+  };
 
   // Alternar seleção individual para montagem do dia
   const toggleSelecionado = (chave: string) => {
@@ -436,9 +637,19 @@ export default function LoteVdrlPage() {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
+              onClick={() => setMostrarModalAvulso(true)}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white text-xs font-black transition flex items-center gap-2 cursor-pointer shadow-md shadow-purple-900/20 active:scale-95 min-h-[42px]"
+              title="Cadastrar paciente avulso com VDRL para entrar no lote e na rotina do dia"
+            >
+              <UserPlus className="w-4 h-4 text-purple-200" />
+              <span>+ Paciente Avulso (VDRL)</span>
+            </button>
+
+            <button
+              type="button"
               onClick={carregarDados}
               disabled={isLoading}
-              className="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              className="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs min-h-[42px]"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin text-purple-600" : ""}`} />
               <span>Atualizar</span>
@@ -448,7 +659,7 @@ export default function LoteVdrlPage() {
               type="button"
               onClick={() => setMostrarMapaPrint(true)}
               disabled={todosVdrl.length === 0}
-              className="px-4 py-2.5 rounded-xl bg-purple-800 hover:bg-purple-900 text-white text-xs font-black transition flex items-center gap-2 cursor-pointer shadow-md shadow-purple-800/20 active:scale-95"
+              className="px-4 py-2.5 rounded-xl bg-purple-800 hover:bg-purple-900 text-white text-xs font-black transition flex items-center gap-2 cursor-pointer shadow-md shadow-purple-800/20 active:scale-95 min-h-[42px]"
             >
               <Printer className="w-4 h-4" />
               <span>Imprimir Mapa da Placa VDRL</span>
@@ -467,7 +678,9 @@ export default function LoteVdrlPage() {
           <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200">
             <span className="text-[10px] font-black uppercase text-amber-900 block">📦 Pendentes / Acumulados</span>
             <span className="text-2xl font-black text-amber-950 font-mono">{pendentesCount}</span>
-            <span className="text-[10.5px] text-amber-800 block mt-0.5">Aguardando lote semanal</span>
+            <span className="text-[10.5px] text-amber-800 block mt-0.5">
+              {retidosAcumulados.length} retido(s) p/ outro dia
+            </span>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-sky-50/80 border border-sky-200">
@@ -483,6 +696,51 @@ export default function LoteVdrlPage() {
           </div>
         </div>
       </div>
+
+      {/* BANNER DE RETIDOS DE DIAS ANTERIORES PARA MANDAR PARA A TRIAGEM DE HOJE */}
+      {retidosAcumulados.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-950/40 via-purple-950/30 to-amber-950/30 rounded-2xl border border-amber-500/40 p-4 mb-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in duration-300">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-center shrink-0">
+              <Package className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-amber-200 uppercase tracking-wide">
+                  Tubos Retidos / Acumulados de Dias Anteriores
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/30 font-mono">
+                  {retidosAcumulados.length} Amostra(s) na Geladeira/Bancada
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-1">
+                Você possui exames de VDRL retidos de datas anteriores. Deseja mandar para a <strong>Triagem do Dia de Hoje</strong> para que apareçam na lista de bancada (<code>/urina</code>) e no mapa de hoje?
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <button
+              type="button"
+              disabled={isMoverRetidos}
+              onClick={() => {
+                const marcados = retidosAcumulados.filter((p) => selecionados.has(p.chave));
+                mandarRetidosParaTriagemDeHoje(marcados.length > 0 ? marcados : retidosAcumulados);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-xs font-black transition flex items-center gap-2 shadow-md shadow-amber-900/30 cursor-pointer active:scale-95 disabled:opacity-50 min-h-[42px]"
+            >
+              <ArrowDownToLine className="w-4 h-4 text-amber-200" />
+              <span>
+                {isMoverRetidos
+                  ? "Transferindo para Hoje..."
+                  : retidosAcumulados.filter((p) => selecionados.has(p.chave)).length > 0
+                  ? `Mandar Marcados (${retidosAcumulados.filter((p) => selecionados.has(p.chave)).length}) p/ Triagem de Hoje`
+                  : `Mandar Todos (${retidosAcumulados.length}) p/ Triagem de Hoje`}
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* BARRA DE AÇÕES EM MASSA PARA MONTAR O DIA */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-6 shadow-2xs space-y-3">
@@ -685,7 +943,7 @@ export default function LoteVdrlPage() {
                       );
                     })}
 
-                    <div className="flex items-center gap-1 ml-2">
+                    <div className="flex items-center gap-1.5 ml-2 flex-wrap">
                       <button
                         type="button"
                         onClick={() => salvarIndividual(pac)}
@@ -694,6 +952,19 @@ export default function LoteVdrlPage() {
                       >
                         Salvar
                       </button>
+
+                      {(pac.estaAcumulado || pac.data !== hojeIso) && !pac.estaFinalizado && (
+                        <button
+                          type="button"
+                          onClick={() => mandarRetidosParaTriagemDeHoje([pac])}
+                          disabled={isMoverRetidos}
+                          className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 text-[10px] font-black rounded-lg cursor-pointer active:scale-95 transition flex items-center gap-1 shadow-2xs"
+                          title="Mandar este paciente retido para a Triagem do Dia de HOJE (/urina)"
+                        >
+                          <ArrowDownToLine className="w-3 h-3 text-amber-800" />
+                          <span>Mandar p/ Hoje</span>
+                        </button>
+                      )}
 
                       {!pac.estaFinalizado && (
                         <button
@@ -834,6 +1105,170 @@ export default function LoteVdrlPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PARA ADICIONAR PACIENTE AVULSO (VDRL + TRIAGEM DO DIA) */}
+      {mostrarModalAvulso && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 print:hidden">
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden border border-purple-200 animate-in fade-in zoom-in duration-200">
+            {/* Topo do Modal */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-purple-900 to-indigo-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-purple-200">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base text-white">
+                    Adicionar Paciente Avulso (VDRL)
+                  </h3>
+                  <p className="text-[11px] text-purple-200">
+                    Entra no lote do VDRL e na listagem da triagem do dia (/urina)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMostrarModalAvulso(false)}
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Formulário */}
+            <form onSubmit={salvarPacienteAvulso} className="p-5 sm:p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nome Completo do Paciente <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={novoNome}
+                  onChange={(e) => setNovoNome(e.target.value)}
+                  placeholder="Ex: MARIA APARECIDA DA SILVA"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold uppercase text-slate-900 focus:bg-white focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-200 transition"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Prontuário Municipal <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={novoProntuario}
+                    onChange={(e) => setNovoProntuario(e.target.value)}
+                    placeholder="Ex: 0054321 ou 54321"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-200 transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Idade / Sexo
+                  </label>
+                  <input
+                    type="text"
+                    value={novoIdadeSexo}
+                    onChange={(e) => setNovoIdadeSexo(e.target.value)}
+                    placeholder="Ex: 34a F ou SUS"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-purple-600 transition"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Posto / Unidade de Coleta
+                  </label>
+                  <input
+                    type="text"
+                    value={novoPosto}
+                    onChange={(e) => setNovoPosto(e.target.value)}
+                    placeholder="UBS Central Caconde"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-purple-600 transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Médico / Solicitante
+                  </label>
+                  <input
+                    type="text"
+                    value={novoSolicitante}
+                    onChange={(e) => setNovoSolicitante(e.target.value)}
+                    placeholder="Dr(a). Clínico(a) Geral"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-purple-600 transition"
+                  />
+                </div>
+              </div>
+
+              {/* Exames de Bancada Associados */}
+              <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-200 space-y-2">
+                <span className="text-[11px] font-bold text-purple-900 block">
+                  Exames da Bancada para Incluir na Triagem do Dia:
+                </span>
+                <div className="flex flex-wrap gap-4 text-xs font-semibold text-slate-800">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={true}
+                      disabled
+                      className="rounded text-purple-700 border-slate-300"
+                    />
+                    <span className="text-purple-950 font-bold">VDRL (Sífilis)</span>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={incluirUrina}
+                      onChange={(e) => setIncluirUrina(e.target.checked)}
+                      className="rounded text-purple-700 border-slate-300 focus:ring-purple-500 cursor-pointer"
+                    />
+                    <span>+ Urina Tipo I (EAS)</span>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={incluirPso}
+                      onChange={(e) => setIncluirPso(e.target.checked)}
+                      className="rounded text-purple-700 border-slate-300 focus:ring-purple-500 cursor-pointer"
+                    />
+                    <span>+ Sangue Oculto (PSO)</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Botões de Ação do Modal */}
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setMostrarModalAvulso(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 transition cursor-pointer min-h-[42px]"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={salvandoAvulso}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white text-xs font-black shadow-md shadow-purple-900/20 transition flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 min-h-[42px]"
+                >
+                  <Save className="w-4 h-4 text-purple-200" />
+                  <span>{salvandoAvulso ? "Salvando no D1..." : "Salvar e Incluir na Triagem do Dia"}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
