@@ -90,9 +90,9 @@
     "semantic_hash": ""
   },
   "src/app/api/triagem-edta/route.ts": {
-    "mtime": 1794444832.2220545,
-    "seen": 1794444882.64718,
-    "ast_hash": "237c7835e8bab0199044a1b37d1b563c",
+    "mtime": 1795084477.1857226,
+    "seen": 1795084566.2180974,
+    "ast_hash": "1296100c2edfda00699ae4169fc0a046",
     "semantic_hash": ""
   },
   "src/app/configuracoes/page.tsx": {
@@ -138,14 +138,14 @@
     "semantic_hash": ""
   },
   "src/app/triagem-edta/page.tsx": {
-    "mtime": 1794444605.7730813,
-    "seen": 1794444882.6486292,
-    "ast_hash": "c8c6538851ddc3f17fc333fc5cae7b8e",
+    "mtime": 1795084510.5809488,
+    "seen": 1795084566.2194974,
+    "ast_hash": "4864a6b5e971cd1e29c84e3e8d975be6",
     "semantic_hash": ""
   },
   "src/app/vdrl/page.tsx": {
-    "mtime": 1795082284.7337341,
-    "seen": 1795082370.3577743,
+    "mtime": 1795083696.6754158,
+    "seen": 1795084566.2196596,
     "ast_hash": "98c5e04a0f4b7f4f8b507a829e18de1a",
     "semantic_hash": ""
   },
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "public/graph.html": {
-    "mtime": 1794961856.3141148,
-    "seen": 1795082370.3637064,
-    "ast_hash": "9b9ea5b859fc0ba2a0e1a56d1d8541f3",
+    "mtime": 1795082370.4191902,
+    "seen": 1795084566.2256265,
+    "ast_hash": "2fda882711fce9e65c7c95ed387e32ea",
     "semantic_hash": ""
   },
   "public/file.svg": {
@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "extensao-chrome/background.js": {
-    "mtime": 1794961906.374051,
-    "seen": 1795082370.3528302,
-    "ast_hash": "08758c46796da9e484e2754b1f6bfcb5",
+    "mtime": 1795084384.788553,
+    "seen": 1795084566.215147,
+    "ast_hash": "42e06cdb04358f358f463b74ab8a80e5",
     "semantic_hash": ""
   },
   "extensao-chrome/content_bancadalab.js": {

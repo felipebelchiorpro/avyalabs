@@ -96,9 +96,9 @@ export async function POST(request: NextRequest) {
     const acao = body.acao || "salvar_lista";
 
     // 1. Busca e Enriquecimento Rápido ou Cadastro por Prontuário + Agendamento (Conecta SUS / D1)
-    if (body.prontuario && body.agendamento) {
-      const pBusca = formatarProntuario(body.prontuario);
-      const pNorm = normalizarProntuario(body.prontuario);
+    if (body.prontuario || body.agendamento) {
+      const pBusca = formatarProntuario(body.prontuario || body.agendamento);
+      const pNorm = normalizarProntuario(body.prontuario || body.agendamento);
       const dataHoje = obterHojeIsoLocal();
 
       // Se o payload inclui nome ou salvar=true, salvamos/enriquecemos no D1
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
           data: normalizarDataIso(body.data) || dataHoje,
           prontuario: pBusca,
           prontuario_normalizado: pNorm,
-          agendamento: String(body.agendamento),
+          agendamento: body.agendamento ? String(body.agendamento) : "",
           nome_paciente: nomePaciente,
           data_nascimento: dataNasc,
           data_nascimento_digitos: normalizarDigitosData(dataNasc),
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
           paciente: {
             nome: itemSalvo.nome_paciente || nomePaciente,
             prontuario: itemSalvo.prontuario || pBusca,
-            agendamento: body.agendamento,
+            agendamento: itemSalvo.agendamento || (body.agendamento ? String(body.agendamento) : ""),
             dataNascimento: itemSalvo.data_nascimento || dataNasc,
             medicoSolicitante: itemSalvo.solicitante || medico,
             exames: examesRecebidos,
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
           formatarProntuario(i.prontuario) === pBusca ||
           (i.prontuario_normalizado && i.prontuario_normalizado === pNorm) ||
           normalizarProntuario(i.prontuario) === pNorm ||
-          (i.agendamento && String(i.agendamento).trim() === String(body.agendamento).trim())
+          (i.agendamento && body.agendamento && String(i.agendamento).trim() === String(body.agendamento).trim())
       );
 
       const examesLista = itemAchado?.exames_originais && itemAchado.exames_originais.length > 0
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
         prontuario: pBusca,
         dataNascimento: itemAchado?.data_nascimento || "--/--/----",
         medicoSolicitante: itemAchado?.solicitante || "Dr(a). Clínico(a) Geral / UBS",
-        agendamento: body.agendamento,
+        agendamento: itemAchado?.agendamento || (body.agendamento ? String(body.agendamento) : ""),
         exames: examesLista,
         status: itemAchado?.status || "pendente",
         tipoDestino: itemAchado?.tipo_destino || "apenas_hemograma",

@@ -271,9 +271,15 @@ export default function TriagemEdtaPage() {
         const pac = event.data.paciente;
         if (pac) {
           setPacienteInfo(pac);
+          if (pac.medicoSolicitante) {
+            setMedicoSelecionado(pac.medicoSolicitante);
+          }
+          if (pac.dataNascimento) {
+            setDataNascConferencia(pac.dataNascimento);
+          }
           setMensagemSucesso({
-            titulo: `✅ Dados reais de ${pac.nome} importados do Conecta SUS!`,
-            subtitulo: `DN: ${pac.dataNascimento || "N/A"} • ${pac.medicoSolicitante || ""} • ${event.data.salvoNoD1 ? "Salvo no D1!" : "Capturado"}`,
+            titulo: `✅ Dados de ${pac.nome} importados do Conecta SUS!`,
+            subtitulo: `DN: ${pac.dataNascimento || "N/A"} • ${pac.medicoSolicitante || "Dr(a). Clínico Geral"} • ${event.data.salvoNoD1 ? "Salvo no D1!" : "Pronto na Bancada"}`,
           });
           setTimeout(() => setMensagemSucesso(null), 5000);
           tocarSomConfirmado();
@@ -804,7 +810,7 @@ export default function TriagemEdtaPage() {
     const agendAlvo = agendamento.trim();
 
     if (!prontAlvo && !agendAlvo) {
-      alert("Por favor, informe o Prontuário e o Número do Agendamento.");
+      alert("Por favor, informe o Prontuário ou o Número do Agendamento.");
       return;
     }
 
@@ -818,12 +824,12 @@ export default function TriagemEdtaPage() {
       document.documentElement.getAttribute("data-bancadalab-extensao") === "ativa";
 
     if (extAtiva) {
-      setProgressoExtensao("Conectando à aba do Conecta SUS em segundo plano...");
+      setProgressoExtensao("Consultando Conecta SUS em segundo plano...");
       window.postMessage(
         {
           type: "BANCADALAB_BUSCAR_CONECTASUS",
           prontuario: prontAlvo || agendAlvo,
-          agendamento: agendAlvo || prontAlvo,
+          agendamento: agendAlvo,
           bancadaUrl: window.location.origin,
         },
         "*"
@@ -838,7 +844,7 @@ export default function TriagemEdtaPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prontuario: prontAlvo || agendAlvo,
-          agendamento: agendAlvo || prontAlvo,
+          agendamento: agendAlvo,
         }),
       });
 
